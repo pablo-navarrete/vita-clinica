@@ -1,29 +1,26 @@
 <?php
 
 namespace App\Http\Controllers\customer;
-
 use App\Http\Controllers\Controller;
-
-use App\Models\Assistant;
-use Illuminate\Http\Request;
 use Yajra\DataTables\Facades\DataTables;
 use Illuminate\Support\Facades\Validator;
+use App\Models\Insurance;
+use Illuminate\Http\Request;
 
-
-class AssistantController extends Controller
+class InsuranceController extends Controller
 {
     /**
      * Display a listing of the resource.
      */
     public function index()
     {
-        return view('customer.assistant.index');
+        return view('customer.insurances.index');
     }
 
-    // datatable asistente
-    public function getAssistant()
+    // datatable Insurance
+    public function getInsurances()
     {
-        $query = Assistant::query()
+        $query = Insurance::query()
             ->where('customer_id', app('customer')->id);
 
         return DataTables::of($query)
@@ -35,14 +32,14 @@ class AssistantController extends Controller
             ->make(true);
     }
 
-    // crear assistant
+    // crear Insurance
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
             'name'          => 'required|string|max:255',
             'status'        => 'required|in:0,1'
         ], [
-            'name.required' => 'El nombre de asistente es obligatorio',
+            'name.required' => 'El nombre de Previsión es obligatorio',
             'status.required' => 'Debe seleccionar un estado',
         ]);
 
@@ -53,7 +50,7 @@ class AssistantController extends Controller
         }
 
 
-        $assistant = Assistant::create([
+        $insurance = Insurance::create([
             'name'           => $request->name,
             'status'         => $request->status,
             'customer_id' => app('customer')->id
@@ -61,7 +58,7 @@ class AssistantController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $assistant
+            'data' => $insurance
         ]);
     }
 
@@ -84,18 +81,18 @@ class AssistantController extends Controller
 
         $id = $request->route('id');
 
-        $assistant = Assistant::where('id', $id)
+        $insurance = Insurance::where('id', $id)
             ->where('customer_id', app('customer')->id)
             ->firstOrFail();
 
-        $assistant->update([
+        $insurance->update([
             'name' => $request->name,
             'status' => $request->status,
         ]);
 
         return response()->json([
             'success' => true,
-            'data' => $assistant
+            'data' => $insurance
         ]);
     }
 
@@ -104,9 +101,9 @@ class AssistantController extends Controller
     {
         $id = $request->route('id');
 
-        $assistant = Assistant::where('id', $id)->firstOrFail();
+        $insurance = Insurance::where('id', $id)->firstOrFail();
 
-        $assistant->update([
+        $insurance->update([
             'status' => $request->status
         ]);
 
@@ -117,11 +114,11 @@ class AssistantController extends Controller
     {
         $id = $request->route('id');
 
-        $assistant = Assistant::where('id', $id)
+        $insurance = Insurance::where('id', $id)
             ->where('customer_id', app('customer')->id)
             ->firstOrFail();
 
-        $assistant->delete();
+        $insurance->delete();
 
         return response()->json([
             'success' => true,

@@ -1,4 +1,4 @@
-<footer class=" border-t border-gray-200 shadow-sm" style="background-color: {{ themeColor(200) }}">
+<footer class=" border-t border-gray-200 shadow-sm" style="background-color: {{ themeColor(100) }}">
     <div class="px-6 py-4 flex flex-col md:flex-row items-center justify-between">
 
         <p class="text-sm text-gray-500">

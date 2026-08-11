@@ -15,7 +15,8 @@ return new class extends Migration
             $table->id();
 
             $table->string('name');
-          
+            $table->tinyInteger('status')->default(1);
+            $table->foreignId('customer_id')->nullable()->constrained()->cascadeOnDelete();
             $table->timestamps();
         });
     }

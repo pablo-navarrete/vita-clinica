@@ -19,7 +19,6 @@ return new class extends Migration
                 ->constrained()
                 ->cascadeOnDelete();
 
-            $table->text('general_notes')->nullable();
             $table->foreignId('customer_id')->nullable()->constrained()->cascadeOnDelete();
             $table->timestamps();
         });

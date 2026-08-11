@@ -18,6 +18,7 @@ class Patient extends Model
         'email',
         'address',
         'status',
+        'insurance_id',
     ];
 
     protected $casts = [
@@ -35,16 +36,6 @@ class Patient extends Model
         return $this->belongsTo(Customer::class);
     }
 
-    public function insurances()
-    {
-        return $this->hasMany(PatientInsurance::class);
-    }
-
-    public function activeInsurance()
-    {
-        return $this->hasOne(PatientInsurance::class)
-            ->where('is_active', true);
-    }
 
     public function appointments()
     {
@@ -55,25 +46,18 @@ class Patient extends Model
     {
         return $this->hasOne(MedicalRecord::class);
     }
-
-    /*
-    |--------------------------------------------------------------------------
-    | Accessors
-    |--------------------------------------------------------------------------
-    */
-
-    public function getGenderLabelAttribute()
+    
+    public function insurance()
     {
-        return match ($this->gender) {
-            'male' => 'Masculino',
-            'female' => 'Femenino',
-            'other' => 'Otro',
-            default => '-',
-        };
+        return $this->belongsTo(Insurance::class);
     }
 
-    public function getStatusLabelAttribute()
+    public function encounters()
     {
-        return $this->status ? 'Activo' : 'Inactivo';
+        return $this->hasMany(Encounter::class);
     }
+
+ 
+
+
 }

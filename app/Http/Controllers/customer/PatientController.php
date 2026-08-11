@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\customer;
 use App\Http\Controllers\Controller;
+use App\Models\Insurance;
 use Illuminate\Validation\Rule;
 use App\Models\Patient;
 use Illuminate\Http\Request;
@@ -10,22 +11,30 @@ use Illuminate\Support\Facades\Validator;
 
 class PatientController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
+   
     public function index()
     {
-         return view('customer.patient.index');
+
+        $insurances = Insurance::where('customer_id', app('customer')->id)->where('status', 1)->get();
+
+        return view('customer.patient.index', compact('insurances'));
     }
 
     // datatable
     public function getPatient()
     {
-        $query = Patient::query()
+        $query = Patient::with('insurance')
             ->where('customer_id', app('customer')->id);
 
         return DataTables::of($query)
-            ->addIndexColumn() //contador automático
+            ->addIndexColumn()
+
+            ->addColumn('insurance', function ($row) {
+                return $row->insurance?->name ?? 'Sin previsión';
+            })
+            ->addColumn('insurance_id', function ($row) {
+                    return $row->insurance_id;
+            })
             ->addColumn('actions', function ($row) {
                 return '';
             })
@@ -36,6 +45,7 @@ class PatientController extends Controller
     // crear paciente
     public function store(Request $request)
     {
+        
         $validator = Validator::make($request->all(), [
 
             'name' => 'required|string|max:255',
@@ -50,7 +60,7 @@ class PatientController extends Controller
 
             'birth_date' => 'required|date|before_or_equal:today',
 
-            'gender' => 'required|in:male,female,other',
+            'gender' => 'required',
 
             'phone' => 'required|string|max:20',
 
@@ -103,8 +113,15 @@ class PatientController extends Controller
 
             'status' => $request->status,
 
+            'insurance_id' => $request->insurance_id,
+
         ]);
 
+
+        $patient->medicalRecord()->create([
+            'customer_id' => app('customer')->id,
+        ]);
+        
         return response()->json([
             'success' => true,
             'data' => $patient

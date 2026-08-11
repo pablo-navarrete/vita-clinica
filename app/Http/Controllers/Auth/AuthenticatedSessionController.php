@@ -36,8 +36,8 @@ class AuthenticatedSessionController extends Controller
         }
 
         // Usuario tenant -> siempre a su dominio
-        return redirect()->to(
-            'http://' . $user->customer->domain . '/dashboard'
+       return redirect()->to(
+        'http://' . $user->customer->domain . '.' . config('app.domain') . '/dashboard'
         );
     }
 

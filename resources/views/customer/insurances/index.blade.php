@@ -2,7 +2,7 @@
 
 @section('header')
     <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('Gestión de Asistentes') }}
+            {{ __('Gestión de Previsiones') }}
         </h2>
 @endsection
 
@@ -12,7 +12,7 @@
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
 
-                <div class="p-6 text-gray-900" x-data="AssistantModal()" x-ref="assistantComponent">
+                <div class="p-6 text-gray-900" x-data="InsurancesModal()" x-ref="insurancesComponent">
 
                     <!-- TABLA Activos-->
                     <div class="overflow-x-auto" x-show="tab === 'active'">
@@ -21,14 +21,14 @@
                         <div class="flex justify-end mb-4">
                             <button
                                 @click="create()"
-                                style="background-color: {{ themeColor(500) }}"
+                                style="background-color: {{ themeColor(600) }}"
                                 class="hover:brightness-90 transition text-white font-bold py-2 px-4 rounded">
                                 <i class="fa-solid fa-circle-plus"></i>
                                 Nuevo
                             </button>
                         </div>
 
-                        <table id="assistant-table"
+                        <table id="insurances-table"
                             class="min-w-full display responsive nowrap rounded-xl overflow-hidden">
 
                             <thead style="background-color: {{ themeColor(100) }}">
@@ -58,7 +58,7 @@
                                     border-color: {{ themeColor(200) }};
                                 ">
                                 <h2 class="text-lg font-bold"
-                                    x-text="isEdit ? 'Editar Asistente' : 'Crear Nuevo Asistente'">
+                                    x-text="isEdit ? 'Editar Previsión' : 'Crear Nueva Previsión'">
                                 </h2>
                             </div>
 
@@ -68,7 +68,7 @@
                                 <!-- NOMBRE -->
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-1">
-                                        Nombre Asistente
+                                        Nombre Previsión
                                     </label>
 
                                     <input
@@ -110,7 +110,7 @@
 
                                 <button
                                     @click="submit()"
-                                    style="background-color: {{ themeColor(500) }}"
+                                    style="background-color: {{ themeColor(600) }}"
                                     class="hover:brightness-90 transition text-white px-4 py-2 rounded">
                                     Guardar
                                 </button>
@@ -134,10 +134,10 @@
         <script>
             $(function() {
                 // table
-                let tableActive  = $('#assistant-table').DataTable({
+                let tableActive  = $('#insurances-table').DataTable({
                     processing: true,
                     serverSide: true,
-                    ajax: '/assistant-data',
+                    ajax: '/insurances-data',
                     language: {
                         url: "https://cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json"
                     },
@@ -181,7 +181,7 @@
 
                              render: function(data, type, row) {
                                 return `
-                                    <button class="edit-assistant-btn text-blue-500 mr-2">
+                                    <button class="edit-insurances-btn text-blue-500 mr-2">
                                         <i class="fa-solid fa-pen-to-square"></i>
                                     </button>
 
@@ -197,11 +197,11 @@
                
 
                 // EDITAR
-                $('#assistant-table').on('click', '.edit-assistant-btn', function() {
+                $('#insurances-table').on('click', '.edit-insurances-btn', function() {
 
                     let data = tableActive.row($(this).closest('tr')).data();
 
-                    window.dispatchEvent(new CustomEvent('edit-assistant', {
+                    window.dispatchEvent(new CustomEvent('edit-insurances', {
                         detail: data
                     }));
                 });
@@ -210,7 +210,7 @@
 
 
                 // CAMBIAR ESTADO
-                $('#assistant-table').on('click', '.toggle-status', function() {
+                $('#insurances-table').on('click', '.toggle-status', function() {
 
                     let id = $(this).data('id');
 
@@ -218,7 +218,7 @@
 
                     let newStatus = currentStatus == 1 ? 0 : 1;
 
-                    fetch(`/assistant/${id}/toggle-status`, {
+                    fetch(`/insurances/${id}/toggle-status`, {
 
                         method: 'PATCH',
 
@@ -246,19 +246,19 @@
                             timer: 1500
                         });
 
-                        $('#assistant-table').DataTable().ajax.reload(null, false);
+                        $('#insurances-table').DataTable().ajax.reload(null, false);
                     });
                 });
 
               
 
                 //eliminar logico
-                $('#assistant-table').on('click', '.delete-btn', function() {
+                $('#insurances-table').on('click', '.delete-btn', function() {
 
                     let data = tableActive.row($(this).closest('tr')).data();
 
                     Swal.fire({
-                        title: '¿Eliminar Asistente?',
+                        title: '¿Eliminar Previsión?',
                         text: "Esto lo eliminará del sistema permanentemente.",
                         icon: 'warning',
                         showCancelButton: true,
@@ -269,7 +269,7 @@
 
                         if (!result.isConfirmed) return;
 
-                        fetch(`/assistant/${data.id}`, {
+                        fetch(`/insurances/${data.id}`, {
                             method: 'DELETE',
                             headers: {
                                 'Content-Type': 'application/json',
@@ -285,12 +285,12 @@
                                 toast: true,
                                 position: 'top-end',
                                 icon: 'success',
-                                title: 'Asistente eliminado',
+                                title: 'Previsión eliminado',
                                 showConfirmButton: false,
                                 timer: 1500
                             });
 
-                            $('#assistant-table').DataTable().ajax.reload(null, false);
+                            $('#insurances-table').DataTable().ajax.reload(null, false);
                         });
 
                     });
@@ -301,7 +301,7 @@
 
             });
 
-            function AssistantModal() {
+            function InsurancesModal() {
 
                 return {
                     tab: 'active',
@@ -371,7 +371,7 @@
 
                     submit() {
 
-                        fetch(this.isEdit ? `/assistant/${this.form.id}` : '/assistant', {
+                        fetch(this.isEdit ? `/insurances/${this.form.id}` : '/insurances', {
 
                                 method: this.isEdit ? 'PUT' : 'POST',
 
@@ -416,17 +416,17 @@
 
                                 this.close();
 
-                                $('#assistant-table').DataTable().ajax.reload();
+                                $('#insurances-table').DataTable().ajax.reload();
                             });
                     }
                 }
             }
 
             // EVENTO EDITAR
-            window.addEventListener('edit-assistant', e => {
+            window.addEventListener('edit-insurances', e => {
 
                 Alpine
-                    .$data(document.querySelector('[x-ref="assistantComponent"]'))
+                    .$data(document.querySelector('[x-ref="insurancesComponent"]'))
                     .edit(e.detail);
             });
 

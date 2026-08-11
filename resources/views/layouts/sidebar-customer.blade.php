@@ -16,6 +16,7 @@
 
         <div class="h-16 flex items-center justify-center border-b" style="border-color: {{ themeColor(700) }}">
             <h6 class="text-base font-bold">
+                
                 Administración Médica
             </h6>
         </div>
@@ -32,25 +33,37 @@
             <span>Pacientes</span>
         </a>
 
-        <a href="#" class="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-white/10 transition">
-            <i class="fa-solid fa-calendar-days w-5"></i>
-            <span>Citas</span>
+        <a href="/appointments"
+            class="flex items-center gap-3 px-4 py-3 rounded-lg transition {{ request()->is('appointments*') ? 'bg-white/20 text-white shadow-md' : 'hover:bg-white/10 text-slate-200' }}">
+            <i class="fa-regular fa-calendar-days w-5"></i>
+            <span>Agenda</span>
         </a>
-
+        <div class="h-16 flex items-center justify-center border-b" style="border-color: {{ themeColor(700) }}">
+             
+            <h2 class="text-base font-bold">
+             
+                Configuración del sistema
+            </h2>
+        </div>
         <a href="/professional"
             class="flex items-center gap-3 px-4 py-3 rounded-lg transition {{ request()->is('professional*') ? 'bg-white/20 text-white shadow-md' : 'hover:bg-white/10 text-slate-200' }}">
             <i class="fa-solid fa-user-doctor w-5"></i>
             <span>Profesionales</span>
         </a>
 
-        <a href="/assistant"
-            class="flex items-center gap-3 px-4 py-3 rounded-lg transition {{ request()->is('assistant*') ? 'bg-white/20 text-white shadow-md' : 'hover:bg-white/10 text-slate-200' }}">
-            <i class="fa-solid fa-calendar-days w-5"></i>
-            <span>Asistentes</span>
+         <a href="/insurances"
+            class="flex items-center gap-3 px-4 py-3 rounded-lg transition {{ request()->is('insurances*') ? 'bg-white/20 text-white shadow-md' : 'hover:bg-white/10 text-slate-200' }}">
+            <i class="fa-solid fa-shield-heart w-5"></i>
+            <span>Previsiones</span>
         </a>
-
-        <div class="h-16 flex items-center justify-center border-b" style="border-color: {{ themeColor(700) }}">
+         <a href="/specialties"
+            class="flex items-center gap-3 px-4 py-3 rounded-lg transition {{ request()->is('specialties*') ? 'bg-white/20 text-white shadow-md' : 'hover:bg-white/10 text-slate-200' }}">
+            <i class="fa-solid fa-stethoscope w-5"></i>
+            <span>Especialidades</span>
+        </a>
+        <div class="h-16 flex items-center  justify-center border-b" style="border-color: {{ themeColor(700) }}">
             <h2 class="text-base font-bold">
+             
                 Administración Web
             </h2>
         </div>

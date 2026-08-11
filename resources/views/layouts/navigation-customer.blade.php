@@ -32,6 +32,60 @@
 
             <!-- DERECHA -->
             <div class="flex items-center">
+            
+<!-- notificaciones -->
+<div x-data="{ open: false }" class="relative">
+
+    <!-- TRIGGER -->
+    <button @click="open = !open"
+        style="color: {{ themeColor(600) }}"
+        class="relative px-3 py-2 hover:brightness-75 transition">
+
+        <i class="fa-solid fa-bell text-lg"></i>
+
+       
+            <span
+                class="absolute -top-1 -right-1 min-w-5 h-5 px-1
+                       flex items-center justify-center
+                       bg-red-500 text-white text-xs font-bold
+                       rounded-full">
+                99
+            </span>
+       
+
+    </button>
+
+    <!-- DROPDOWN notificaciones -->
+    <div x-show="open"
+        @click.outside="open = false"
+        x-transition
+        class="absolute right-0 mt-2 w-48 bg-white shadow-lg rounded-lg z-50 overflow-hidden">
+
+        <div class="px-4 py-2 text-sm font-semibold text-gray-700 border-b">
+            Notificaciones
+        </div>
+
+        <form method="POST">
+            @csrf
+
+            <div class="p-4 mb-2">
+                <p class="text-gray-500">no hay notificaciones</p>
+            </div>
+
+            <div class="border-t mt-2 pt-2 px-4 mb-2">
+                <button type="submit"
+                    style="background-color: {{ themeColor(600) }}"
+                    class="w-full text-white py-2 rounded hover:brightness-90 transition">
+                    Limpiar
+                </button>
+            </div>
+        </form>
+
+    </div>
+</div>
+
+
+
                 <a href="/" style="color: {{ themeColor(600) }}" class="px-5 hover:brightness-75 transition"
                     target="_blanc">
                     <i class="fa-solid fa-globe"></i>
@@ -123,21 +177,26 @@
                 <x-dropdown align="right" width="48">
 
                     <x-slot name="trigger">
-                        <button style="color: {{ themeColor(600) }}"
-                            class="inline-flex items-center px-3 py-2 text-sm font-medium hover:brightness-75 transition"><span>{{ Auth::user()->name }}</span>
+                        <button 
+                            class="inline-flex items-center px-3 py-2 text-sm font-medium hover:brightness-75 transition">
+                            <div style="background-color: {{ themeColor(600) }}"
+                                class="w-6 h-6 rounded-full text-white flex items-center justify-center font-bold text-xl">
+                                {{ strtoupper(mb_substr(Auth::user()->name, 0, 1)) }}
+                            </div>
 
-                            <svg class="ml-2 h-4 w-4 fill-current" xmlns="http://www.w3.org/2000/svg"
-                                viewBox="0 0 20 20">
-                                <path fill-rule="evenodd"
-                                    d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                                    clip-rule="evenodd" />
-                            </svg>
+                           
                         </button>
                     </x-slot>
 
                     <x-slot name="content">
+                        <x-dropdown-link style="background-color: {{ themeColor(100) }}">
+                            <p>{{ Auth::user()->name }}</p>
 
+
+                        </x-dropdown-link>
+                        <hr>
                         <x-dropdown-link href="#">
+
                             Perfil
                         </x-dropdown-link>
 

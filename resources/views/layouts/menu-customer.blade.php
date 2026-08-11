@@ -22,6 +22,9 @@
     <link rel="stylesheet"
           href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.dataTables.min.css">
 
+    <!--full calendar-->
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.19/index.global.min.css" rel="stylesheet">
+
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
     <style>
@@ -160,7 +163,36 @@
 <!-- SWEET ALERT -->
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
+<!--fullcalendar-->
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.19/index.global.min.js"></script>
+
+<!--CHART.JS-->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 @stack('scripts')
+<script>
+    const Toast = Swal.mixin({
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+        timer: 3000,
+        timerProgressBar: true
+    });
+
+    @if(session('success'))
+        Toast.fire({
+            icon: 'success',
+            title: @json(session('success'))
+        });
+    @endif
+
+    @if(session('error'))
+        Toast.fire({
+            icon: 'error',
+            title: @json(session('error'))
+        });
+    @endif
+</script>
 
 </body>
 </html>

@@ -39,76 +39,89 @@ class LoginRequest extends FormRequest
      *
      * @throws \Illuminate\Validation\ValidationException
      */
-   public function authenticate(): void
-{
-    $this->ensureIsNotRateLimited();
+    public function authenticate(): void
+    {
+        $this->ensureIsNotRateLimited();
 
-    $host = request()->getHost();
-    $mainDomain = config('app.domain');
+        // Buscar usuario
+        $user = User::where('email', $this->email)->first();
 
-    // Buscar usuario primero
-    $user = User::where('email', $this->email)->first();
-
-    if (! $user) {
-        throw ValidationException::withMessages([
-            'email' => trans('auth.failed'),
-        ]);
-    }
-
-    $credentials = [
-        'email' => $this->email,
-        'password' => $this->password,
-    ];
-
-    // 🔥 SUPERADMIN puede entrar a cualquier dominio
-    if ($user->customer_id === null) {
-
-        if (! Auth::attempt($credentials, $this->boolean('remember'))) {
-
-            RateLimiter::hit($this->throttleKey());
-
+        if (!$user) {
             throw ValidationException::withMessages([
                 'email' => trans('auth.failed'),
             ]);
         }
 
-        RateLimiter::clear($this->throttleKey());
 
-        return;
-    }
+        $credentials = [
+            'email' => $this->email,
+            'password' => $this->password,
+        ];
 
-    //  Usuarios normales
-    if ($host !== $mainDomain) {
 
-        $customer = Customer::where('domain', $host)->first();
+        // SUPERADMIN
+        if ($user->customer_id === null) {
 
-        if (! $customer) {
-            throw ValidationException::withMessages([
-                'email' => 'Cliente no encontrado',
-            ]);
+            if (!Auth::attempt($credentials, $this->boolean('remember'))) {
+
+                RateLimiter::hit($this->throttleKey());
+
+                throw ValidationException::withMessages([
+                    'email' => trans('auth.failed'),
+                ]);
+            }
+
+            RateLimiter::clear($this->throttleKey());
+
+            return;
         }
 
-        $credentials['customer_id'] = $customer->id;
 
-    } else {
+        // USUARIO TENANT
+       // USUARIO TENANT
+$customer = Customer::find($user->customer_id);
 
-        // Usuario normal intentando entrar al dominio principal
-        throw ValidationException::withMessages([
-            'email' => 'Debe ingresar desde el dominio de su cliente',
-        ]);
-    }
+if (!$customer) {
 
-    if (! Auth::attempt($credentials, $this->boolean('remember'))) {
+    throw ValidationException::withMessages([
+        'email' => 'Cliente no encontrado',
+    ]);
 
-        RateLimiter::hit($this->throttleKey());
-
-        throw ValidationException::withMessages([
-            'email' => trans('auth.failed'),
-        ]);
-    }
-
-    RateLimiter::clear($this->throttleKey());
 }
+
+$host = $this->getHost();
+$mainDomain = config('app.domain');
+
+if ($host !== $mainDomain) {
+
+    $subdomain = str_replace('.' . $mainDomain, '', $host);
+
+    $currentCustomer = Customer::where('domain', $subdomain)->first();
+
+    if (!$currentCustomer || $currentCustomer->id !== $customer->id) {
+
+        throw ValidationException::withMessages([
+            'email' => 'Este usuario no pertenece a este dominio.',
+        ]);
+
+    }
+}
+
+// Validar login incluyendo customer_id
+$credentials['customer_id'] = $customer->id;
+
+if (!Auth::attempt($credentials, $this->boolean('remember'))) {
+
+    RateLimiter::hit($this->throttleKey());
+
+    throw ValidationException::withMessages([
+        'email' => trans('auth.failed'),
+    ]);
+
+}
+
+RateLimiter::clear($this->throttleKey());
+    }
 
     /**
      * Ensure the login request is not rate limited.

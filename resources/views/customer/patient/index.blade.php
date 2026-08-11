@@ -22,7 +22,7 @@
                             @click="create()"
                             style="background-color: {{ themeColor(600) }}"
                             class="hover:brightness-90 transition text-white font-bold py-2 px-4 rounded">
-                            <i class="fa-solid fa-circle-plus"></i>
+                            <i class="fa-solid fa-circle-plus mr-1"></i>
                             Nuevo
                         </button>
                         
@@ -36,6 +36,7 @@
                                     <th>Teléfono</th>
                                     <th>Email</th>
                                     <th>Sexo</th>
+                                    <th>Previsión</th>
                                     <th>Estado</th>
                                     <th>Acciones</th>
                                 </tr>
@@ -45,9 +46,9 @@
 
                     <!-- MODAL CREAR / EDITAR PACIENTE -->
                     <div x-cloak x-show="open"
-                        class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+                        class="fixed inset-0 flex items-center justify-center bg-black/50 z-50 overflow-y-auto p-4">
 
-                        <div class="bg-white rounded-lg shadow-lg w-full max-w-3xl">
+                        <div class="bg-white rounded-lg shadow-lg w-full max-w-lg max-h-[90vh] flex flex-col">
 
                             <!-- HEADER -->
                             <div class="px-6 py-4 border-b rounded-t-lg " style="background-color: {{ themeColor(100) }}">
@@ -56,7 +57,7 @@
                             </div>
 
                             <!-- BODY -->
-                            <div class="px-6 py-4">
+                            <div class="p-6 space-y-4 overflow-y-auto flex-1">
 
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 
@@ -67,7 +68,7 @@
                                         </label>
 
                                         <input type="text" x-model="form.name" @input="clearError('name')"
-                                            class="w-full rounded-md border px-3 py-2">
+                                            class="w-full rounded-lg border-gray-300">
 
                                         <template x-if="errors.name">
                                             <p class="text-xs text-red-500 mt-1" x-text="errors.name[0]"></p>
@@ -81,7 +82,7 @@
                                         </label>
 
                                         <input type="text" x-model="form.rut" @input="clearError('rut')"
-                                            class="w-full rounded-md border px-3 py-2">
+                                            class="w-full rounded-lg border-gray-300">
 
                                         <template x-if="errors.rut">
                                             <p class="text-xs text-red-500 mt-1" x-text="errors.rut[0]"></p>
@@ -95,7 +96,7 @@
                                         </label>
 
                                         <input type="date" x-model="form.birth_date" @input="clearError('birth_date')"
-                                            max="{{ now()->format('Y-m-d') }}" class="w-full rounded-md border px-3 py-2">
+                                            max="{{ now()->format('Y-m-d') }}" class="w-full rounded-lg border-gray-300">
 
                                         <template x-if="errors.birth_date">
                                             <p class="text-xs text-red-500 mt-1" x-text="errors.birth_date[0]"></p>
@@ -108,11 +109,11 @@
                                             Sexo
                                         </label>
 
-                                        <select x-model="form.gender" class="w-full rounded-md border px-3 py-2">
+                                        <select x-model="form.gender" class="w-full rounded-lg border-gray-300">
 
-                                            <option value="male">Masculino</option>
-                                            <option value="female">Femenino</option>
-                                            <option value="other">Otro</option>
+                                            <option value="Masculino">Masculino</option>
+                                            <option value="Femenino">Femenino</option>
+                                            <option value="Otro">Otro</option>
                                         </select>
                                     </div>
 
@@ -123,7 +124,7 @@
                                         </label>
 
                                         <input type="text" x-model="form.phone" @input="clearError('phone')"
-                                            maxlength="20" class="w-full rounded-md border px-3 py-2">
+                                            maxlength="20" class="w-full rounded-lg border-gray-300">
 
                                         <template x-if="errors.phone">
                                             <p class="text-xs text-red-500 mt-1" x-text="errors.phone[0]"></p>
@@ -137,7 +138,7 @@
                                         </label>
 
                                         <input type="email" x-model="form.email" @input="clearError('email')"
-                                            class="w-full rounded-md border px-3 py-2">
+                                            class="w-full rounded-lg border-gray-300">
 
                                         <template x-if="errors.email">
                                             <p class="text-xs text-red-500 mt-1" x-text="errors.email[0]"></p>
@@ -151,20 +152,31 @@
                                         </label>
 
                                         <input type="text" x-model="form.address" @input="clearError('address')"
-                                            maxlength="255" class="w-full rounded-md border px-3 py-2">
+                                            maxlength="255" class="w-full rounded-lg border-gray-300">
 
                                         <template x-if="errors.address">
                                             <p class="text-xs text-red-500 mt-1" x-text="errors.address[0]"></p>
                                         </template>
                                     </div>
+                                    <!-- prevision -->
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">
+                                            Previsión
+                                        </label>
 
+                                        <select x-model="form.insurance_id" class="w-full rounded-lg border-gray-300">
+                                            @foreach ($insurances as $insurance )
+                                                <option value="{{ $insurance->id }}">{{ $insurance->name }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
                                     <!-- ESTADO -->
                                     <div>
                                         <label class="block text-sm font-medium text-gray-700 mb-1">
                                             Estado
                                         </label>
 
-                                        <select x-model="form.status" class="w-full rounded-md border px-3 py-2">
+                                        <select x-model="form.status" class="w-full rounded-lg border-gray-300">
                                             <option value="1">Activo</option>
                                             <option value="0">Inactivo</option>
                                         </select>
@@ -237,11 +249,11 @@
                     },
                     {
                         data: 'gender',
-                        render: function(data) {
-                            if (data === 'male') return 'Masculino';
-                            if (data === 'female') return 'Femenino';
-                            return 'Otro';
-                        }
+                       
+                    },
+                    {
+                        data: 'insurance',
+                       
                     },
                     {
                         data: 'status',
@@ -259,6 +271,7 @@
                                 `;
                         }
                     },
+                  
                     {
                         data: null,
                         orderable: false,
@@ -266,57 +279,57 @@
                         render: function(data, type, row) {
 
                             return `
-            <div x-data="{ open: false }" class="relative">
+                                <div x-data="{ open: false }" class="relative">
 
-                <button
-                    @click="open = !open"
-                    class="px-2 py-1 rounded hover:bg-gray-100">
+                                    <button
+                                        @click="open = !open"
+                                        class="px-2 py-1 rounded hover:bg-gray-100">
 
-                    <i class="fa-solid fa-ellipsis-vertical"></i>
-                </button>
+                                        <i class="fa-solid fa-ellipsis-vertical"></i>
+                                    </button>
 
-                <div
-                    x-show="open"
-                    @click.outside="open = false"
-                    x-transition
-                    class="absolute right-0 mt-2 w-52 bg-white border rounded-lg shadow-lg z-50">
+                                    <div
+                                        x-show="open"
+                                        @click.outside="open = false"
+                                        x-transition
+                                        class="absolute right-0 mt-2 w-52 bg-white border rounded-lg shadow-lg z-50">
 
-                    <button
-                        class="view-patient-btn w-full text-left px-4 py-2 hover:bg-gray-100"
-                        data-id="${row.id}">
-                        <i class="fa-solid fa-user mr-2"></i>
-                        Ver ficha
-                    </button>
+                                        <button
+                                            class="view-patient-btn w-full text-left px-4 py-2 hover:bg-gray-100"
+                                            data-id="${row.id}">
+                                            <i class="fa-solid fa-user mr-2"></i>
+                                            Ver ficha
+                                        </button>
 
-                    <button
-                        class="edit-patient-btn w-full text-left px-4 py-2 hover:bg-gray-100"
-                        data-id="${row.id}">
-                        <i class="fa-solid fa-pen mr-2"></i>
-                        Editar
-                    </button>
+                                        <button
+                                            class="edit-patient-btn w-full text-left px-4 py-2 hover:bg-gray-100"
+                                            data-id="${row.id}">
+                                            <i class="fa-solid fa-pen mr-2"></i>
+                                            Editar
+                                        </button>
 
-                    <button
-                        class="appointment-btn w-full text-left px-4 py-2 hover:bg-gray-100"
-                        data-id="${row.id}">
-                        <i class="fa-solid fa-calendar-days mr-2"></i>
-                        Agendar cita
-                    </button>
+                                        <button
+                                            class="appointment-btn w-full text-left px-4 py-2 hover:bg-gray-100"
+                                            data-id="${row.id}">
+                                            <i class="fa-solid fa-calendar-days mr-2"></i>
+                                            Agendar cita
+                                        </button>
 
-                  
+                                    
 
-                    <hr>
+                                        <hr>
 
-                    <button
-                        class="delete-btn w-full text-left px-4 py-2 text-red-600 hover:bg-red-50"
-                        data-id="${row.id}">
-                        <i class="fa-solid fa-trash mr-2"></i>
-                        Eliminar
-                    </button>
+                                        <button
+                                            class="delete-btn w-full text-left px-4 py-2 text-red-600 hover:bg-red-50"
+                                            data-id="${row.id}">
+                                            <i class="fa-solid fa-trash mr-2"></i>
+                                            Eliminar
+                                        </button>
 
-                </div>
+                                    </div>
 
-            </div>
-        `;
+                                </div>
+                            `;
                         }
                     }
 
@@ -426,7 +439,11 @@
 
             });
 
+            $(document).on('click', '.view-patient-btn', function () {
+                const patientId = $(this).data('id');
 
+                window.location.href = `/patients/${patientId}/medical-record`;
+            });
 
         });
 
@@ -446,11 +463,12 @@
                     name: '',
                     rut: '',
                     birth_date: '',
-                    gender: '',
+                    gender: 'Masculino',
                     phone: '',
                     email: '',
                     address: '',
-                    status: '1'
+                    status: '1',
+                    insurance_id: '{{ $insurances->first()->id ?? '' }}'
                 },
 
                 errors: {
@@ -473,11 +491,12 @@
                         name: '',
                         rut: '',
                         birth_date: '',
-                        gender: '',
+                        gender: 'Masculino',
                         phone: '',
                         email: '',
                         address: '',
-                        status: '1'
+                        status: '1',
+                        insurance_id: '{{ $insurances->first()->id ?? '' }}'
                     };
 
                     this.errors = {};
@@ -498,7 +517,8 @@
                         phone: data.phone,
                         email: data.email,
                         address: data.address,
-                        status: String(data.status)
+                        status: String(data.status),
+                        insurance_id: String(data.insurance_id)
                     };
 
                     this.errors = {};
@@ -517,7 +537,7 @@
                 },
 
                 submit() {
-
+                      
                     fetch(this.isEdit ? `/patient/${this.form.id}` : '/patient', {
 
                             method: this.isEdit ? 'PUT' : 'POST',

@@ -38,7 +38,7 @@
                     @else
                         <button @click="create()" style="background-color: {{ themeColor(600) }}"
                             class="hover:brightness-90 transition text-white font-bold py-2 px-4 rounded">
-                            <i class="fa-solid fa-circle-plus"></i>
+                            <i class="fa-solid fa-circle-plus mr-1"></i>
                             Nuevo
                         </button>
                     @endif
@@ -63,9 +63,9 @@
 
                 <!-- MODAL -->
                 <div x-cloak x-show="open"
-                    class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+                    class="fixed inset-0 flex items-center justify-center bg-black/50 z-50 overflow-y-auto p-4">
 
-                    <div class="bg-white rounded-lg shadow-lg w-full max-w-lg">
+                    <div class="bg-white rounded-lg shadow-lg w-full max-w-lg max-h-[90vh] flex flex-col">
 
                         <!-- HEADER -->
                         <div class="px-6 py-4 border-b">
@@ -73,7 +73,7 @@
                         </div>
 
                         <!-- BODY -->
-                        <div class="px-6 py-4 space-y-4">
+                        <div class="p-6 space-y-4 overflow-y-auto flex-1">
 
                             <!-- IMAGEN -->
                             <div class="border-2 border-dashed rounded-lg p-6 text-center cursor-pointer hover:bg-gray-50"
@@ -102,7 +102,7 @@
                             <div>
                                 <label class="block text-sm font-medium mb-1">Nombre</label>
 
-                                <input type="text" x-model="form.name" class="w-full border rounded px-3 py-2">
+                                <input type="text" x-model="form.name" class="w-full rounded-lg border-gray-300">
                             </div>
 
                             <!-- UBICACIONES -->
@@ -136,7 +136,7 @@
                             <div>
                                 <label class="block text-sm font-medium mb-1">Estado</label>
 
-                                <select x-model="form.status" class="w-full border rounded px-3 py-2">
+                                <select x-model="form.status" class="w-full rounded-lg border-gray-300">
                                     <option value="1">Activo</option>
                                     <option value="0">Inactivo</option>
                                 </select>
@@ -151,7 +151,7 @@
                                 Cancelar
                             </button>
 
-                            <button @click="submit()" style="background-color: {{ themeColor(500) }}"
+                            <button @click="submit()" style="background-color: {{ themeColor(600) }}"
                                 class="hover:brightness-90 transition text-white font-bold py-2 px-4 rounded">
                                 Guardar
                             </button>
@@ -243,7 +243,7 @@
                         searchable: false,
                         render: function(data, type, row) {
                             return `
-                                <button class="edit-assistant-btn text-blue-500 mr-2" data-id="${row.id}">
+                                <button class="edit-logo-btn text-blue-500 mr-2" data-id="${row.id}">
                                     <i class="fa-solid fa-pen-to-square"></i>
                                 </button>
 
@@ -347,7 +347,7 @@
             });
 
 
-            $('#logo-table').on('click', '.edit-assistant-btn', function() {
+            $('#logo-table').on('click', '.edit-logo-btn', function() {
 
                 let data = table.row($(this).closest('tr')).data();
 

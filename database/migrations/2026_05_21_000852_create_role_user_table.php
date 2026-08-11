@@ -22,6 +22,7 @@ return new class extends Migration
                 ->cascadeOnDelete();
 
             $table->primary(['user_id', 'role_id']);
+            
             $table->timestamps();
         });
     }

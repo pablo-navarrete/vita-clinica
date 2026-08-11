@@ -12,40 +12,34 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('appointments', function (Blueprint $table) {
+
             $table->id();
 
-            $table->foreignId('customer_id')
-                ->constrained()
-                ->cascadeOnDelete();
+            $table->foreignId('customer_id')->constrained()->cascadeOnDelete();
 
-            $table->foreignId('patient_id')
-                ->constrained()
-                ->cascadeOnDelete();
+            $table->foreignId('patient_id')->constrained()->cascadeOnDelete();
 
-            $table->foreignId('professional_id')
-                ->constrained()
-                ->cascadeOnDelete();
+            $table->foreignId('professional_id')->constrained('users')->cascadeOnDelete();
 
-            $table->foreignId('assistant_id')
-                ->nullable()
-                ->constrained()
-                ->nullOnDelete();
+            $table->foreignId('specialty_id')->constrained('specialties')->cascadeOnDelete();
 
-            $table->dateTime('scheduled_at');
+            $table->dateTime('start_at');
+            $table->dateTime('end_at');
 
+            // Estado
+            $table->tinyInteger('status')->default(1);
+
+            // Motivo de la consulta
             $table->string('reason')->nullable();
 
-            $table->enum('status', [
-                'scheduled',
-                'confirmed',
-                'completed',
-                'cancelled',
-                'no_show'
-            ])->default('scheduled');
-
+            // Observaciones
             $table->text('notes')->nullable();
 
             $table->timestamps();
+
+            $table->index(['professional_id', 'start_at']);
+            $table->index(['patient_id']);
+            $table->index(['status']);
         });
     }
 

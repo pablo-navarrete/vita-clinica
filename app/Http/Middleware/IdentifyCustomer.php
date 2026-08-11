@@ -19,29 +19,60 @@ class IdentifyCustomer
     $host = $request->getHost();
     $mainDomain = config('app.domain');
 
+    // Si es el dominio principal, no existe tenant
     if ($host === $mainDomain) {
         app()->instance('customer', null);
         app()->instance('logos_by_location', []);
+
         return $next($request);
     }
 
-    $customer = Customer::where('domain', $host)->first();
+    /*
+    |--------------------------------------------------------------------------
+    | Obtener el subdominio
+    |--------------------------------------------------------------------------
+    | Ejemplo:
+    | Host: clinica1.vita-clinica.test
+    | Resultado: clinica1
+    */
+    $subdomain = str_replace('.' . $mainDomain, '', $host);
 
-    if (! $customer) {
+    // Buscar cliente por subdominio
+    $customer = Customer::where('domain', $subdomain)->first();
+
+    if (!$customer) {
         abort(404);
     }
 
     $user = auth()->user();
 
-    // 🔐 validación tenant
-    if ($user && $user->customer_id !== null && $user->customer_id !== $customer->id) {
-        abort(403);
-    }
+    /*
+    |--------------------------------------------------------------------------
+    | Validación Tenant
+    |--------------------------------------------------------------------------
+    */
+   if ($user && $user->customer_id !== null && $user->customer_id !== $customer->id) {
 
-    // 👤 set customer siempre
+    auth()->logout();
+
+    $request->session()->invalidate();
+    $request->session()->regenerateToken();
+
+    return redirect()->route('login');
+}
+
+    /*
+    |--------------------------------------------------------------------------
+    | Compartir Customer
+    |--------------------------------------------------------------------------
+    */
     app()->instance('customer', $customer);
 
-    // 🧠 LOGOS POR UBICACIÓN
+    /*
+    |--------------------------------------------------------------------------
+    | Logos por ubicación
+    |--------------------------------------------------------------------------
+    */
     $logos = Logo::with('locations')
         ->where('customer_id', $customer->id)
         ->where('status', 1)
@@ -50,9 +81,10 @@ class IdentifyCustomer
     $logosByLocation = [];
 
     foreach ($logos as $logo) {
-        foreach ($logo->locations as $loc) {
 
-            $key = strtolower($loc->location);
+        foreach ($logo->locations as $location) {
+
+            $key = strtolower($location->location);
 
             if (!isset($logosByLocation[$key])) {
                 $logosByLocation[$key] = $logo;

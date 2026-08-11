@@ -11,21 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('medical_histories', function (Blueprint $table) {
+        Schema::create('previous_surgeries', function (Blueprint $table) {
             $table->id();
-
-            $table->foreignId('medical_record_id')
-                ->constrained()
-                ->cascadeOnDelete();
-
-            $table->enum('type', [
-                'personal',
-                'family',
-                'surgical'
-            ]);
-
-            $table->text('description');
+            $table->string('name');
             $table->foreignId('customer_id')->nullable()->constrained()->cascadeOnDelete();
+            $table->foreignId('medical_record_id')->constrained()->cascadeOnDelete();
             $table->timestamps();
         });
     }
@@ -35,6 +25,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('medical_histories');
+        Schema::dropIfExists('previous_surgeries');
     }
 };

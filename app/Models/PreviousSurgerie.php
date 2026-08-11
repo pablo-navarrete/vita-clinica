@@ -5,18 +5,18 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Report extends Model
+class PreviousSurgerie extends Model
 {
     use HasFactory;
 
      protected $fillable = [
+        'medical_record_id',
         'name',
-        'professional_id',
-        'assistant_id',
-        'customer_id',
-        'price',
-        'status', //pagado o pendiente
-        'state', //realizado
-        'file'
+        'customer_id'
     ];
+
+    public function medicalRecord()
+    {
+        return $this->belongsTo(MedicalRecord::class);
+    }
 }

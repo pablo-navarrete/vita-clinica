@@ -380,7 +380,10 @@
                             data: 'name'
                         },
                         {
-                            data: 'domain'
+                            data: 'domain',
+                                render: function(data) {
+                                    return data + '.{{ config('app.domain') }}';
+                                }
                         },
 
                         {
@@ -452,7 +455,7 @@
                                         <i class="fa-solid fa-trash-can"></i>
                                     </button>
 
-                                    <a href="//${row.domain}/login" target="_blank" rel="noopener noreferrer"
+                                    <a href="//${row.domain}.{{ config('app.domain') }}/login" target="_blank" rel="noopener noreferrer"
                                     class="text-green-500 mr-2">
                                         <i class="fa-solid fa-globe"></i>
                                     </a>

@@ -48,21 +48,19 @@ class CustomerController extends Controller
             ], 422);
         }
 
-        // generar dominio limpio
+
+        // Generar subdominio limpio
         $domain = strtolower($request->name);
         $domain = preg_replace('/[^a-z0-9]/', '', $domain);
 
-        $domain .= '.' . config('app.domain');
-
-        // evitar duplicados de dominio
+        // Evitar duplicados
         if (Customer::where('domain', $domain)->exists()) {
             return response()->json([
                 'errors' => [
-                    'name' => ['Ya existe un cliente con ese dominio']
+                    'name' => ['Ya existe un cliente con ese subdominio.']
                 ]
             ], 422);
         }
-
 
         $customer = Customer::create([
             'name'           => $request->name,
@@ -72,7 +70,7 @@ class CustomerController extends Controller
             'address'        => $request->address,
             'holder'         => $request->holder,
             'legal_name'     => $request->legal_name,
-            'domain'         => $domain,
+            'domain'         => $domain, // Solo el subdominio
             'status'         => $request->status,
 
             // SaaS defaults
@@ -83,82 +81,76 @@ class CustomerController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $customer
+            'data'    => $customer
         ]);
     }
 
     // Actualizar cliente
     public function update(Request $request, Customer $customer)
-    {
-        $validator = Validator::make($request->all(), [
+{
+    $validator = Validator::make($request->all(), [
 
-            'name' => 'required|string|max:255',
-            'legal_name' => 'required|string|max:255',
-            'status' => 'required|in:0,1',
-            'rut' => 'required|string|max:50|unique:customers,rut,' . $customer->id,
-            'email' => 'required|email|max:255',
-            'phone' => 'required|string|max:50',
-            'address' => 'nullable|string|max:255',
-            'holder' => 'required|string|max:255',
+        'name'          => 'required|string|max:255',
+        'legal_name'    => 'required|string|max:255',
+        'status'        => 'required|in:0,1',
+        'rut'           => 'required|string|max:50|unique:customers,rut,' . $customer->id,
+        'email'         => 'required|email|max:255',
+        'phone'         => 'required|string|max:50',
+        'address'       => 'nullable|string|max:255',
+        'holder'        => 'required|string|max:255',
 
-        ], [
+    ], [
 
-            'name.required' => 'El nombre es obligatorio',
-            'legal_name.required' => 'La Razón Social es obligatoria',
-            'status.required' => 'Debe seleccionar un estado',
-            'rut.required' => 'El RUT es obligatorio',
-            'rut.unique' => 'El RUT ya existe',
-            'email.required' => 'El email es obligatorio',
-            'email.unique' => 'El email ya existe',
-            'holder.required' => 'El sostenedor es obligatorio',
+        'name.required'          => 'El nombre es obligatorio',
+        'legal_name.required'    => 'La Razón Social es obligatoria',
+        'status.required'        => 'Debe seleccionar un estado',
+        'rut.required'           => 'El RUT es obligatorio',
+        'rut.unique'             => 'El RUT ya existe',
+        'email.required'         => 'El email es obligatorio',
+        'holder.required'        => 'El sostenedor es obligatorio',
 
-        ]);
+    ]);
 
-        if ($validator->fails()) {
-
-            return response()->json([
-                'errors' => $validator->errors()
-            ], 422);
-        }
-
-        // GENERAR DOMINIO
-        $domain = strtolower($request->name);
-        $domain = preg_replace('/[^a-z0-9]/', '', $domain);
-
-        $domain .= '.' . config('app.domain');
-
-        // VALIDAR DOMINIO EXCLUYENDO EL REGISTRO ACTUAL
-        $exists = Customer::where('domain', $domain)
-            ->where('id', '!=', $customer->id)
-            ->exists();
-
-        if ($exists) {
-
-            return response()->json([
-                'errors' => [
-                    'name' => ['Ya existe un cliente con ese dominio']
-                ]
-            ], 422);
-        }
-
-        $customer->update([
-
-            'name' => $request->name,
-            'legal_name' => $request->legal_name,
-            'rut' => $request->rut,
-            'email' => $request->email,
-            'phone' => $request->phone,
-            'address' => $request->address,
-            'holder' => $request->holder,
-            'domain' => $domain,
-            'status' => $request->status,
-        ]);
-
+    if ($validator->fails()) {
         return response()->json([
-            'success' => true,
-            'data' => $customer
-        ]);
+            'errors' => $validator->errors()
+        ], 422);
     }
+
+    // Generar subdominio
+    $domain = strtolower($request->name);
+    $domain = preg_replace('/[^a-z0-9]/', '', $domain);
+
+    // Validar subdominio excluyendo el registro actual
+    $exists = Customer::where('domain', $domain)
+        ->where('id', '!=', $customer->id)
+        ->exists();
+
+    if ($exists) {
+        return response()->json([
+            'errors' => [
+                'name' => ['Ya existe un cliente con ese subdominio.']
+            ]
+        ], 422);
+    }
+
+    $customer->update([
+        'name'       => $request->name,
+        'legal_name' => $request->legal_name,
+        'rut'        => $request->rut,
+        'email'      => $request->email,
+        'phone'      => $request->phone,
+        'address'    => $request->address,
+        'holder'     => $request->holder,
+        'domain'     => $domain,
+        'status'     => $request->status,
+    ]);
+
+    return response()->json([
+        'success' => true,
+        'data'    => $customer
+    ]);
+}
 
     //cambiar estado
     public function toggleStatus(Request $request, Customer $customer)

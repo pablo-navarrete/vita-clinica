@@ -23,17 +23,16 @@ return new class extends Migration
             $table->string('rut');
             $table->date('birth_date')->nullable();
 
-            $table->enum('gender', [
-                'male',
-                'female',
-                'other'
-            ])->nullable();
+            $table->string('gender')->nullable();
 
             $table->string('phone')->nullable();
             $table->string('email')->nullable();
             $table->string('address')->nullable();
-
             $table->tinyInteger('status')->default(1);
+            $table->foreignId('insurance_id')
+                ->nullable()
+                ->constrained()
+                ->nullOnDelete();
 
             $table->timestamps();
 
