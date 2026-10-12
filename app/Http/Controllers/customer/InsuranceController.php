@@ -2,10 +2,11 @@
 
 namespace App\Http\Controllers\customer;
 use App\Http\Controllers\Controller;
-use Yajra\DataTables\Facades\DataTables;
-use Illuminate\Support\Facades\Validator;
 use App\Models\Insurance;
+use App\Models\Patient;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
+use Yajra\DataTables\Facades\DataTables;
 
 class InsuranceController extends Controller
 {
@@ -24,10 +25,31 @@ class InsuranceController extends Controller
             ->where('customer_id', app('customer')->id);
 
         return DataTables::of($query)
-            ->addIndexColumn() //contador automático
+            ->addIndexColumn()
+
             ->addColumn('actions', function ($row) {
-                return '';
+
+                $isUsed = Patient::where('insurance_id', $row->id)
+                    ->where('customer_id', app('customer')->id)
+                    ->exists();
+
+                $actions = '
+                    <button class="edit-insurances-btn text-blue-500 mr-2">
+                        <i class="fa-solid fa-pen-to-square"></i>
+                    </button>
+                ';
+
+                if (!$isUsed) {
+                    $actions .= '
+                        <button class="delete-btn text-red-500 mr-2">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    ';
+                }
+
+                return $actions;
             })
+
             ->rawColumns(['actions'])
             ->make(true);
     }

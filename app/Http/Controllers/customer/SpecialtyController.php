@@ -21,13 +21,32 @@ class SpecialtyController extends Controller
     public function getSpecialties()
     {
         $query = Specialty::query()
-            ->where('customer_id', app('customer')->id);
+            ->where('customer_id', app('customer')->id)
+            ->withCount('users');
 
         return DataTables::of($query)
-            ->addIndexColumn() //contador automático
+            ->addIndexColumn()
+
             ->addColumn('actions', function ($row) {
-                return '';
+
+                $actions = '
+                    <button class="edit-specialties-btn text-blue-500 mr-2">
+                        <i class="fa-solid fa-pen-to-square"></i>
+                    </button>
+                ';
+
+                // Si está asignada a un profesional, NO permitir eliminar
+                if ($row->users_count == 0) {
+                    $actions .= '
+                        <button class="delete-btn text-red-500 mr-2">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    ';
+                }
+
+                return $actions;
             })
+
             ->rawColumns(['actions'])
             ->make(true);
     }
@@ -115,6 +134,28 @@ class SpecialtyController extends Controller
         return response()->json([
             'success' => true,
             'data' => $specialty
+        ]);
+    }
+
+    public function destroy(Request $request)
+    {
+
+        $id = $request->route('id');
+        $specialty = Specialty::where('customer_id', app('customer')->id)
+            ->findOrFail($id);
+
+        // No permitir eliminar si está asignada a profesionales
+        if ($specialty->users()->exists()) {
+            return response()->json([
+                'message' => 'No se puede eliminar la especialidad porque está asignada a uno o más profesionales.'
+            ], 422);
+        }
+
+        // Eliminación física
+        $specialty->forceDelete();
+
+        return response()->json([
+            'message' => 'Especialidad eliminada correctamente.'
         ]);
     }
 }

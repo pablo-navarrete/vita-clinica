@@ -22,13 +22,7 @@ class Appointment extends Model
 
 
 
-    // Estados
-    const SCHEDULED   = 1;
-    const CONFIRMED   = 2;
-    const IN_PROGRESS = 3;
-    const COMPLETED   = 4;
-    const CANCELLED   = 5;
-    const NO_SHOW     = 6;
+
 
     public function customer()
     {
@@ -45,18 +39,6 @@ class Appointment extends Model
         return $this->belongsTo(User::class, 'professional_id');
     }
 
-    public function getStatusTextAttribute()
-    {
-        return match ($this->status) {
-            self::SCHEDULED   => 'Agendada',
-            self::CONFIRMED   => 'Confirmada',
-            self::IN_PROGRESS => 'En atención',
-            self::COMPLETED   => 'Finalizada',
-            self::CANCELLED   => 'Cancelada',
-            self::NO_SHOW     => 'No asistió',
-            default           => 'Desconocido',
-        };
-    }
 
     public function specialty()
     {

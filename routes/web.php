@@ -86,11 +86,10 @@ Route::domain('{customer}.' . config('app.domain'))->middleware(['auth', 'tenant
     Route::get('/professional', [ProfessionalController::class, 'index'])->name('customers.professional.index');
     Route::get('/professional-data', [ProfessionalController::class, 'getProfessional']);
     Route::post('/professional', [ProfessionalController::class, 'store']);
-    Route::put('/professional/{id}', [ProfessionalController::class, 'update']);
+    Route::put('/professional/{id}', [ProfessionalController::class, 'update'])->name('professional.update');
     Route::patch('/professional/{id}/toggle-status', [ProfessionalController::class, 'toggleStatus']);
     Route::delete('/professional/{id}', [ProfessionalController::class, 'destroy']);
-    Route::get('/professional-trash-data', [ProfessionalController::class,'trashData']);
-    Route::patch('/professional/{id}/restore', [ProfessionalController::class,'restore']);
+   
 
 
     //patience
@@ -145,6 +144,9 @@ Route::domain('{customer}.' . config('app.domain'))->middleware(['auth', 'tenant
     //horarios
     Route::post('/professional/{professional}/schedule', [ProfessionalScheduleController::class, 'store']);
     Route::get('/professional/{professional}/schedule', [ProfessionalScheduleController::class, 'getSchedule']);
+    Route::delete('/professional/schedule/{id}', [ProfessionalScheduleController::class, 'destroy']);
+    Route::get('/customer/schedules/{schedule}/affected-appointments', [ProfessionalScheduleController::class, 'affectedAppointments'])->name('customer.schedules.affected-appointments');
+Route::get('/customer/schedules/{schedule}/affected-appointments/data',[ProfessionalScheduleController::class, 'affectedAppointmentsData'])->name('customer.schedules.affected-appointments.data');
 
     //agenda citas medicas
     Route::get('/appointments', [AppointmentController::class, 'index'])->name('customers.appointments.index');
@@ -152,6 +154,7 @@ Route::domain('{customer}.' . config('app.domain'))->middleware(['auth', 'tenant
     Route::post('/appointments', [AppointmentController::class, 'store']);
     Route::get('/appointments/availability', [AppointmentController::class,'availability']);
     Route::get('/professionals/by-specialty', [AppointmentController::class, 'professionalsBySpecialty']);
+    Route::post('/customer/appointments/{id}/cancel', [AppointmentController::class, 'cancel'])->name('customer.appointments.cancel');
 
     //dashboard
     Route::get('/dashboard/statistics', [CustomerDashboardController::class,'statistics'])->name('dashboard.statistics');

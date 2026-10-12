@@ -14,4 +14,14 @@ class Insurance extends Model
         'status',
         'customer_id'
     ];
+
+    public function customer()
+    {
+        return $this->belongsTo(Customer::class);
+    }
+
+    public function patients()
+    {
+        return $this->hasMany(Patient::class);
+    }
 }

@@ -57,6 +57,7 @@
 
     <!-- DROPDOWN notificaciones -->
     <div x-show="open"
+    x-cloak
         @click.outside="open = false"
         x-transition
         class="absolute right-0 mt-2 w-48 bg-white shadow-lg rounded-lg z-50 overflow-hidden">
@@ -76,7 +77,7 @@
                 <button type="submit"
                     style="background-color: {{ themeColor(600) }}"
                     class="w-full text-white py-2 rounded hover:brightness-90 transition">
-                    Limpiar
+                    Mostrar todas
                 </button>
             </div>
         </form>
@@ -100,7 +101,7 @@
                     </button>
 
                     <!-- DROPDOWN -->
-                    <div x-show="open" @click.outside="open = false" x-transition
+                    <div x-show="open" x-cloak @click.outside="open = false" x-transition
                         class="absolute right-0 mt-2 w-48 bg-white shadow-lg rounded-lg z-50 overflow-hidden">
 
                         <div class="px-4 py-2 text-sm font-semibold text-gray-700 border-b">

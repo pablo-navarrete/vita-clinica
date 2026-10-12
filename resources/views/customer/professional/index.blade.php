@@ -11,27 +11,9 @@
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
 
                 <div class="p-6 text-gray-900" x-data="ProfessionalModal()" x-ref="professionalComponent">
-                    <div class="flex gap-2 mb-6 border-b">
-                        <button @click="tab = 'active'" class="px-4 py-2 font-medium border-b-2 transition"
-                            :class="tab === 'active'
-                                ?
-                                'border-blue-500 text-blue-600' :
-                                'border-transparent text-gray-500 hover:text-gray-700'">
-                            <i class="fa-solid fa-user-doctor mr-1"></i>
-                            Profesionales
-                        </button>
 
-                        <button @click="tab = 'trash'" class="px-4 py-2 font-medium border-b-2 transition"
-                            :class="tab === 'trash'
-                                ?
-                                'border-red-500 text-red-600' :
-                                'border-transparent text-gray-500 hover:text-gray-700'">
-                            <i class="fa-solid fa-trash-can mr-1"></i>
-                            Papelera
-                        </button>
-                    </div>
                     <!-- TABLA Activos-->
-                    <div class="overflow-x-auto" x-show="tab === 'active'">
+                    <div class="overflow-x-auto">
 
                         <!-- BOTÓN -->
                         <div class="flex justify-end mb-4">
@@ -59,27 +41,7 @@
 
                     </div>
 
-                    <!-- TABLA PAPELERA -->
-                    <div class="overflow-x-auto" x-show="tab === 'trash'">
 
-
-
-                        <table id="professional-trash-table"
-                            class="min-w-full display responsive nowrap rounded-xl overflow-hidden">
-
-                            <thead style="background-color: {{ themeColor(100) }}">
-                                <tr>
-                                    <th>#</th>
-                                    <th>Nombre</th>
-                                    <th>Especialidad</th>
-                                    <th>Eliminado</th>
-                                    <th>Acciones</th>
-                                </tr>
-                            </thead>
-
-                        </table>
-
-                    </div>
 
                     <!-- MODAL CREAR / EDITAR -->
                     <div x-cloak x-show="open"
@@ -166,8 +128,7 @@
                                     </div>
 
                                     {{-- Contraseña --}}
-                                    {{-- Password --}}
-                                    <div x-show="!isEdit" x-data="{ showPassword: false }">
+                                    <div x-data="{ showPassword: false }">
 
                                         <label class="block text-sm font-medium text-gray-700 mb-1">
                                             Contraseña
@@ -177,20 +138,34 @@
 
                                             <input :type="showPassword ? 'text' : 'password'" x-model="form.password"
                                                 @input="clearError('password')"
-                                                class="w-full rounded-lg border-gray-300 pr-10">
+                                                class="w-full rounded-lg border-gray-300 pr-10"
+                                                :placeholder="isEdit ? '••••••••' : ''">
 
-                                            <button type="button" @click="showPassword = !showPassword"
+                                            {{-- OJO SOLO SI ESTÁ ESCRIBIENDO UNA NUEVA CONTRASEÑA --}}
+                                            <button x-show="form.password.length > 0" type="button"
+                                                @click="showPassword = !showPassword"
                                                 class="absolute inset-y-0 right-0 px-3 flex items-center text-gray-500 hover:text-gray-700">
 
                                                 <i
-                                                    :class="showPassword ? 'fa-regular fa-eye-slash' : 'fa-regular fa-eye'"></i>
+                                                    :class="showPassword
+                                                        ?
+                                                        'fa-regular fa-eye-slash' :
+                                                        'fa-regular fa-eye'">
+                                                </i>
 
                                             </button>
 
                                         </div>
 
                                         <template x-if="errors.password">
-                                            <p class="text-xs text-red-500 mt-1" x-text="errors.password[0]"></p>
+                                            <p class="text-xs text-red-500 mt-1" x-text="errors.password[0]">
+                                            </p>
+                                        </template>
+
+                                        <template x-if="isEdit">
+                                            <p class="text-xs text-gray-500 mt-1">
+                                                Deja vacío para mantener la contraseña actual.
+                                            </p>
                                         </template>
 
                                     </div>
@@ -247,8 +222,7 @@
                             <!-- FOOTER -->
                             <div class="px-6 py-4 border-t flex justify-end gap-2">
 
-                                <button @click="close()"
-                                    class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded">
+                                <button @click="close()" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded">
 
                                     Cancelar
 
@@ -413,7 +387,7 @@
                             </div>
 
                             <!-- BOTÓN ELIMINAR -->
-                            <button class="text-red-500 hover:text-red-700 transition" @click="remove(schedule.id)"
+                            <button class="text-red-500 hover:text-red-700 transition" @click="remove(schedule)"
                                 title="Eliminar horario">
                                 <i class="fa-solid fa-trash"></i>
                             </button>
@@ -723,101 +697,39 @@
                         data: null,
                         orderable: false,
                         searchable: false,
-
                         render: function(data, type, row) {
-                            return `<button class="schedule-btn text-orange-500 mr-2" title="Horarios">
-                                        <i class="fa-regular fa-calendar-days"></i>
-                                    </button>
-                                    <button class="edit-professional-btn text-blue-500 mr-2">
-                                        <i class="fa-solid fa-pen-to-square"></i>
-                                    </button>
-                                    <button class="view-professional-btn text-yellow-500 mr-2" title="Ver profesional">
-                                        <i class="fa-regular fa-eye"></i>
-                                    </button>
-                                    <button class="delete-btn text-red-500 mr-2">
-                                        <i class="fa-solid fa-trash-can"></i>
-                                    </button>
-                                `;
+
+                            let deleteButton = '';
+
+                            if (row.appointments_count == 0) {
+                                deleteButton = `
+                <button class="delete-btn text-red-500 mr-2" title="Eliminar profesional">
+                    <i class="fa-solid fa-trash-can"></i>
+                </button>
+            `;
+                            }
+
+                            return `
+            <button class="schedule-btn text-orange-500 mr-2" title="Horarios">
+                <i class="fa-regular fa-calendar-days"></i>
+            </button>
+
+            <button class="edit-professional-btn text-blue-500 mr-2" title="Editar profesional">
+                <i class="fa-solid fa-pen-to-square"></i>
+            </button>
+
+            <button class="view-professional-btn text-yellow-500 mr-2" title="Ver profesional">
+                <i class="fa-regular fa-eye"></i>
+            </button>
+
+            ${deleteButton}
+        `;
                         }
                     }
                 ]
             });
 
-let tableTrash = $('#professional-trash-table').DataTable({
-    processing: true,
-    serverSide: true,
-    ajax: '/professional-trash-data',
 
-    language: {
-        url: "https://cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json"
-    },
-
-    responsive: false,
-
-    columns: [
-        {
-            data: null,
-            render: function(data, type, row, meta) {
-                return meta.row + meta.settings._iDisplayStart + 1;
-            },
-            orderable: false,
-            searchable: false
-        },
-
-        {
-            data: 'name'
-        },
-
-        {
-            data: 'specialties_html',
-            orderable: false,
-            searchable: false
-        },
-
-        {
-            data: 'deleted_at',
-            render: function(data) {
-
-                if (!data) {
-                    return '-';
-                }
-
-                return new Date(data).toLocaleString('es-CL');
-            }
-        },
-
-        {
-            data: null,
-            orderable: false,
-            searchable: false,
-
-            render: function(data, type, row) {
-
-                return `
-
-                    <button class="view-professional-btn text-yellow-500 mr-2" title="Ver profesional">
-                                        <i class="fa-regular fa-eye"></i>
-                    </button>
-                    <button
-                        class="restore-professional-btn text-green-500 mr-3"
-                        title="Restaurar profesional">
-
-                        <i class="fa-solid fa-rotate-left"></i>
-
-                    </button>
-
-                    <button
-                        class="force-delete-professional-btn text-red-600"
-                        title="Eliminar permanentemente">
-
-                        <i class="fa-solid fa-trash-can"></i>
-
-                    </button>
-                `;
-            }
-        }
-    ]
-});
 
             // EDITAR
             $('#professional-table').on('click', '.edit-professional-btn', function() {
@@ -830,6 +742,78 @@ let tableTrash = $('#professional-trash-table').DataTable({
             });
 
 
+            $('#professional-table').on('click', '.delete-btn', function() {
+
+                let data = tableActive
+                    .row($(this).closest('tr'))
+                    .data();
+
+                let id = data.id;
+                let name = data.name;
+
+                Swal.fire({
+                    title: '¿Eliminar profesional?',
+                    html: `Esto lo eliminará del sistema permanentemente.
+        `,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#dc2626',
+                    cancelButtonColor: '#6b7280',
+                    confirmButtonText: 'Sí, eliminar',
+                    cancelButtonText: 'Cancelar'
+                }).then((result) => {
+
+                    if (!result.isConfirmed) {
+                        return;
+                    }
+
+                    fetch(`/professional/${id}`, {
+                            method: 'DELETE',
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector(
+                                    'meta[name="csrf-token"]'
+                                ).content
+                            }
+                        })
+                        .then(async res => {
+
+                            const data = await res.json();
+
+                            if (!res.ok) {
+                                throw new Error(
+                                    data.message ||
+                                    'No se pudo eliminar el profesional.'
+                                );
+                            }
+
+                            Swal.fire({
+                                toast: true,
+                                position: 'top-end',
+                                icon: 'success',
+                                title: 'Profesional eliminado',
+                                text: data.message ||
+                                    'El profesional fue eliminado correctamente.',
+                                showConfirmButton: false,
+                                timer: 2000
+                            });
+
+                            tableActive.ajax.reload(null, false);
+                        })
+                        .catch(error => {
+
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'No se puede eliminar',
+                                text: error.message
+                            });
+
+                        });
+
+                });
+
+            });
+
             // VER PROFESIONAL
             $('#professional-table').on('click', '.view-professional-btn', function() {
 
@@ -841,15 +825,6 @@ let tableTrash = $('#professional-trash-table').DataTable({
             });
 
 
-            // VER PROFESIONAL DESDE PAPELERA
-            $('#professional-trash-table').on('click', '.view-professional-btn', function() {
-
-                let data = tableTrash.row($(this).closest('tr')).data();
-
-                window.dispatchEvent(new CustomEvent('view-professional', {
-                    detail: data
-                }));
-            });
             // CAMBIAR ESTADO
             $('#professional-table').on('click', '.toggle-status', function() {
 
@@ -893,51 +868,7 @@ let tableTrash = $('#professional-trash-table').DataTable({
 
 
 
-            //eliminar logico
-            $('#professional-table').on('click', '.delete-btn', function() {
 
-                let data = tableActive.row($(this).closest('tr')).data();
-
-                Swal.fire({
-                    title: '¿Eliminar Profesional?',
-                    text: "Esto lo movera a la papelera.",
-                    icon: 'warning',
-                    showCancelButton: true,
-                    confirmButtonText: 'Sí, eliminar',
-                    confirmButtonColor: '#dc2626',
-                    cancelButtonText: 'Cancelar'
-                }).then((result) => {
-
-                    if (!result.isConfirmed) return;
-
-                    fetch(`/professional/${data.id}`, {
-                            method: 'DELETE',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Accept': 'application/json',
-                                'X-CSRF-TOKEN': document.querySelector(
-                                    'meta[name="csrf-token"]').content
-                            }
-                        })
-                        .then(res => res.json())
-                        .then(() => {
-
-                            Swal.fire({
-                                toast: true,
-                                position: 'top-end',
-                                icon: 'success',
-                                title: 'Profesional eliminado',
-                                showConfirmButton: false,
-                                timer: 1500
-                            });
-
-                            $('#professional-table').DataTable().ajax.reload(null, false);
-                            $('#professional-trash-table').DataTable().ajax.reload(null, false);
-                        });
-
-                });
-
-            });
 
             //horarios
             $('#professional-table').on('click', '.schedule-btn', function() {
@@ -950,82 +881,7 @@ let tableTrash = $('#professional-trash-table').DataTable({
 
             });
 
-$('#professional-trash-table').on(
-    'click',
-    '.restore-professional-btn',
-    function() {
 
-        let data = tableTrash
-            .row($(this).closest('tr'))
-            .data();
-
-        Swal.fire({
-            title: '¿Restaurar Profesional?',
-            text: 'El profesional volverá a la lista de profesionales.',
-            icon: 'question',
-
-            showCancelButton: true,
-
-            confirmButtonText: 'Sí, restaurar',
-            confirmButtonColor: '#16a34a',
-
-            cancelButtonText: 'Cancelar'
-        }).then((result) => {
-
-            if (!result.isConfirmed) return;
-
-            fetch(`/professional/${data.id}/restore`, {
-
-                method: 'PATCH',
-
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-
-                    'X-CSRF-TOKEN':
-                        document.querySelector(
-                            'meta[name="csrf-token"]'
-                        ).content
-                }
-
-            })
-            .then(async res => {
-
-                const response = await res.json();
-
-                if (!res.ok) {
-                    throw new Error(
-                        response.message ||
-                        'No se pudo restaurar el profesional.'
-                    );
-                }
-
-                Swal.fire({
-                    toast: true,
-                    position: 'top-end',
-                    icon: 'success',
-                    title: 'Profesional restaurado',
-                    showConfirmButton: false,
-                    timer: 1500
-                });
-
-                tableTrash.ajax.reload(null, false);
-
-                tableActive.ajax.reload(null, false);
-            })
-            .catch(error => {
-
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: error.message
-                });
-
-            });
-
-        });
-    }
-);
 
 
         });
@@ -1040,7 +896,7 @@ $('#professional-trash-table').on(
 
         });
 
-        
+
 
         function ProfessionalViewModal() {
 
@@ -1149,8 +1005,6 @@ $('#professional-trash-table').on(
 
             return {
                 tab: 'active',
-                activeLoaded: false,
-                trashLoaded: false,
                 open: false,
                 isEdit: false,
                 appDomain: '{{ config('app.domain') }}',
@@ -1205,24 +1059,71 @@ $('#professional-trash-table').on(
 
                 edit(data) {
 
+                    console.log('Profesional recibido:', data);
+
                     this.isEdit = true;
+
+                    const specialties = Array.isArray(data.specialties) ?
+                        data.specialties : [];
 
                     this.form = {
                         id: Number(data.id),
-                        name: data.name,
-                        email: data.email,
-                        rut: data.rut,
-                        phone: data.phone,
+                        name: data.name ?? '',
+                        email: data.email ?? '',
+                        rut: data.rut ?? '',
+                        phone: data.phone ?? '',
                         password: '',
-                        specialties: data.specialties.map(s => String(s.id)),
-                        status: String(data.status)
+                        specialties: specialties.map(s => String(s.id)),
+                        status: String(data.status ?? 1)
                     };
 
                     this.errors = {};
 
+                    // Guardar especialidades seleccionadas
+                    selectedSpecialties = specialties.map(s => String(s.id));
+
+                    // Limpiar lista visual
+                    const specialtyList = document.getElementById('specialtyList');
+
+                    specialtyList.innerHTML = '';
+
+                    // Pintar especialidades existentes
+                    specialties.forEach(specialty => {
+
+                        const id = String(specialty.id);
+                        const name = specialty.name;
+
+                        const div = document.createElement('div');
+
+                        div.className =
+                            'specialty-item inline-flex items-center gap-2 bg-blue-100 text-blue-700 px-3 py-2 rounded-full';
+
+                        div.innerHTML = `
+                                        <span>
+                                            ${name}
+                                        </span>
+
+                                        <input
+                                            type="hidden"
+                                            value="${id}">
+
+                                        <button
+                                            type="button"
+                                            class="remove-specialty">
+
+                                            <i class="fa-solid fa-xmark"></i>
+
+                                        </button>
+                                    `;
+
+                        specialtyList.appendChild(div);
+                    });
+
+                    // Resetear select
+                    document.getElementById('specialtySelect').value = '';
+
                     this.open = true;
                 },
-
 
 
 
@@ -1453,25 +1354,115 @@ $('#professional-trash-table').on(
 
                 },
 
-                remove(id) {
 
-                    fetch(`/professional/schedule/${id}`, {
+  showAffectedAppointments(schedule) {
+    window.location.href =
+        `/customer/schedules/${schedule.id}/affected-appointments`;
+},
 
-                            method: 'DELETE',
+                remove(schedule) {
 
-                            headers: {
-                                'Accept': 'application/json',
-                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                            }
+                    // Tiene citas futuras según lo informado por getSchedule()
+   if (schedule.future_appointments_count > 0) {
 
-                        })
-                        .then(res => res.json())
-                        .then(() => {
+    const count = schedule.future_appointments_count;
 
-                            this.loadSchedules();
+    Swal.fire({
+        icon: 'warning',
+        title: 'Horario con citas agendadas',
+        html: `
+            <p class="mb-3">
+                Este horario tiene
+                <strong>${count}</strong>
+                ${count === 1 ? 'cita agendada' : 'citas agendadas'}.
+            </p>
 
-                        });
+            <p class="text-sm text-gray-600 mb-4">
+                Antes de eliminar este horario debes gestionar
+                las citas afectadas.
+            </p>
+        `,
 
+        showDenyButton: true,
+        showCancelButton: true,
+        showConfirmButton: false,
+
+        denyButtonText: 'Gestionar citas afectadas',
+        cancelButtonText: 'Cerrar',
+
+        denyButtonColor: '{{ themeColor(600) }}',
+        cancelButtonColor: '#374151',
+
+    }).then(result => {
+
+        if (result.isDenied) {
+            this.showAffectedAppointments(schedule);
+        }
+
+    });
+
+    return;
+}
+
+                    // No tiene citas futuras
+                    Swal.fire({
+                        icon: 'warning',
+                        title: '¿Eliminar horario?',
+                        text: 'Este horario no tiene citas agendadas. ¿Deseas eliminarlo?',
+                        showCancelButton: true,
+                        confirmButtonColor: '#dc2626',
+                        cancelButtonColor: '#6b7280',
+                        confirmButtonText: 'Sí, eliminar',
+                        cancelButtonText: 'Cancelar'
+                    }).then(result => {
+
+                        if (!result.isConfirmed) {
+                            return;
+                        }
+
+                        fetch(`/professional/schedule/${schedule.id}`, {
+                                method: 'DELETE',
+                                headers: {
+                                    'Accept': 'application/json',
+                                    'X-CSRF-TOKEN': document.querySelector(
+                                        'meta[name="csrf-token"]'
+                                    ).content
+                                }
+                            })
+                            .then(async res => {
+
+                                const data = await res.json();
+
+                                // Backend detectó que aparecieron citas
+                                if (!res.ok) {
+                                    throw new Error(
+                                        data.message || 'No se pudo eliminar el horario.'
+                                    );
+                                }
+
+                                Swal.fire({
+                                    toast: true,
+                                    position: 'top-end',
+                                    icon: 'success',
+                                    title: 'Horario eliminado',
+                                    showConfirmButton: false,
+                                    timer: 1500
+                                });
+
+                                // Volver a cargar los horarios
+                                this.loadSchedules();
+
+                            })
+                            .catch(error => {
+
+                                Swal.fire({
+                                    icon: 'warning',
+                                    title: 'No se puede eliminar',
+                                    text: error.message
+                                });
+
+                            });
+                    });
                 }
             }
         }

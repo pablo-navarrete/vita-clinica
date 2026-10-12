@@ -13,9 +13,9 @@
             </p>
         </div>
 
-        <a href="/patient" class="px-5 py-2 rounded-lg bg-gray-200 hover:bg-gray-300">
-            Volver
-        </a>
+       <button type="button" onclick="history.back()" class="px-5 py-2 rounded-lg bg-gray-200 hover:bg-gray-300">
+    Volver
+</button>
     </div>
 @endsection
 

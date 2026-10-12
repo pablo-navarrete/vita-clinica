@@ -377,4 +377,22 @@ class AppointmentController extends Controller
 
         ]);
     }
+
+    //cancelar cita
+    public function cancel(Request $request)
+    {
+        $id = $request->route('id');
+
+        $appointment = Appointment::where('customer_id', app('customer')->id)
+            ->where('id', $id)
+            ->firstOrFail();
+
+        $appointment->status = 5;
+        $appointment->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Cita cancelada correctamente.'
+        ]);
+    }
 }

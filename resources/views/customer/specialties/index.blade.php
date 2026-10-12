@@ -161,23 +161,10 @@
                         }
                     },
 
-
                     {
-                        data: null,
+                        data: 'actions',
                         orderable: false,
-                        searchable: false,
-
-                        render: function(data, type, row) {
-                            return `
-                                    <button class="edit-specialties-btn text-blue-500 mr-2">
-                                        <i class="fa-solid fa-pen-to-square"></i>
-                                    </button>
-
-                                    <button class="delete-btn text-red-500 mr-2">
-                                        <i class="fa-solid fa-trash-can"></i>
-                                    </button>
-                                `;
-                        }
+                        searchable: false
                     }
                 ]
             });
