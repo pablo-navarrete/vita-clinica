@@ -374,15 +374,39 @@
 
                 @else
 
-                    <div class="fallback-logo">
-                        <i class="fa-solid fa-laptop-medical"></i>
-                    </div>
+                <div class="shrink-0 flex items-center">
+                    <a href="#" class="flex items-center">
+                        <img
+                            src="{{ asset('storage/admin/logos/logo-vita-3.png')}}"
+                            alt="Logo Vita"
+                            class="logo-image"
+                        >
+                       
+                    </a>
+                </div>
 
                 @endif
 
-                <h1>
-                    {{ app()->bound('customer') ? app('customer')->name : config('app.name') }}
-                </h1>
+                @if (app()->bound('customer'))
+                    <h1>
+                        {{ app('customer')->name }}
+                    </h1>
+                @else
+                    <h1 class="ml-2"
+                        style="
+                            font-family: 'Exo 2', sans-serif;
+                            font-size: 1.875rem;
+                            line-height: 2.25rem;
+                            font-weight: 700;
+                            letter-spacing: 3px;
+                            background: linear-gradient(90deg, #00C6FF, #7B2FF7);
+                            -webkit-background-clip: text;
+                            background-clip: text;
+                            -webkit-text-fill-color: transparent;
+                        ">
+                        VIT<span style="display:inline-block;">Λ</span>
+                    </h1>
+                @endif
 
                 {{-- 
                 <div class="logo-subtitle">

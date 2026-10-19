@@ -5,8 +5,24 @@
             <div class="flex">
                 <!-- Logo -->
                 <div class="shrink-0 flex items-center">
-                    <a href="#">
-                        <i class="fa-solid fa-graduation-cap  fa-2x"></i>
+                    <a href="#" class="flex items-center">
+                        <img
+                            src="{{ asset('storage/admin/logos/logo-vita-3.png')}}"
+                            alt="Logo Vita"
+                            class="h-10 w-auto object-contain"
+                        >
+                        <h2 class="ml-2"
+                            style="
+                                font-family: 'Exo 2', sans-serif;
+                                font-weight: 700;
+                                letter-spacing: 3px;
+                                background: linear-gradient(90deg, #00C6FF, #7B2FF7);
+                                -webkit-background-clip: text;
+                                background-clip: text;
+                                -webkit-text-fill-color: transparent;
+                            ">
+                            VIT<span style="display:inline-block;">Λ</span>
+                        </h2>
                     </a>
                 </div>
 

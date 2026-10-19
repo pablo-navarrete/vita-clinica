@@ -20,7 +20,21 @@ class RedirectIfAuthenticated
         $guards = empty($guards) ? [null] : $guards;
 
         foreach ($guards as $guard) {
-            if (Auth::guard($guard)->check()) {
+            $auth = Auth::guard($guard);
+
+            if ($auth->check()) {
+                $user = $auth->user();
+
+                // Cierra sesiones de profesionales que fueron desactivados
+                // después de iniciar sesión y permite volver al formulario.
+                if ($user->customer_id !== null && (int) $user->status !== 1) {
+                    $auth->logout();
+                    $request->session()->invalidate();
+                    $request->session()->regenerateToken();
+
+                    continue;
+                }
+
                 return redirect(RouteServiceProvider::HOME);
             }
         }

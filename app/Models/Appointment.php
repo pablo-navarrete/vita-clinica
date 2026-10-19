@@ -44,4 +44,9 @@ class Appointment extends Model
     {
         return $this->belongsTo(Specialty::class);
     }
+
+    public function encounter()
+    {
+        return $this->hasOne(Encounter::class)->latestOfMany();
+    }
 }

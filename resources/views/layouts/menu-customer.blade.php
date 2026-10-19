@@ -25,6 +25,8 @@
     <!--full calendar-->
     <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.19/index.global.min.css" rel="stylesheet">
 
+    @stack('styles')
+
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
     <style>

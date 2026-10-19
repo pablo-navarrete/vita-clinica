@@ -89,6 +89,12 @@ if (!$customer) {
 
 }
 
+if ((int) $customer->status !== 1) {
+    throw ValidationException::withMessages([
+        'email' => 'Esta clínica no está disponible actualmente. Contacta al administrador.',
+    ]);
+}
+
 $host = $this->getHost();
 $mainDomain = config('app.domain');
 
@@ -105,6 +111,12 @@ if ($host !== $mainDomain) {
         ]);
 
     }
+}
+
+if ((int) $user->status !== 1) {
+    throw ValidationException::withMessages([
+        'email' => 'La cuenta profesional está inactiva y no puede iniciar sesión. Contacta al administrador de la clínica.',
+    ]);
 }
 
 // Validar login incluyendo customer_id

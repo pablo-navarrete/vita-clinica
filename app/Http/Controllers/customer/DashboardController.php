@@ -4,25 +4,72 @@ namespace App\Http\Controllers\customer;
 
 use App\Http\Controllers\Controller;
 use App\Models\Appointment;
+use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
     public function index()
     {
+        $currentYear = now()->year;
+        $firstPatientYear = DB::table('patients')
+            ->where('customer_id', app('customer')->id)
+            ->min(DB::raw('YEAR(created_at)'));
+        $years = range($currentYear, min((int) ($firstPatientYear ?: $currentYear), $currentYear));
 
-        return view('customer.dashboard.index');
+        $user = auth()->user();
+        if ($user && $user->customer_id !== null && (int) $user->status !== 1) {
+            Auth::logout();
+            request()->session()->invalidate();
+            request()->session()->regenerateToken();
+
+            return redirect()->route('login')->withErrors([
+                'email' => 'La cuenta profesional está inactiva y no puede iniciar sesión. Contacta al administrador de la clínica.',
+            ]);
+        }
+
+        $doctor = $this->loggedInDoctor(app('customer')->id);
+        $professionals = $doctor
+            ? collect()
+            : User::query()
+                ->where('customer_id', app('customer')->id)
+                ->whereHas('roles', fn ($query) => $query->where('roles.name', 'Doctor'))
+                ->orderBy('name')
+                ->get(['id', 'name', 'status']);
+
+        return view('customer.dashboard.index', [
+            'isDoctor' => $doctor !== null,
+            'professionalName' => $doctor?->name,
+            'professionals' => $professionals,
+            'currentYear' => $currentYear,
+            'years' => $years,
+        ]);
     }
 
     public function statistics(Request $request)
     {
         $year = $request->integer('year');
         $month = $request->integer('month');
+        $customerId = app('customer')->id;
+        $doctor = $this->loggedInDoctor($customerId);
+        $professionalId = $doctor?->id;
+
+        if (!$doctor && $request->filled('professional_id')) {
+            $professionalId = User::query()
+                ->whereKey($request->integer('professional_id'))
+                ->where('customer_id', $customerId)
+                ->whereHas('roles', fn ($query) => $query->where('roles.name', 'Doctor'))
+                ->value('id');
+
+            abort_unless($professionalId, 404, 'El profesional seleccionado no pertenece a esta clínica.');
+        }
 
         // Pacientes atendidos
         $patientsQuery = Appointment::query()
-            ->where('customer_id', app('customer')->id)
+            ->where('customer_id', $customerId)
+            ->when($professionalId, fn ($query) => $query->where('professional_id', $professionalId))
             ->where('status', 3)
             ->whereYear('start_at', $year);
 
@@ -37,7 +84,8 @@ class DashboardController extends Controller
 
         // Atenciones realizadas
         $appointmentsQuery = Appointment::query()
-            ->where('customer_id', app('customer')->id)
+            ->where('customer_id', $customerId)
+            ->when($professionalId, fn ($query) => $query->where('professional_id', $professionalId))
             ->where('status', 3)
             ->whereYear('start_at', $year);
 
@@ -49,7 +97,8 @@ class DashboardController extends Controller
 
         // citas agendadas
         $totalBookings  = Appointment::query()
-            ->where('customer_id', app('customer')->id)
+            ->where('customer_id', $customerId)
+            ->when($professionalId, fn ($query) => $query->where('professional_id', $professionalId))
             ->where('status', 0)
             ->whereYear('start_at', $year);
 
@@ -61,7 +110,8 @@ class DashboardController extends Controller
 
         // citas agendadas
         $ConfirmBookings  = Appointment::query()
-            ->where('customer_id', app('customer')->id)
+            ->where('customer_id', $customerId)
+            ->when($professionalId, fn ($query) => $query->where('professional_id', $professionalId))
             ->where('status', 1)
             ->whereYear('start_at', $year);
 
@@ -71,11 +121,25 @@ class DashboardController extends Controller
 
         $ConfirmBookings = $ConfirmBookings->count();
 
+        $todayStatusCounts = Appointment::query()
+            ->where('customer_id', $customerId)
+            ->when($professionalId, fn ($query) => $query->where('professional_id', $professionalId))
+            ->whereDate('start_at', today()->toDateString())
+            ->selectRaw('status, COUNT(*) as total')
+            ->groupBy('status')
+            ->pluck('total', 'status');
+
+        $todayCounts = [];
+        for ($status = 0; $status <= 5; $status++) {
+            $todayCounts[$status] = (int) ($todayStatusCounts[$status] ?? 0);
+        }
+
         if ($month) {
 
             // Por día
             $chartData = Appointment::query()
-                ->where('customer_id', app('customer')->id)
+                ->where('customer_id', $customerId)
+                ->when($professionalId, fn ($query) => $query->where('professional_id', $professionalId))
                 ->whereYear('start_at', $year)
                 ->whereMonth('start_at', $month)
                 ->selectRaw('DAY(start_at) as period')
@@ -88,7 +152,8 @@ class DashboardController extends Controller
 
             // Por mes
             $chartData = Appointment::query()
-                ->where('customer_id', app('customer')->id)
+                ->where('customer_id', $customerId)
+                ->when($professionalId, fn ($query) => $query->where('professional_id', $professionalId))
                 ->whereYear('start_at', $year)
                 ->selectRaw('MONTH(start_at) as period')
                 ->selectRaw('status')
@@ -105,8 +170,11 @@ class DashboardController extends Controller
 */
 
         $patientsByInsurance = DB::table('insurances')
-            ->leftJoin('patients', 'insurances.id', '=', 'patients.insurance_id')
-            ->leftJoin('appointments', function ($join) use ($year, $month) {
+            ->leftJoin('patients', function ($join) use ($customerId) {
+                $join->on('insurances.id', '=', 'patients.insurance_id')
+                    ->where('patients.customer_id', $customerId);
+            })
+            ->leftJoin('appointments', function ($join) use ($year, $month, $customerId, $professionalId) {
 
                 $join->on(
                     'patients.id',
@@ -114,14 +182,19 @@ class DashboardController extends Controller
                     'appointments.patient_id'
                 )
                     ->where('appointments.status', 3)
+                    ->where('appointments.customer_id', $customerId)
                     ->whereYear('appointments.start_at', $year);
+
+                if ($professionalId) {
+                    $join->where('appointments.professional_id', $professionalId);
+                }
 
                 if ($month) {
                     $join->whereMonth('appointments.start_at', $month);
                 }
             })
-            ->where(function ($query) {
-                $query->where('insurances.customer_id', app('customer')->id)
+            ->where(function ($query) use ($customerId) {
+                $query->where('insurances.customer_id', $customerId)
                     ->orWhereNull('insurances.customer_id');
             })
             ->select(
@@ -145,16 +218,20 @@ class DashboardController extends Controller
 */
 
 $appointmentsBySpecialty = DB::table('specialties')
-    ->leftJoin('appointments', function ($join) use ($year, $month) {
+    ->leftJoin('appointments', function ($join) use ($year, $month, $customerId, $professionalId) {
 
         $join->on(
             'specialties.id',
             '=',
             'appointments.specialty_id'
         )
-        ->where('appointments.customer_id', app('customer')->id)
+        ->where('appointments.customer_id', $customerId)
         ->where('appointments.status', 3)
         ->whereYear('appointments.start_at', $year);
+
+        if ($professionalId) {
+            $join->where('appointments.professional_id', $professionalId);
+        }
 
         if ($month) {
             $join->whereMonth(
@@ -163,7 +240,7 @@ $appointmentsBySpecialty = DB::table('specialties')
             );
         }
     })
-    ->where('specialties.customer_id', app('customer')->id)
+    ->where('specialties.customer_id', $customerId)
     ->where('specialties.status', true)
     ->select(
         'specialties.id',
@@ -177,30 +254,39 @@ $appointmentsBySpecialty = DB::table('specialties')
     ->orderBy('specialties.name')
     ->get();
 
-$patientsQuery = DB::table('patients')
-    ->where('customer_id', app('customer')->id)
-    ->whereYear('created_at', $year);
+$patientsQuery = $professionalId
+    ? DB::table('appointments')
+        ->where('customer_id', $customerId)
+        ->where('professional_id', $professionalId)
+        ->where('status', 3)
+        ->whereYear('start_at', $year)
+    : DB::table('patients')
+        ->where('customer_id', $customerId)
+        ->whereYear('created_at', $year);
 
 if ($month) {
-    $patientsQuery->whereMonth('created_at', $month);
+    $patientsQuery->whereMonth($professionalId ? 'start_at' : 'created_at', $month);
 }
+
+$patientPeriodColumn = $professionalId ? 'start_at' : 'created_at';
+$patientTotalExpression = $professionalId ? 'COUNT(DISTINCT patient_id)' : 'COUNT(*)';
 
 if ($month) {
 
     $patientsRegistered = $patientsQuery
-        ->selectRaw('DAY(created_at) as period')
-        ->selectRaw('COUNT(*) as total')
-        ->groupByRaw('DAY(created_at)')
-        ->orderByRaw('DAY(created_at)')
+        ->selectRaw("DAY({$patientPeriodColumn}) as period")
+        ->selectRaw("{$patientTotalExpression} as total")
+        ->groupByRaw("DAY({$patientPeriodColumn})")
+        ->orderByRaw("DAY({$patientPeriodColumn})")
         ->get();
 
 } else {
 
     $patientsRegistered = $patientsQuery
-        ->selectRaw('MONTH(created_at) as period')
-        ->selectRaw('COUNT(*) as total')
-        ->groupByRaw('MONTH(created_at)')
-        ->orderByRaw('MONTH(created_at)')
+        ->selectRaw("MONTH({$patientPeriodColumn}) as period")
+        ->selectRaw("{$patientTotalExpression} as total")
+        ->groupByRaw("MONTH({$patientPeriodColumn})")
+        ->orderByRaw("MONTH({$patientPeriodColumn})")
         ->get();
 }
         return response()->json([
@@ -208,10 +294,35 @@ if ($month) {
             'totalAppointments' => $totalAppointments,
             'totalBookings' => $totalBookings,
             'ConfirmBookings' => $ConfirmBookings,
+            'todayAppointments' => [
+                'total' => array_sum($todayCounts),
+                'scheduled' => $todayCounts[0],
+                'confirmed' => $todayCounts[1],
+                'inProgress' => $todayCounts[2],
+                'attended' => $todayCounts[3],
+                'noShow' => $todayCounts[4],
+                'cancelled' => $todayCounts[5],
+            ],
             'chartData' => $chartData,
             'patientsByInsurance' => $patientsByInsurance,
             'appointmentsBySpecialty' => $appointmentsBySpecialty,
             'patientsRegistered' => $patientsRegistered,
         ]);
+    }
+
+    private function loggedInDoctor($customerId): ?User
+    {
+        $user = auth()->user();
+        if (!$user || !$user->roles()->where('roles.name', 'Doctor')->exists()) {
+            return null;
+        }
+
+        abort_unless(
+            (int) $user->customer_id === (int) $customerId && (int) $user->status === 1,
+            403,
+            'La cuenta profesional no está habilitada para esta clínica.'
+        );
+
+        return $user;
     }
 }

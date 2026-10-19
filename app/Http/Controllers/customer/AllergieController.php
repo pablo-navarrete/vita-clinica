@@ -4,6 +4,8 @@ namespace App\Http\Controllers\customer;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\DB;
 use App\Models\Allergie;
+use App\Models\MedicalRecord;
+use App\Support\PatientAuditLogger;
 use Illuminate\Http\Request;
 
 class AllergieController extends Controller
@@ -13,14 +15,15 @@ class AllergieController extends Controller
 
     public function store(Request $request)
 {
+    $customerId = app('customer')->id;
+    $medicalRecord = MedicalRecord::where('customer_id', $customerId)
+        ->findOrFail($request->input('medical_record_id'));
+    $before = $medicalRecord->allergies()->get(['allergen', 'reaction'])->toArray();
     $allergies = [];
 
     // Recuperar alergias existentes
     if ($request->has('existing_allergies')) {
-        $existing = Allergie::whereIn(
-            'id',
-            $request->existing_allergies
-        )->get();
+        $existing = $medicalRecord->allergies()->whereIn('id', $request->existing_allergies)->get();
 
         foreach ($existing as $allergy) {
             $allergies[] = [
@@ -43,19 +46,20 @@ class AllergieController extends Controller
 
 
     // Reemplazar todo
-    Allergie::where('customer_id', $request->customer_id)
-        ->where('medical_record_id', $request->medical_record_id)
-        ->delete();
+    $medicalRecord->allergies()->delete();
 
 
     foreach ($allergies as $allergy) {
         Allergie::create([
-            'customer_id'       => $request->customer_id,
-            'medical_record_id' => $request->medical_record_id,
+            'customer_id'       => $customerId,
+            'medical_record_id' => $medicalRecord->id,
             'allergen'          => $allergy['allergen'],
             'reaction'          => $allergy['reaction'],
         ]);
     }
+
+    $after = $medicalRecord->allergies()->get(['allergen', 'reaction'])->toArray();
+    PatientAuditLogger::recordMedicalRecord($medicalRecord, 'Alergias', $before, $after);
 
 
     return redirect()->back()->with('success', 'Alergias actualizadas correctamente.');

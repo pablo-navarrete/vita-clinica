@@ -61,6 +61,112 @@ class ProfessionalScheduleController extends Controller
 
         return response()->json($schedules);
     }
+
+    /** Return only the schedules owned by the authenticated professional. */
+    public function myScheduleData(Request $request)
+    {
+        $user = $request->user();
+        $customerId = app('customer')->id;
+
+        $schedules = ProfessionalSchedule::where('customer_id', $customerId)
+            ->where('user_id', $user->id)
+            ->orderByRaw('CASE day_of_week WHEN 1 THEN 1 WHEN 2 THEN 2 WHEN 3 THEN 3 WHEN 4 THEN 4 WHEN 5 THEN 5 WHEN 6 THEN 6 WHEN 0 THEN 7 END')
+            ->orderBy('start_time')
+            ->get();
+
+        $schedules->each(function ($schedule) use ($user, $customerId) {
+            $schedule->future_appointments_count = Appointment::where('customer_id', $customerId)
+                ->where('professional_id', $user->id)
+                ->where('start_at', '>=', now())
+                ->whereNotIn('status', [4, 5])
+                ->whereRaw('DAYOFWEEK(start_at) = ?', [$schedule->day_of_week === 0 ? 1 : $schedule->day_of_week + 1])
+                ->whereTime('start_at', '>=', $schedule->start_time)
+                ->whereTime('end_at', '<=', $schedule->end_time)
+                ->count();
+        });
+
+        return response()->json($schedules);
+    }
+
+    /** Add availability for the authenticated professional only. */
+    public function storeMySchedule(Request $request)
+    {
+        $validated = $request->validate([
+            'day_of_week' => ['required', 'integer', 'between:0,6'],
+            'start_time' => ['required', 'date_format:H:i'],
+            'end_time' => ['required', 'date_format:H:i', 'after:start_time'],
+        ]);
+
+        $customerId = app('customer')->id;
+        $user = $request->user();
+
+        $overlap = ProfessionalSchedule::where('customer_id', $customerId)
+            ->where('user_id', $user->id)
+            ->where('day_of_week', $validated['day_of_week'])
+            ->where('start_time', '<', $validated['end_time'])
+            ->where('end_time', '>', $validated['start_time'])
+            ->exists();
+
+        if ($overlap) {
+            return response()->json([
+                'message' => 'El horario ingresado se cruza con otro horario existente.',
+            ], 422);
+        }
+
+        $schedule = ProfessionalSchedule::create([
+            'customer_id' => $customerId,
+            'user_id' => $user->id,
+            'day_of_week' => $validated['day_of_week'],
+            'start_time' => $validated['start_time'],
+            'end_time' => $validated['end_time'],
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'data' => $schedule,
+            'message' => 'Horario agregado correctamente.',
+        ]);
+    }
+
+    /** Delete an owned schedule only when it has no future affected appointments. */
+    public function destroyMySchedule(Request $request)
+    {
+        $customerId = app('customer')->id;
+        $user = $request->user();
+        $id = $request->route('id');
+
+        $schedule = ProfessionalSchedule::where('customer_id', $customerId)
+            ->where('user_id', $user->id)
+            ->whereKey($id)
+            ->firstOrFail();
+
+        $appointments = Appointment::where('customer_id', $customerId)
+            ->where('professional_id', $user->id)
+            ->where('start_at', '>=', now())
+            ->whereNotIn('status', [4, 5])
+            ->whereRaw('DAYOFWEEK(start_at) = ?', [$schedule->day_of_week === 0 ? 1 : $schedule->day_of_week + 1])
+            ->whereTime('start_at', '>=', $schedule->start_time)
+            ->whereTime('end_at', '<=', $schedule->end_time)
+            ->orderBy('start_at')
+            ->get();
+
+        if ($appointments->isNotEmpty()) {
+            return response()->json([
+                'success' => false,
+                'has_appointments' => true,
+                'future_appointments_count' => $appointments->count(),
+                'message' => 'Este horario tiene citas futuras. Debes gestionar las citas afectadas antes de eliminarlo.',
+            ], 422);
+        }
+
+        $schedule->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Horario eliminado correctamente.',
+        ]);
+    }
+
     public function store(Request $request)
     {
 
@@ -242,9 +348,14 @@ class ProfessionalScheduleController extends Controller
     {
 
         $id = $request->route('schedule');
-        $schedule = ProfessionalSchedule::where('customer_id', app('customer')->id)
-            ->where('id', $id)
-            ->firstOrFail();
+        $scheduleQuery = ProfessionalSchedule::where('customer_id', app('customer')->id)
+            ->where('id', $id);
+
+        if ($request->routeIs('customers.my-schedules.affected-appointments')) {
+            $scheduleQuery->where('user_id', $request->user()->id);
+        }
+
+        $schedule = $scheduleQuery->firstOrFail();
 
         $affectedAppointmentsCount = Appointment::where('customer_id', app('customer')->id)
         ->where('professional_id', $schedule->user_id)
@@ -265,7 +376,17 @@ class ProfessionalScheduleController extends Controller
 
         return view('customer.professional.affected-appointments', [
             'schedule' => $schedule,
-            'affectedAppointmentsCount' =>$affectedAppointmentsCount
+            'affectedAppointmentsCount' => $affectedAppointmentsCount,
+            'selfService' => $request->routeIs('customers.my-schedules.affected-appointments'),
+            'returnUrl' => $request->routeIs('customers.my-schedules.affected-appointments')
+                ? route('customers.profile.index', ['customer' => $request->route('customer')])
+                : null,
+            'affectedAppointmentsDataUrl' => $request->routeIs('customers.my-schedules.affected-appointments')
+                ? route('customers.my-schedules.affected-appointments.data', [
+                    'customer' => $request->route('customer'),
+                    'schedule' => $schedule->id,
+                ])
+                : url('/customer/schedules/' . $schedule->id . '/affected-appointments/data'),
         ]);
     }
 
@@ -273,9 +394,14 @@ class ProfessionalScheduleController extends Controller
     {
         $id = $request->route('schedule');
 
-        $schedule = ProfessionalSchedule::where('customer_id', app('customer')->id)
-            ->where('id', $id)
-            ->firstOrFail();
+        $scheduleQuery = ProfessionalSchedule::where('customer_id', app('customer')->id)
+            ->where('id', $id);
+
+        if ($request->routeIs('customers.my-schedules.affected-appointments.data')) {
+            $scheduleQuery->where('user_id', $request->user()->id);
+        }
+
+        $schedule = $scheduleQuery->firstOrFail();
 
         $query = Appointment::with([
             'patient:id,name,phone,email,rut',

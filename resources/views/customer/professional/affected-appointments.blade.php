@@ -7,9 +7,15 @@
                 {{ __('Citas afectadas por el horario') }}
             </h2>
         </div>
-        <button type="button" onclick="history.back()" class="px-5 py-2 rounded-lg bg-gray-200 hover:bg-gray-300">
-            Volver
-        </button>
+        @if ($selfService ?? false)
+            <a href="{{ $returnUrl }}" class="px-5 py-2 rounded-lg bg-gray-200 hover:bg-gray-300">
+                Volver a mis horarios
+            </a>
+        @else
+            <button type="button" onclick="history.back()" class="px-5 py-2 rounded-lg bg-gray-200 hover:bg-gray-300">
+                Volver
+            </button>
+        @endif
     </div>
 @endsection
 
@@ -121,7 +127,11 @@
                             {{-- DERECHA: BOTÓN ELIMINAR --}}
                             <div class="flex-shrink-0">
 
-                                @if ($affectedAppointmentsCount > 0)
+                                @if (($selfService ?? false) && $affectedAppointmentsCount === 0)
+                                    <p class="max-w-xs text-right text-sm text-green-700">
+                                        Ya no quedan citas futuras en este horario. Vuelve a Mis horarios para eliminarlo.
+                                    </p>
+                                @elseif ($affectedAppointmentsCount > 0)
                                     <button id="delete-schedule-button" type="button" disabled
                                         class="inline-flex items-center gap-2 px-4 py-2
                                         bg-gray-300 text-gray-500
@@ -495,7 +505,7 @@ class="px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition">
                 responsive: true,
 
                 ajax: {
-                    url: '/customer/schedules/{{ $schedule->id }}/affected-appointments/data',
+                    url: @json($affectedAppointmentsDataUrl),
                     type: 'GET'
                 },
 

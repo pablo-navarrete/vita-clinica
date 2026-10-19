@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Role;
 use App\Models\Specialty;
 use App\Models\User;
+use App\Support\ClinicActivityLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -122,6 +123,21 @@ class ProfessionalController extends Controller
             return $user;
         });
 
+        $createdSpecialties = $user->specialties()->where('specialties.customer_id', app('customer')->id)->pluck('specialties.name')->all();
+        if ($createdSpecialties) {
+            ClinicActivityLogger::recordManual(
+                (int) app('customer')->id,
+                'Profesionales',
+                'updated',
+                'profesional',
+                $user->name,
+                'Asignó especialidades al profesional «' . $user->name . '».',
+                $createdSpecialties,
+                User::class,
+                $user->id
+            );
+        }
+
         return response()->json([
             'success' => true,
             'data' => $user
@@ -178,6 +194,11 @@ class ProfessionalController extends Controller
             ], 422);
         }
 
+        $previousSpecialties = $user->specialties()
+            ->where('specialties.customer_id', app('customer')->id)
+            ->orderBy('specialties.name')
+            ->pluck('specialties.name')->all();
+
         DB::transaction(function () use ($request, $user) {
 
             // Actualizar datos del profesional
@@ -208,6 +229,24 @@ class ProfessionalController extends Controller
 
             $user->specialties()->sync($specialties);
         });
+
+        $currentSpecialties = $user->specialties()
+            ->where('specialties.customer_id', app('customer')->id)
+            ->orderBy('specialties.name')
+            ->pluck('specialties.name')->all();
+        if ($previousSpecialties !== $currentSpecialties) {
+            ClinicActivityLogger::recordManual(
+                (int) app('customer')->id,
+                'Profesionales',
+                'updated',
+                'profesional',
+                $user->name,
+                'Actualizó las especialidades del profesional «' . $user->name . '».',
+                ['Antes: ' . ($previousSpecialties ? implode(', ', $previousSpecialties) : 'ninguna'), 'Ahora: ' . ($currentSpecialties ? implode(', ', $currentSpecialties) : 'ninguna')],
+                User::class,
+                $user->id
+            );
+        }
 
         return response()->json([
             'success' => true,

@@ -44,6 +44,18 @@ class IdentifyCustomer
         abort(404);
     }
 
+    if ((int) $customer->status !== 1) {
+        if (auth()->check()) {
+            auth()->logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+        }
+
+        return response()->view('errors.clinic-unavailable', [
+            'clinicName' => $customer->name,
+        ], 503);
+    }
+
     $user = auth()->user();
 
     /*
@@ -51,15 +63,13 @@ class IdentifyCustomer
     | Validación Tenant
     |--------------------------------------------------------------------------
     */
-   if ($user && $user->customer_id !== null && $user->customer_id !== $customer->id) {
+    if ($user && $user->customer_id !== null && (int) $user->customer_id !== (int) $customer->id) {
+        auth()->logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
 
-    auth()->logout();
-
-    $request->session()->invalidate();
-    $request->session()->regenerateToken();
-
-    return redirect()->route('login');
-}
+        abort(403, 'Tu cuenta no pertenece a esta clínica.');
+    }
 
     /*
     |--------------------------------------------------------------------------

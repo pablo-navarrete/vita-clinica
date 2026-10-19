@@ -4,6 +4,8 @@ namespace App\Http\Controllers\customer;
 use App\Http\Controllers\Controller;
 
 use App\Models\ChronicDiseases;
+use App\Models\MedicalRecord;
+use App\Support\PatientAuditLogger;
 use Illuminate\Http\Request;
 
 class ChronicDiseasesController extends Controller
@@ -11,15 +13,16 @@ class ChronicDiseasesController extends Controller
     
 public function store(Request $request)
 {
+    $customerId = app('customer')->id;
+    $medicalRecord = MedicalRecord::where('customer_id', $customerId)
+        ->findOrFail($request->input('medical_record_id'));
+    $before = $medicalRecord->chronicDiseases()->pluck('name')->all();
     $chronicDiseases = [];
 
     // Recuperar existentes
     if ($request->has('existing_chronic_diseases')) {
 
-        $existing = ChronicDiseases::whereIn(
-            'id',
-            $request->existing_chronic_diseases
-        )->get();
+        $existing = $medicalRecord->chronicDiseases()->whereIn('id', $request->existing_chronic_diseases)->get();
 
         foreach ($existing as $disease) {
             $chronicDiseases[] = [
@@ -38,18 +41,19 @@ public function store(Request $request)
     }
 
     // Eliminar anteriores
-    ChronicDiseases::where('customer_id', $request->customer_id)
-        ->where('medical_record_id', $request->medical_record_id)
-        ->delete();
+    $medicalRecord->chronicDiseases()->delete();
 
     // Guardar todas
     foreach ($chronicDiseases as $disease) {
         ChronicDiseases::create([
-            'customer_id'       => $request->customer_id,
-            'medical_record_id' => $request->medical_record_id,
+            'customer_id'       => $customerId,
+            'medical_record_id' => $medicalRecord->id,
             'name'              => $disease['name'],
         ]);
     }
+
+    $after = $medicalRecord->chronicDiseases()->pluck('name')->all();
+    PatientAuditLogger::recordMedicalRecord($medicalRecord, 'Enfermedades crónicas', $before, $after);
 
     return redirect()->back()->with(
         'success',

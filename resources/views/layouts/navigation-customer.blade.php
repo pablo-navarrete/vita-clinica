@@ -34,6 +34,17 @@
             <div class="flex items-center">
             
 <!-- notificaciones -->
+@php
+    $tenantIdForNotifications = (int) app('customer')->id;
+    $tenantNotifications = Auth::user()->notifications()
+        ->where('data->customer_id', $tenantIdForNotifications)
+        ->latest()
+        ->take(6)
+        ->get();
+    $tenantUnreadNotificationCount = Auth::user()->unreadNotifications()
+        ->where('data->customer_id', $tenantIdForNotifications)
+        ->count();
+@endphp
 <div x-data="{ open: false }" class="relative">
 
     <!-- TRIGGER -->
@@ -43,15 +54,11 @@
 
         <i class="fa-solid fa-bell text-lg"></i>
 
-       
-            <span
-                class="absolute -top-1 -right-1 min-w-5 h-5 px-1
-                       flex items-center justify-center
-                       bg-red-500 text-white text-xs font-bold
-                       rounded-full">
-                99
+        @if ($tenantUnreadNotificationCount > 0)
+            <span class="absolute -top-1 -right-1 min-w-5 h-5 px-1 flex items-center justify-center bg-red-500 text-white text-xs font-bold rounded-full">
+                {{ $tenantUnreadNotificationCount > 99 ? '99+' : $tenantUnreadNotificationCount }}
             </span>
-       
+        @endif
 
     </button>
 
@@ -60,27 +67,38 @@
     x-cloak
         @click.outside="open = false"
         x-transition
-        class="absolute right-0 mt-2 w-48 bg-white shadow-lg rounded-lg z-50 overflow-hidden">
+        class="absolute right-0 mt-2 w-80 max-w-[90vw] bg-white shadow-lg rounded-lg z-50 overflow-hidden">
 
-        <div class="px-4 py-2 text-sm font-semibold text-gray-700 border-b">
-            Notificaciones
+        <div class="flex items-center justify-between px-4 py-3 text-sm font-semibold text-gray-700 border-b">
+            <span>Notificaciones</span>
+            @if ($tenantUnreadNotificationCount > 0)
+                <span class="rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-700">{{ $tenantUnreadNotificationCount }} nuevas</span>
+            @endif
         </div>
-
-        <form method="POST">
-            @csrf
-
-            <div class="p-4 mb-2">
-                <p class="text-gray-500">no hay notificaciones</p>
-            </div>
-
-            <div class="border-t mt-2 pt-2 px-4 mb-2">
-                <button type="submit"
-                    style="background-color: {{ themeColor(600) }}"
-                    class="w-full text-white py-2 rounded hover:brightness-90 transition">
-                    Mostrar todas
-                </button>
-            </div>
-        </form>
+        <div class="max-h-96 overflow-y-auto">
+            @forelse ($tenantNotifications as $notification)
+                @php
+                    $notificationData = $notification->data;
+                @endphp
+                <div class="border-b border-gray-100 px-4 py-3 {{ $notification->unread() ? 'bg-blue-50' : 'bg-white' }}">
+                    <div class="flex items-start gap-2">
+                        <i class="fa-solid {{ ($notificationData['event'] ?? '') === 'cancelled' ? 'fa-calendar-xmark' : 'fa-calendar-check' }} mt-1" style="color: {{ themeColor(600) }}"></i>
+                        <a href="{{ route('customers.notifications.open', ['customer' => request()->route('customer'), 'notification' => $notification->id]) }}" class="min-w-0 flex-1 hover:underline">
+                            <p class="text-sm font-semibold text-gray-800">{{ $notificationData['title'] ?? 'Cita médica' }}</p>
+                            <p class="mt-0.5 truncate text-xs text-gray-600">{{ $notificationData['patient_name'] ?? 'Paciente' }} · {{ !empty($notificationData['starts_at']) ? \Illuminate\Support\Carbon::parse($notificationData['starts_at'])->timezone(config('app.timezone'))->format('d/m/Y H:i') : '—' }}</p>
+                            <p class="mt-1 text-xs text-gray-500">{{ $notificationData['message'] ?? '' }}</p>
+                        </a>
+                        @if ($notification->unread())<span class="mt-1 h-2 w-2 shrink-0 rounded-full bg-blue-600" title="No leída"></span>@endif
+                    </div>
+                </div>
+            @empty
+                <p class="px-4 py-6 text-center text-sm text-gray-500">No tienes notificaciones de citas.</p>
+            @endforelse
+        </div>
+        <a href="{{ route('customers.notifications.index', ['customer' => request()->route('customer')]) }}"
+            class="block border-t px-4 py-3 text-center text-sm font-semibold hover:bg-gray-50" style="color: {{ themeColor(700) }}">
+            Mostrar todas
+        </a>
 
     </div>
 </div>
@@ -91,6 +109,11 @@
                     target="_blanc">
                     <i class="fa-solid fa-globe"></i>
                 </a>
+
+                @php
+                    $isDoctor = auth()->check() && auth()->user()->roles()->where('roles.name', 'Doctor')->exists();
+                @endphp
+                @unless ($isDoctor)
                 <!--color del sistema-->
                 <div x-data="{ open: false }" class="relative">
 
@@ -174,7 +197,7 @@
 
                     </div>
                 </div>
-
+                @endunless
                 <x-dropdown align="right" width="48">
 
                     <x-slot name="trigger">
@@ -196,7 +219,7 @@
 
                         </x-dropdown-link>
                         <hr>
-                        <x-dropdown-link href="#">
+                        <x-dropdown-link href="{{ route('customers.profile.index', ['customer' => request()->route('customer')]) }}">
 
                             Perfil
                         </x-dropdown-link>

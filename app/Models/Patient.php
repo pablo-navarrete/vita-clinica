@@ -46,6 +46,11 @@ class Patient extends Model
     {
         return $this->hasOne(MedicalRecord::class);
     }
+
+    public function auditLogs()
+    {
+        return $this->hasMany(PatientAuditLog::class)->latest();
+    }
     
     public function insurance()
     {

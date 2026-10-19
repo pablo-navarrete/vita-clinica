@@ -21,14 +21,20 @@
                         <div class="w-80">
 
                             <label class="block text-sm font-medium text-gray-700 mb-1">
-                                Profesional
+                                {{ $isDoctor ? 'Mi calendario' : 'Profesional' }}
                             </label>
 
-                            <select id="professional" class="w-full rounded-lg border-gray-300">
-                                <option value="">Seleccione un profesional</option>
+                            @if ($isDoctor)
+                                <p class="rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-gray-800">{{ $currentProfessionalName }}</p>
+                            @endif
+
+                            <select id="professional" class="w-full rounded-lg border-gray-300 {{ $isDoctor ? 'hidden' : '' }}">
+                                @if (!$isDoctor)
+                                    <option value="">Seleccione un profesional</option>
+                                @endif
 
                                 @foreach ($professionals as $professional)
-                                    <option value="{{ $professional->id }}">
+                                    <option value="{{ $professional->id }}" @selected($isDoctor && $professional->id === $currentProfessionalId)>
                                         {{ $professional->name }}
                                     </option>
                                 @endforeach
@@ -104,9 +110,12 @@
             <!-- HEADER -->
             <div class="px-6 py-4 border-b rounded-t-lg" style="background-color: {{ themeColor(100) }}">
 
-                <h2 class="text-lg font-bold">
+                <h2 id="appointmentModalTitle" class="text-lg font-bold">
                     Nueva cita médica
                 </h2>
+                @if ($isDoctor)
+                    <p class="mt-1 text-sm text-gray-600">Profesional: {{ $currentProfessionalName }}</p>
+                @endif
 
             </div>
 
@@ -119,7 +128,6 @@
                     <label class="block text-sm font-medium mb-1">
                         Paciente
                     </label>
-
 
                     <select id="appointmentPatient" class="w-full rounded-lg border-gray-300" name="patient_id">
 
@@ -175,7 +183,7 @@
 
 
                         @foreach ($professionals as $professional)
-                            <option value="{{ $professional->id }}">
+                            <option value="{{ $professional->id }}" @selected($isDoctor && $professional->id === $currentProfessionalId)>
                                 {{ $professional->name }}
 
                             </option>
@@ -226,6 +234,7 @@
                             </option>
 
                         </select>
+                        <p id="availabilityFeedback" class="mt-1 hidden text-xs text-amber-700"></p>
 
                     </div>
 
@@ -279,7 +288,7 @@
                 <button onclick="saveAppointment()" type="button" style="background-color: {{ themeColor(600) }}"
                     class="text-white px-4 py-2 rounded">
 
-                    Guardar
+                    <span id="appointmentSaveLabel">Guardar</span>
 
                 </button>
 
@@ -387,11 +396,17 @@
                     <p id="detailNotes"></p>
                 </div>
 
+                <p id="detailAttentionBlockReason" class="hidden rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800"></p>
+
 
             </div>
 
 
             <div class="border-t px-6 py-4 flex justify-end gap-2">
+
+                <a id="btnStartAttention" href="#" class="hidden rounded px-4 py-2 font-semibold text-white hover:brightness-90" style="background-color: {{ themeColor(600) }}">
+                    <i class="fa-solid fa-stethoscope mr-1"></i> Iniciar atención
+                </a>
 
                 <button onclick="" style="background-color: {{ themeColor(600) }}"
                     class="hover:brightness-90 transition text-white font-bold py-2 px-4 rounded"
@@ -402,6 +417,10 @@
                     Actualizar cita
 
                 </button>
+
+                <a id="btnViewAttention" href="#" class="hidden order-first mr-auto rounded px-4 py-2 text-sm font-semibold text-white hover:brightness-90" style="background-color: {{ themeColor(600) }}">
+                    <i class="fa-solid fa-eye mr-1"></i> Ver atención
+                </a>
 
                 <button onclick="closeDetailModal()" class="bg-gray-600 text-white px-4 py-2 rounded">
 
@@ -418,11 +437,103 @@
     </div>
 @endsection
 
+@push('styles')
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/css/select2.min.css">
+    <style>
+        #appointmentModal .select2-container {
+            width: 100% !important;
+        }
+
+        #appointmentModal .select2-container .select2-selection--single {
+            height: 42px;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            display: flex;
+            align-items: center;
+        }
+
+        #appointmentModal .select2-container .select2-selection__rendered {
+            padding-left: 0.75rem;
+            color: #111827;
+        }
+
+        #appointmentModal .select2-container .select2-selection__arrow {
+            height: 40px;
+        }
+
+        #professional + .select2-container {
+            width: 100% !important;
+        }
+
+        #professional + .select2-container .select2-selection--single {
+            height: 42px;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            display: flex;
+            align-items: center;
+        }
+
+        #professional + .select2-container .select2-selection__rendered {
+            padding-left: 0.75rem;
+            color: #111827;
+        }
+
+        #professional + .select2-container .select2-selection__arrow {
+            height: 40px;
+        }
+    </style>
+@endpush
+
 @push('scripts')
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/js/select2.min.js"></script>
     <script>
         let calendar;
+        let editingAppointmentId = null;
+        let editingProfessionalId = null;
+        let editingOriginalDate = null;
+        let editingTime = null;
+        let availabilityRequestId = 0;
+        let professionalLookupRequestId = 0;
 
         document.addEventListener('DOMContentLoaded', function() {
+            const isDoctor = @json($isDoctor);
+            const currentProfessionalId = @json($currentProfessionalId);
+
+            $('#appointmentPatient').select2({
+                width: '100%',
+                placeholder: 'Seleccione paciente',
+                allowClear: false,
+                minimumResultsForSearch: 0,
+                dropdownParent: $('#appointmentModal'),
+                language: {
+                    noResults: () => 'No se encontraron pacientes',
+                    searching: () => 'Buscando...'
+                }
+            });
+
+            $('#appointmentSpecialty, #appointmentProfessional').select2({
+                width: '100%',
+                placeholder: 'Seleccione una opción',
+                allowClear: false,
+                minimumResultsForSearch: 0,
+                dropdownParent: $('#appointmentModal'),
+                language: {
+                    noResults: () => 'No se encontraron opciones',
+                    searching: () => 'Buscando...'
+                }
+            });
+
+            if (!isDoctor) {
+                $('#professional').select2({
+                    width: '100%',
+                    placeholder: 'Seleccione un profesional',
+                    minimumResultsForSearch: 0,
+                    language: {
+                        noResults: () => 'No se encontraron profesionales',
+                        searching: () => 'Buscando...'
+                    }
+                });
+            }
 
             const calendarEl = document.getElementById('calendar');
             const professionalSelect = document.getElementById('professional');
@@ -434,6 +545,8 @@
                 firstDay: 1, // Lunes
 
                 initialView: 'timeGridWeek',
+
+                initialDate: new URLSearchParams(window.location.search).get('date') || undefined,
 
                 height: 'auto',
 
@@ -482,12 +595,22 @@
 
 
                     fetch(
-                            `/appointments/events?professional_id=${professionalId}&search=${encodeURIComponent(search)}&start=${fetchInfo.startStr}&end=${fetchInfo.endStr}`
+                        `/appointments/events?professional_id=${professionalId}&search=${encodeURIComponent(search)}&start=${fetchInfo.startStr}&end=${fetchInfo.endStr}`,
+                        { cache: 'no-store' }
                         )
                         .then(res => res.json())
                         .then(data => successCallback(data))
                         .catch(error => failureCallback(error));
 
+                },
+
+                eventDidMount: function(info) {
+                    const targetAppointmentId = new URLSearchParams(window.location.search).get('appointment_id');
+                    if (!targetAppointmentId || window.openedNotificationAppointment) return;
+                    if (String(info.event.id) !== String(targetAppointmentId)) return;
+
+                    window.openedNotificationAppointment = true;
+                    setTimeout(() => info.el.click(), 0);
                 },
 
                 // Seleccionar un bloque para crear una cita
@@ -520,11 +643,51 @@
                     const event = info.event;
 
                     const btnUpdate = document.getElementById('btnUpdateAppointment');
+                    const btnStartAttention = document.getElementById('btnStartAttention');
+                    const btnViewAttention = document.getElementById('btnViewAttention');
+                    const attentionBlockReason = document.getElementById('detailAttentionBlockReason');
 
-                    if ([0, 1, 2].includes(event.extendedProps.status)) {
+                    if (event.extendedProps.canStartAttention) {
+                        btnStartAttention.href = `/patients/${event.extendedProps.patientId}/medical-record?start_encounter=${event.extendedProps.appointmentId}`;
+                        btnStartAttention.classList.remove('hidden');
+                        btnViewAttention.classList.add('hidden');
+                        attentionBlockReason.classList.add('hidden');
+                    } else {
+                        btnStartAttention.classList.add('hidden');
+                        if (event.extendedProps.encounterId) {
+                            btnViewAttention.href = `/patients/${event.extendedProps.patientId}/medical-record#current-encounter-section`;
+                            btnViewAttention.classList.remove('hidden');
+                            attentionBlockReason.textContent = event.extendedProps.attentionBlockReason || 'Esta cita ya tiene una atención asociada.';
+                            attentionBlockReason.classList.remove('hidden');
+                            attentionBlockReason.textContent = 'Esta cita ya tiene una atenci\u00f3n iniciada. No se puede modificar.';
+                        } else if (event.extendedProps.isDoctor && event.extendedProps.patientHasActiveAttention) {
+                            btnViewAttention.classList.add('hidden');
+                            attentionBlockReason.textContent = 'No se puede iniciar una atenci\u00f3n porque el paciente ya tiene una atenci\u00f3n abierta.';
+                            attentionBlockReason.classList.remove('hidden');
+                        } else if (event.extendedProps.attentionBlockReason) {
+                            btnViewAttention.classList.add('hidden');
+                            attentionBlockReason.textContent = event.extendedProps.attentionBlockReason;
+                            attentionBlockReason.classList.remove('hidden');
+                        } else {
+                            btnViewAttention.classList.add('hidden');
+                            attentionBlockReason.classList.add('hidden');
+                        }
+                    }
+
+                    if (event.extendedProps.canUpdateAppointment) {
                         btnUpdate.classList.remove('hidden');
+                        btnUpdate.dataset.appointmentId = event.extendedProps.appointmentId;
+                        btnUpdate.dataset.patientId = event.extendedProps.patientId;
+                        btnUpdate.dataset.professionalId = event.extendedProps.professionalId;
+                        btnUpdate.dataset.specialtyId = event.extendedProps.specialtyId;
+                        btnUpdate.dataset.date = formatLocalDate(event.start);
+                        btnUpdate.dataset.time = formatLocalTime(event.start);
+                        btnUpdate.dataset.reason = event.extendedProps.reason ?? '';
+                        btnUpdate.dataset.notes = event.extendedProps.notes ?? '';
+                        btnUpdate.onclick = openEditAppointmentModal;
                     } else {
                         btnUpdate.classList.add('hidden');
+                        btnUpdate.onclick = null;
                     }
 
 
@@ -579,7 +742,15 @@
 
             calendar.render();
 
-            professionalSelect.addEventListener('change', function() {
+            const refreshCalendarEvents = () => {
+                if (calendar && !document.hidden) calendar.refetchEvents();
+            };
+            window.addEventListener('pageshow', event => {
+                if (event.persisted) refreshCalendarEvents();
+            });
+            document.addEventListener('visibilitychange', refreshCalendarEvents);
+
+            $(professionalSelect).on('change', function() {
 
                 const calendarContainer = document.getElementById('calendarContainer');
                 const calendarPlaceholder = document.getElementById('calendarPlaceholder');
@@ -616,10 +787,21 @@
 
             });
 
+            if (isDoctor && currentProfessionalId) {
+                $(professionalSelect).trigger('change');
+            }
+
         });
 
 
         function openCreateAppointmentModal() {
+
+            editingAppointmentId = null;
+            editingProfessionalId = null;
+            editingOriginalDate = null;
+            editingTime = null;
+            document.getElementById('appointmentModalTitle').textContent = 'Nueva cita médica';
+            document.getElementById('appointmentSaveLabel').textContent = 'Guardar';
 
             document
                 .getElementById('appointmentModal')
@@ -627,12 +809,17 @@
             document.getElementById('appointmentDate').value = getTodayLocal();
             // limpiar formulario
 
-            document.getElementById('appointmentSpecialty').value = '';
+            $('#appointmentSpecialty').val('').trigger('change');
 
-            document.getElementById('appointmentProfessional').innerHTML =
-                '<option value="">Seleccione profesional</option>';
+            @if ($isDoctor)
+                $('#appointmentProfessional').val(String(@json($currentProfessionalId))).trigger('change.select2');
+            @else
+                const professionalSelect = document.getElementById('appointmentProfessional');
+                professionalSelect.innerHTML = '<option value="">Seleccione una especialidad primero</option>';
+                $(professionalSelect).val('').trigger('change.select2');
+            @endif
 
-            document.getElementById('appointmentPatient').value = '';
+            $('#appointmentPatient').val('').trigger('change');
 
 
 
@@ -643,7 +830,15 @@
 
             document.getElementById('appointmentNotes').value = '';
 
-            document.getElementById('professionalContainer').classList.add('hidden');
+            @if ($isDoctor)
+                loadAvailability();
+            @endif
+
+            @if ($isDoctor)
+                document.getElementById('professionalContainer').classList.add('hidden');
+            @else
+                document.getElementById('professionalContainer').classList.add('hidden');
+            @endif
             document
                 .getElementById('availableTimesContainer')
                 .classList.add('hidden');
@@ -660,18 +855,11 @@
                 document.getElementById('appointmentDate');
 
 
-            appointmentProfessional.addEventListener('change', function() {
-
-                loadAvailability();
-
-            });
+            $(appointmentProfessional).on('change', loadAvailability);
 
 
-            appointmentDate.addEventListener('change', function() {
-
-                loadAvailability();
-
-            });
+            appointmentDate.addEventListener('input', loadAvailability);
+            appointmentDate.addEventListener('change', loadAvailability);
 
 
         });
@@ -680,16 +868,25 @@
 
         function loadAvailability() {
 
-            const professionalId = appointmentProfessional.value;
+            const professionalId = document.getElementById('appointmentProfessional').value;
 
-            const date = appointmentDate.value;
+            const date = document.getElementById('appointmentDate').value;
+            const requestId = ++availabilityRequestId;
+            const preservingOriginalSlot = Boolean(editingAppointmentId)
+                && date === editingOriginalDate
+                && String(professionalId) === String(editingProfessionalId);
+            const feedback = document.getElementById('availabilityFeedback');
+            feedback.classList.add('hidden');
+            feedback.textContent = '';
 
 
             if (!professionalId || !date) {
-
-                document
-                    .getElementById('availableTimesContainer')
-                    .classList.add('hidden');
+                if (editingAppointmentId) {
+                    document.getElementById('availableTimesContainer').classList.remove('hidden');
+                } else {
+                    document.getElementById('appointmentTime').innerHTML = '<option value="">Seleccione horario</option>';
+                    document.getElementById('availableTimesContainer').classList.add('hidden');
+                }
 
                 return;
 
@@ -697,11 +894,23 @@
 
 
 
-            fetch(`/appointments/availability?professional_id=${professionalId}&date=${date}`)
+            const availabilityUrl = new URL('/appointments/availability', window.location.origin);
+            availabilityUrl.searchParams.set('professional_id', professionalId);
+            availabilityUrl.searchParams.set('date', date);
+            if (editingAppointmentId) availabilityUrl.searchParams.set('appointment_id', editingAppointmentId);
+            document.getElementById('availableTimesContainer').classList.remove('hidden');
+            document.getElementById('appointmentTime').innerHTML = '<option value="">Cargando horarios...</option>';
 
-                .then(response => response.json())
+            fetch(availabilityUrl)
+
+                .then(response => {
+                    if (!response.ok) throw new Error('No se pudieron consultar los horarios.');
+                    return response.json();
+                })
 
                 .then(data => {
+
+                    if (requestId !== availabilityRequestId) return;
 
 
                     const select =
@@ -717,7 +926,10 @@
 
 
 
-                    if (data.length === 0) {
+                    // El servidor ya filtra las horas pasadas usando la zona horaria de Chile.
+                    const availableSlots = data;
+
+                    if (availableSlots.length === 0 && !preservingOriginalSlot) {
 
 
                         document
@@ -738,24 +950,9 @@
 
 
 
-                    data.forEach(slot => {
+                    availableSlots.forEach(slot => {
 
-                        const selectedDate = appointmentDate.value;
-
-                        const now = new Date();
-
-                        const slotDateTime = new Date(
-                            `${selectedDate}T${slot.value}:00`
-                        );
-
-
-                        // Si la fecha es hoy y la hora ya pasó, no mostrar
-                        if (slotDateTime <= now) {
-
-                            return;
-
-                        }
-
+                        if (preservingOriginalSlot && slot.value === editingTime) return;
 
                         select.innerHTML +=
                             `
@@ -765,6 +962,15 @@
                     `;
 
                     });
+
+                    if (preservingOriginalSlot && editingTime) {
+                        select.add(new Option(`${editingTime} - Hora agendada`, editingTime));
+                        select.value = editingTime;
+                        if (availableSlots.length === 0) {
+                            feedback.textContent = 'No hay otros horarios disponibles para este profesional en esta fecha. Revisa sus horarios configurados.';
+                            feedback.classList.remove('hidden');
+                        }
+                    }
 
 
 
@@ -776,6 +982,10 @@
                 .catch(error => {
 
                     console.error(error);
+                    if (requestId === availabilityRequestId) {
+                        document.getElementById('appointmentTime').innerHTML = '<option value="">No se pudieron cargar horarios</option>';
+                        document.getElementById('availableTimesContainer').classList.remove('hidden');
+                    }
 
                 });
 
@@ -796,6 +1006,45 @@
 
             return `${year}-${month}-${day}`;
         }
+
+        function formatLocalDate(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        function formatLocalTime(date) {
+            const hour = String(date.getHours()).padStart(2, '0');
+            const minute = String(date.getMinutes()).padStart(2, '0');
+            return `${hour}:${minute}`;
+        }
+
+        function openEditAppointmentModal() {
+            const button = document.getElementById('btnUpdateAppointment');
+            editingAppointmentId = button.dataset.appointmentId;
+            editingProfessionalId = button.dataset.professionalId;
+            editingOriginalDate = button.dataset.date;
+            editingTime = button.dataset.time;
+
+            document.getElementById('appointmentDetailModal').classList.add('hidden');
+            document.getElementById('appointmentModalTitle').textContent = 'Actualizar cita médica';
+            document.getElementById('appointmentSaveLabel').textContent = 'Actualizar cita';
+            document.getElementById('appointmentModal').classList.remove('hidden');
+            document.getElementById('appointmentDate').value = button.dataset.date;
+            document.getElementById('appointmentTime').innerHTML = `<option value="${editingTime}">${editingTime} - hora agendada</option>`;
+            document.getElementById('appointmentTime').value = editingTime;
+            document.getElementById('availableTimesContainer').classList.remove('hidden');
+            document.getElementById('appointmentReason').value = button.dataset.reason;
+            document.getElementById('appointmentNotes').value = button.dataset.notes;
+            $('#appointmentPatient').val(button.dataset.patientId).trigger('change');
+            $('#appointmentSpecialty').val(button.dataset.specialtyId).trigger('change');
+            @if ($isDoctor)
+                $('#appointmentProfessional').val(String(@json($currentProfessionalId))).trigger('change.select2');
+                loadAvailability();
+            @endif
+        }
+
         //no permitir fechas pasadas input 
         document.addEventListener('DOMContentLoaded', function() {
 
@@ -854,13 +1103,18 @@
 
             }
 
-            fetch('/appointments', {
+            const isUpdatingAppointment = Boolean(editingAppointmentId);
+            const appointmentUrl = isUpdatingAppointment ? `/appointments/${editingAppointmentId}` : '/appointments';
 
-                    method: 'POST',
+            fetch(appointmentUrl, {
+
+                    method: isUpdatingAppointment ? 'PUT' : 'POST',
 
                     headers: {
 
                         'Content-Type': 'application/json',
+
+                        'Accept': 'application/json',
 
                         'X-CSRF-TOKEN': document
                             .querySelector('meta[name="csrf-token"]')
@@ -896,7 +1150,7 @@
 
                         icon: 'success',
 
-                        title: 'Cita creada',
+                        title: isUpdatingAppointment ? 'Cita actualizada' : 'Cita creada',
 
                         text: response.message,
 
@@ -955,6 +1209,8 @@
 
         document.addEventListener('DOMContentLoaded', function() {
 
+            const isDoctor = @json($isDoctor);
+            const currentProfessionalId = @json($currentProfessionalId);
             const specialtySelect = document.getElementById('appointmentSpecialty');
             const professionalSelect = document.getElementById('appointmentProfessional');
             const professionalContainer = document.getElementById('professionalContainer');
@@ -962,13 +1218,23 @@
             // Ocultar al iniciar
             professionalContainer.classList.add('hidden');
 
-            specialtySelect.addEventListener('change', function() {
+            $(specialtySelect).on('change', function() {
 
-                const specialtyId = this.value;
+                const specialtyId = $(this).val();
+                const requestId = ++professionalLookupRequestId;
+
+                if (isDoctor) {
+                    $(professionalSelect).val(String(currentProfessionalId)).trigger('change.select2');
+                    professionalContainer.classList.add('hidden');
+                    if (specialtyId) loadAvailability();
+                    return;
+                }
 
                 // Limpiar profesionales
+                const professionalSelectedBeforeSpecialtyChange = $(professionalSelect).val();
                 professionalSelect.innerHTML =
                     '<option value="">Seleccione profesional</option>';
+                $(professionalSelect).val('').trigger('change');
 
                 // Ocultar si no hay especialidad
                 if (!specialtyId) {
@@ -977,8 +1243,13 @@
                 }
 
                 fetch(`/professionals/by-specialty?specialty_id=${specialtyId}`)
-                    .then(response => response.json())
+                    .then(response => {
+                        if (!response.ok) throw new Error('No se pudieron consultar los profesionales.');
+                        return response.json();
+                    })
                     .then(data => {
+                        if (requestId !== professionalLookupRequestId) return;
+                        if (!Array.isArray(data)) throw new Error('La respuesta de profesionales no es válida.');
 
                         if (data.length === 0) {
 
@@ -988,26 +1259,27 @@
                         } else {
 
                             data.forEach(professional => {
-
-                                professionalSelect.innerHTML += `
-                            <option value="${professional.id}">
-                                ${professional.name}
-                            </option>
-                        `;
-
+                                professionalSelect.add(new Option(professional.name, professional.id));
                             });
 
                         }
 
                         // Mostrar el select
+                        const professionalToSelect = editingAppointmentId
+                            ? editingProfessionalId
+                            : (professionalSelectedBeforeSpecialtyChange || '');
+                        $(professionalSelect).val(professionalToSelect).trigger('change.select2');
+                        if (professionalToSelect) loadAvailability();
                         professionalContainer.classList.remove('hidden');
 
                     })
                     .catch(error => {
 
                         console.error(error);
-
-                        professionalContainer.classList.add('hidden');
+                        if (requestId !== professionalLookupRequestId) return;
+                        professionalSelect.innerHTML = '<option value="">No se pudieron cargar profesionales</option>';
+                        $(professionalSelect).val('').trigger('change.select2');
+                        professionalContainer.classList.remove('hidden');
 
                     });
 
@@ -1039,7 +1311,7 @@
 
                 3: {
                     text: 'Atendida',
-                    class: 'bg-indigo-100 text-indigo-700'
+                    class: 'bg-green-100 text-green-700'
                 },
 
                 4: {

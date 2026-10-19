@@ -6,6 +6,58 @@
     </h2>
 @endsection
 
+@push('styles')
+    <style>
+        #patient-table_wrapper .dataTables_length,
+        #patient-table_wrapper .dataTables_filter { margin-bottom: 1rem; }
+        #patient-table_wrapper .dataTables_length label,
+        #patient-table_wrapper .dataTables_filter label { color: #374151; font-weight: 500; }
+        #patient-table_wrapper .dataTables_length select,
+        #patient-table_wrapper .dataTables_filter input {
+            min-height: 2.5rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            background-color: #fff;
+        }
+        #patient-table_wrapper .dataTables_filter input { margin-left: 0.5rem; padding: 0.4rem 0.75rem; }
+        #patient-table_wrapper .dataTables_length select { margin: 0 0.4rem; padding: 0.35rem 1.75rem 0.35rem 0.65rem; }
+        #patient-table_wrapper .dataTables_info { padding-top: 0.75rem; color: #6b7280; }
+        #patient-table_wrapper .dataTables_paginate { padding-top: 0.5rem; }
+        #patient-table_wrapper .dataTables_paginate .paginate_button {
+            min-width: 2.25rem;
+            margin: 0 0.15rem;
+            padding: 0.4rem 0.65rem;
+            border: 1px solid transparent !important;
+            border-radius: 0.5rem;
+            color: #374151 !important;
+        }
+        #patient-table_wrapper .dataTables_paginate .paginate_button:hover {
+            border-color: #d1d5db !important;
+            background: #f3f4f6 !important;
+            color: #111827 !important;
+        }
+        #patient-table_wrapper .dataTables_paginate .paginate_button.current {
+            border-color: {{ themeColor(600) }} !important;
+            background: {{ themeColor(600) }} !important;
+            color: #fff !important;
+        }
+        #patient-table_wrapper .dataTables_paginate .paginate_button.disabled,
+        #patient-table_wrapper .dataTables_paginate .paginate_button.disabled:hover {
+            border-color: transparent !important;
+            background: transparent !important;
+            color: #9ca3af !important;
+            cursor: not-allowed;
+        }
+        @media (max-width: 640px) {
+            #patient-table_wrapper .dataTables_length,
+            #patient-table_wrapper .dataTables_filter { float: none; text-align: left; }
+            #patient-table_wrapper .dataTables_filter input { width: min(14rem, 60vw); }
+            #patient-table_wrapper .dataTables_info,
+            #patient-table_wrapper .dataTables_paginate { float: none; text-align: center; }
+        }
+    </style>
+@endpush
+
 @section('content')
 
 <div class="py-12">
@@ -62,7 +114,7 @@
 
                                 <th>Previsión</th>
 
-                                <th>Estado</th>
+                                <th>Citas médicas</th>
 
                                 <th>Acciones</th>
 
@@ -300,31 +352,6 @@
                                 </div>
 
 
-                                <!-- ESTADO -->
-
-                                <div>
-
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">
-                                        Estado
-                                    </label>
-
-                                    <select
-                                        id="patient-status"
-                                        name="status"
-                                        class="w-full rounded-lg border-gray-300">
-
-                                        <option value="1">
-                                            Activo
-                                        </option>
-
-                                        <option value="0">
-                                            Inactivo
-                                        </option>
-
-                                    </select>
-
-                                </div>
-
                             </div>
 
                         </div>
@@ -364,6 +391,87 @@
                 <!-- ========================================================= -->
                 <!-- MENÚ DE ACCIONES GLOBAL -->
                 <!-- ========================================================= -->
+
+                <div id="patient-appointments-detail-modal"
+                    class="hidden fixed inset-0 items-center justify-center bg-black/50 z-[70] overflow-y-auto p-4">
+                    <div class="bg-white rounded-lg shadow-lg w-full max-w-2xl max-h-[90vh] flex flex-col">
+                        <div class="px-6 py-4 border-b rounded-t-lg flex items-start justify-between gap-4"
+                            style="background-color: {{ themeColor(100) }}">
+                            <div>
+                                <h2 class="text-lg font-bold">Citas médicas del paciente</h2>
+                                <p id="patient-appointments-detail-name" class="mt-1 text-sm text-gray-600"></p>
+                            </div>
+                            <button type="button" id="patient-appointments-detail-close"
+                                class="text-gray-600 hover:text-gray-900" aria-label="Cerrar">&times;</button>
+                        </div>
+                        <div class="p-6 overflow-y-auto flex-1">
+                            <ul id="patient-appointments-detail-list" class="space-y-3"></ul>
+                            <a id="patient-appointments-detail-view-all" href="#"
+                                class="hidden mt-4 inline-flex rounded px-4 py-2 text-sm font-semibold text-white hover:brightness-90"
+                                style="background-color: {{ themeColor(600) }}">Ver todas las citas</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="patient-appointment-modal"
+                    class="hidden fixed inset-0 items-center justify-center bg-black/50 z-[60] overflow-y-auto p-4">
+                    <div class="bg-white rounded-lg shadow-lg w-full max-w-lg max-h-[90vh] flex flex-col">
+                        <div class="px-6 py-4 border-b rounded-t-lg" style="background-color: {{ themeColor(100) }}">
+                            <h2 class="text-lg font-bold">Nueva cita médica</h2>
+                            <p id="patient-appointment-name" class="mt-1 text-sm text-gray-600"></p>
+                            <p id="patient-future-appointments-status" role="status"
+                                class="hidden mt-3 rounded-lg border px-3 py-2 text-sm"></p>
+                        </div>
+
+                        <div class="p-6 space-y-4 overflow-y-auto flex-1">
+                            <div>
+                                <label for="patient-appointment-specialty" class="block text-sm font-medium mb-1">Especialidad</label>
+                                <select id="patient-appointment-specialty" class="w-full rounded-lg border-gray-300">
+                                    <option value="">Seleccione especialidad</option>
+                                    @foreach ($specialties as $specialty)
+                                        <option value="{{ $specialty->id }}">{{ $specialty->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+
+                            <div id="patient-appointment-professional-container" class="hidden">
+                                <label for="patient-appointment-professional" class="block text-sm font-medium mb-1">Profesional</label>
+                                <select id="patient-appointment-professional" class="w-full rounded-lg border-gray-300">
+                                    <option value="">Seleccione profesional</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label for="patient-appointment-date" class="block text-sm font-medium mb-1">Fecha</label>
+                                <input type="date" id="patient-appointment-date" min="{{ now()->format('Y-m-d') }}"
+                                    class="w-full rounded-lg border-gray-300">
+                            </div>
+
+                            <div id="patient-appointment-times-container" class="hidden">
+                                <label for="patient-appointment-time" class="block text-sm font-medium mb-1">Horario disponible</label>
+                                <select id="patient-appointment-time" class="w-full rounded-lg border-gray-300">
+                                    <option value="">Seleccione horario</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label for="patient-appointment-reason" class="block text-sm font-medium mb-1">Motivo</label>
+                                <input type="text" id="patient-appointment-reason" class="w-full rounded-lg border-gray-300">
+                            </div>
+
+                            <div>
+                                <label for="patient-appointment-notes" class="block text-sm font-medium mb-1">Notas</label>
+                                <textarea id="patient-appointment-notes" class="w-full rounded-lg border-gray-300"></textarea>
+                            </div>
+                        </div>
+
+                        <div class="border-t px-6 py-4 flex justify-end gap-2">
+                            <button type="button" id="patient-appointment-cancel" class="bg-gray-600 text-white px-4 py-2 rounded">Cancelar</button>
+                            <button type="button" id="patient-appointment-save" style="background-color: {{ themeColor(600) }}"
+                                class="text-white px-4 py-2 rounded">Guardar</button>
+                        </div>
+                    </div>
+                </div>
 
                 <div
                     id="patient-actions-menu"
@@ -442,6 +550,13 @@
 
 @push('scripts')
 
+@php
+    $patientAppointmentsUrlTemplate = route('customers.patients.appointments.index', [
+        'customer' => request()->route('customer'),
+        'id' => '__PATIENT_ID__',
+    ]);
+@endphp
+
 <script>
 
 $(function () {
@@ -466,6 +581,216 @@ $(function () {
 
     const csrfToken = $('meta[name="csrf-token"]').attr('content');
 
+    const appointmentModal = $('#patient-appointment-modal');
+    const appointmentSpecialty = $('#patient-appointment-specialty');
+    const appointmentProfessional = $('#patient-appointment-professional');
+    const appointmentDate = $('#patient-appointment-date');
+    const patientAppointmentsDetailModal = $('#patient-appointments-detail-modal');
+    const patientAppointmentsUrlTemplate = @json($patientAppointmentsUrlTemplate);
+
+    function closePatientAppointmentsDetailModal() {
+        patientAppointmentsDetailModal.removeClass('flex').addClass('hidden');
+        $('body').removeClass('overflow-hidden');
+    }
+
+    function openPatientAppointmentsDetailModal(patient) {
+        let appointments = patient.patient_appointments ?? [];
+        if (typeof appointments === 'string') {
+            try { appointments = JSON.parse(appointments); } catch (_) { appointments = []; }
+        }
+        if (!Array.isArray(appointments) && appointments && typeof appointments === 'object') {
+            appointments = Object.values(appointments);
+        }
+
+        const list = $('#patient-appointments-detail-list').empty();
+        $('#patient-appointments-detail-name').text(`${patient.name} · RUT: ${patient.rut}`);
+        const statusLabels = {
+            0: 'Agendada', 1: 'Confirmada', 2: 'En atención',
+            3: 'Atendida', 4: 'No asistió', 5: 'Cancelada'
+        };
+        const statusColors = {
+            0: 'bg-blue-100 text-blue-700',
+            1: 'bg-green-100 text-green-700',
+            2: 'bg-yellow-100 text-yellow-800',
+            3: 'bg-indigo-100 text-indigo-700',
+            4: 'bg-red-100 text-red-700',
+            5: 'bg-gray-100 text-gray-700'
+        };
+
+        if (!appointments.length) {
+            list.append($('<li>').addClass('rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600')
+                .text('Este paciente todavía no tiene citas médicas.'));
+        } else {
+            appointments.forEach(appointment => {
+                const start = String(appointment.start_at || '');
+                const end = String(appointment.end_at || '');
+                const [datePart = '', startTimePart = ''] = start.split(/[ T]/);
+                const [, endTimePart = ''] = end.split(/[ T]/);
+                const [year, month, day] = datePart.split('-');
+                const date = year && month && day ? `${day}/${month}/${year}` : datePart;
+                const time = `${startTimePart.slice(0, 5)}${endTimePart ? ` - ${endTimePart.slice(0, 5)}` : ''}`;
+                const item = $('<li>').addClass('rounded-lg border border-gray-200 bg-gray-50 px-4 py-3');
+                const header = $('<div>').addClass('flex items-start justify-between gap-3');
+                header.append($('<p>').addClass('font-medium text-gray-800').text(`${date} · ${time}`));
+                const status = Number(appointment.status);
+                header.append($('<span>').addClass(`shrink-0 rounded-full px-2 py-1 text-xs ${statusColors[status] || 'bg-gray-100 text-gray-700'}`)
+                    .text(statusLabels[appointment.status] || 'Sin estado'));
+                item.append(header);
+                item.append($('<p>').addClass('mt-1 text-sm text-gray-600')
+                    .text(`${appointment.professional || 'Sin profesional'} · ${appointment.specialty || 'Sin especialidad'}`));
+                list.append(item);
+            });
+        }
+
+        const totalAppointments = Number(patient.total_appointments_count || 0);
+        $('#patient-appointments-detail-view-all')
+            .attr('href', patientAppointmentsUrlTemplate.replace('__PATIENT_ID__', encodeURIComponent(patient.id)))
+            .toggleClass('hidden', totalAppointments <= 5);
+
+        patientAppointmentsDetailModal.removeClass('hidden').addClass('flex');
+        $('body').addClass('overflow-hidden');
+    }
+
+    function closePatientAppointmentModal() {
+        appointmentModal.removeClass('flex').addClass('hidden');
+        $('body').removeClass('overflow-hidden');
+    }
+
+    function openPatientAppointmentModal(patient) {
+        const today = new Date();
+        const localToday = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+        const futureAppointmentsStatus = $('#patient-future-appointments-status');
+        const futureAppointmentsCount = Number(patient.future_appointments_count || 0);
+
+        $('#patient-appointment-name').text(`${patient.name} · RUT: ${patient.rut}`);
+        if (futureAppointmentsCount > 0) {
+            futureAppointmentsStatus
+                .attr('class', 'mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800')
+                .text(`Tiene ${futureAppointmentsCount} cita(s) futura(s).`);
+        } else {
+            futureAppointmentsStatus
+                .attr('class', 'mt-3 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800')
+                .text('No tiene citas futuras.');
+        }
+        appointmentSpecialty.val('');
+        appointmentProfessional.html('<option value="">Seleccione profesional</option>');
+        $('#patient-appointment-professional-container').addClass('hidden');
+        appointmentDate.val(localToday);
+        $('#patient-appointment-time').html('<option value="">Seleccione horario</option>');
+        $('#patient-appointment-times-container').addClass('hidden');
+        $('#patient-appointment-reason, #patient-appointment-notes').val('');
+        appointmentModal.removeClass('hidden').addClass('flex');
+        $('body').addClass('overflow-hidden');
+    }
+
+    function loadPatientAppointmentAvailability() {
+        const professionalId = appointmentProfessional.val();
+        const date = appointmentDate.val();
+        const timesContainer = $('#patient-appointment-times-container');
+        const timeSelect = $('#patient-appointment-time');
+
+        timeSelect.html('<option value="">Seleccione horario</option>');
+        if (!professionalId || !date) {
+            timesContainer.addClass('hidden');
+            return;
+        }
+
+        fetch(`/appointments/availability?professional_id=${encodeURIComponent(professionalId)}&date=${encodeURIComponent(date)}`)
+            .then(response => response.json())
+            .then(slots => {
+                timeSelect.html('<option value="">Seleccione horario</option>');
+                const now = new Date();
+
+                slots.forEach(slot => {
+                    if (new Date(`${date}T${slot.value}:00`) <= now) return;
+                    timeSelect.append(new Option(slot.label, slot.value));
+                });
+
+                if (timeSelect.children().length === 1) {
+                    timeSelect.html('<option value="">No hay horarios disponibles</option>');
+                }
+                timesContainer.removeClass('hidden');
+            })
+            .catch(() => {
+                timesContainer.addClass('hidden');
+                Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo cargar la disponibilidad.' });
+            });
+    }
+
+    appointmentSpecialty.on('change', function () {
+        const specialtyId = $(this).val();
+        appointmentProfessional.html('<option value="">Seleccione profesional</option>');
+        $('#patient-appointment-professional-container').addClass('hidden');
+        $('#patient-appointment-times-container').addClass('hidden');
+
+        if (!specialtyId) return;
+
+        fetch(`/professionals/by-specialty?specialty_id=${encodeURIComponent(specialtyId)}`)
+            .then(response => response.json())
+            .then(professionals => {
+                professionals.forEach(professional => {
+                    appointmentProfessional.append(new Option(professional.name, professional.id));
+                });
+                if (!professionals.length) {
+                    appointmentProfessional.html('<option value="">No hay profesionales disponibles</option>');
+                }
+                $('#patient-appointment-professional-container').removeClass('hidden');
+            })
+            .catch(() => Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudieron cargar los profesionales.' }));
+    });
+
+    appointmentProfessional.add(appointmentDate).on('change', loadPatientAppointmentAvailability);
+
+    $('#patient-appointment-cancel').on('click', closePatientAppointmentModal);
+    appointmentModal.on('click', function (event) {
+        if (event.target === this) closePatientAppointmentModal();
+    });
+
+    $('#patient-appointment-save').on('click', async function () {
+        if (!selectedPatient) return;
+
+        const payload = {
+            patient_id: selectedPatient.id,
+            specialty_id: appointmentSpecialty.val(),
+            professional_id: appointmentProfessional.val(),
+            date: appointmentDate.val(),
+            time: $('#patient-appointment-time').val(),
+            reason: $('#patient-appointment-reason').val(),
+            notes: $('#patient-appointment-notes').val()
+        };
+
+        if (!payload.specialty_id || !payload.professional_id || !payload.date || !payload.time) {
+            Swal.fire({ icon: 'warning', title: 'Datos incompletos', text: 'Selecciona especialidad, profesional, fecha y horario.' });
+            return;
+        }
+
+        const saveButton = $(this).prop('disabled', true).text('Guardando...');
+        try {
+            const response = await fetch('/appointments', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken
+                },
+                body: JSON.stringify(payload)
+            });
+            const result = await response.json();
+            if (!response.ok) {
+                const validationMessage = result.errors ? Object.values(result.errors).flat()[0] : null;
+                throw new Error(validationMessage || result.message || 'No se pudo crear la cita.');
+            }
+
+            closePatientAppointmentModal();
+            tableActive.ajax.reload(null, false);
+            await Swal.fire({ icon: 'success', title: 'Cita creada', text: result.message, timer: 1800, showConfirmButton: false });
+        } catch (error) {
+            Swal.fire({ icon: 'error', title: 'Error', text: error.message });
+        } finally {
+            saveButton.prop('disabled', false).text('Guardar');
+        }
+    });
+
 
     /*
     |--------------------------------------------------------------------------
@@ -481,8 +806,29 @@ $(function () {
 
         ajax: '/patient-data',
 
+        pageLength: 10,
+
+        lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
+
+        pagingType: 'full_numbers',
+
+        order: [[1, 'asc']],
+
         language: {
-            url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'
+            processing: 'Cargando pacientes...',
+            search: 'Buscar:',
+            lengthMenu: 'Mostrar _MENU_ pacientes',
+            info: 'Mostrando _START_ a _END_ de _TOTAL_ pacientes',
+            infoEmpty: 'No hay pacientes para mostrar',
+            infoFiltered: '(filtrado de _MAX_ pacientes)',
+            zeroRecords: 'No se encontraron pacientes',
+            emptyTable: 'No hay pacientes registrados',
+            paginate: {
+                first: 'Primera',
+                last: 'Última',
+                next: 'Siguiente',
+                previous: 'Anterior'
+            }
         },
 
         responsive: false,
@@ -557,37 +903,15 @@ $(function () {
                 data: 'insurance'
             },
 
-
-            /*
-            |--------------------------------------------------------------------------
-            | ESTADO
-            |--------------------------------------------------------------------------
-            */
-
             {
-                data: 'status',
-
+                data: null,
+                orderable: false,
+                searchable: false,
                 render: function (data, type, row) {
-
-                    const active = Number(data) === 1;
-
-                    return `
-
-                        <button
-                            type="button"
-                            class="toggle-status px-2 py-1 rounded text-xs text-white
-                            ${active ? 'bg-green-500' : 'bg-red-500'}"
-                            data-id="${row.id}"
-                            data-status="${data}">
-
-                            ${active ? 'Activo' : 'Inactivo'}
-
-                        </button>
-
-                    `;
-
+                    const count = Number(row.total_appointments_count || 0);
+                    return `<button type="button" class="patient-appointments-count px-2 py-1 rounded text-xs text-white bg-green-500 hover:bg-green-600 transition"
+                        data-id="${row.id}" aria-label="Ver ${count} citas médicas">${count}</button>`;
                 }
-
             },
 
 
@@ -626,6 +950,16 @@ $(function () {
 
         ]
 
+    });
+
+    $('#patient-table').on('click', '.patient-appointments-count', function () {
+        const patient = tableActive.row($(this).closest('tr')).data();
+        if (patient) openPatientAppointmentsDetailModal(patient);
+    });
+
+    $('#patient-appointments-detail-close').on('click', closePatientAppointmentsDetailModal);
+    $('#patient-appointments-detail-modal').on('click', function (event) {
+        if (event.target === this) closePatientAppointmentsDetailModal();
     });
 
 
@@ -708,6 +1042,10 @@ $(function () {
 
             actionsMenu.addClass('hidden');
 
+            if (!appointmentModal.hasClass('hidden')) {
+                closePatientAppointmentModal();
+            }
+
             if (!modal.hasClass('hidden')) {
 
                 closeModal();
@@ -787,26 +1125,8 @@ $(function () {
         }
 
 
-        const patientId = selectedPatient.id;
-
-
         actionsMenu.addClass('hidden');
-
-
-        console.log(
-            'Agendar cita para paciente:',
-            patientId
-        );
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | CAMBIA ESTA RUTA POR LA TUYA
-        |--------------------------------------------------------------------------
-        */
-
-        // window.location.href =
-        //     `/patients/${patientId}/appointments/create`;
+        openPatientAppointmentModal(selectedPatient);
 
     });
 
@@ -905,7 +1225,7 @@ $(function () {
 
 
         $('#patient-birth-date')
-            .val(data.birth_date ?? '');
+            .val(String(data.birth_date ?? '').slice(0, 10));
 
 
         $('#patient-gender')
@@ -926,10 +1246,6 @@ $(function () {
 
         $('#patient-insurance')
             .val(data.insurance_id ?? '');
-
-
-        $('#patient-status')
-            .val(String(data.status ?? '1'));
 
 
         showModal();
@@ -1030,8 +1346,6 @@ $(function () {
 
         $('#patient-address').val('');
 
-        $('#patient-status').val('1');
-
         $('#patient-insurance')
             .val('{{ $insurances->first()->id ?? '' }}');
 
@@ -1124,8 +1438,6 @@ $(function () {
             address: $('#patient-address').val(),
 
             insurance_id: $('#patient-insurance').val(),
-
-            status: $('#patient-status').val()
 
         };
 
@@ -1276,126 +1588,6 @@ $(function () {
         });
 
     }
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | CAMBIAR ESTADO
-    |--------------------------------------------------------------------------
-    */
-
-    $('#patient-table').on(
-        'click',
-        '.toggle-status',
-        function () {
-
-            const button = $(this);
-
-
-            const id =
-                button.data('id');
-
-
-            const currentStatus =
-                button.data('status');
-
-
-            const newStatus =
-                currentStatus == 1
-                    ? 0
-                    : 1;
-
-
-            fetch(
-                `/patient/${id}/toggle-status`,
-                {
-
-                    method: 'PATCH',
-
-                    headers: {
-
-                        'Content-Type':
-                            'application/json',
-
-                        'Accept':
-                            'application/json',
-
-                        'X-CSRF-TOKEN':
-                            csrfToken
-
-                    },
-
-                    body: JSON.stringify({
-
-                        status:
-                            newStatus
-
-                    })
-
-                }
-            )
-
-            .then(async response => {
-
-                const data =
-                    await response.json();
-
-
-                if (!response.ok) {
-
-                    throw new Error(
-                        data.message ||
-                        'No se pudo actualizar el estado'
-                    );
-
-                }
-
-
-                return data;
-
-            })
-
-            .then(() => {
-
-                Swal.fire({
-
-                    toast: true,
-
-                    position: 'top-end',
-
-                    icon: 'success',
-
-                    title: 'Estado actualizado',
-
-                    showConfirmButton: false,
-
-                    timer: 1500
-
-                });
-
-
-                tableActive
-                    .ajax
-                    .reload(null, false);
-
-            })
-
-            .catch(error => {
-
-                Swal.fire({
-
-                    icon: 'error',
-
-                    title: 'Error',
-
-                    text: error.message
-
-                });
-
-            });
-
-        }
-    );
 
 
     /*

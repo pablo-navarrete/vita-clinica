@@ -44,7 +44,7 @@
 
 
                     <!-- MODAL CREAR / EDITAR -->
-                    <div x-cloak x-show="open"
+                    <div id="professionalModal" x-cloak x-show="open"
                         class="fixed inset-0 flex items-center justify-center bg-black/50 z-50 overflow-y-auto p-4">
 
                         <div class="bg-white rounded-lg shadow-lg w-full max-w-3xl max-h-[90vh] flex flex-col">
@@ -382,6 +382,12 @@
 
                                     </p>
 
+                                    <p x-show="schedule.future_appointments_count > 0"
+                                        class="mt-1 text-xs text-amber-700">
+                                        Tiene <span x-text="schedule.future_appointments_count"></span>
+                                        cita(s) futura(s).
+                                    </p>
+
                                 </div>
 
                             </div>
@@ -646,8 +652,48 @@
     </div>
 @endsection
 
+@push('styles')
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/css/select2.min.css">
+    <style>
+        #professionalModal .select2-container {
+            width: 100% !important;
+        }
+
+        #professionalModal .select2-container .select2-selection--single {
+            height: 42px;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            display: flex;
+            align-items: center;
+        }
+
+        #professionalModal .select2-container .select2-selection__rendered {
+            padding-left: 0.75rem;
+            color: #111827;
+        }
+
+        #professionalModal .select2-container .select2-selection__arrow {
+            height: 40px;
+        }
+    </style>
+@endpush
+
 @push('scripts')
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/js/select2.min.js"></script>
     <script>
+        $(function() {
+            $('#specialtySelect').select2({
+                width: '100%',
+                placeholder: 'Seleccione una especialidad',
+                minimumResultsForSearch: 0,
+                dropdownParent: $('#professionalModal'),
+                language: {
+                    noResults: () => 'No se encontraron especialidades',
+                    searching: () => 'Buscando...'
+                }
+            });
+        });
+
         $(function() {
             // table
             let tableActive = $('#professional-table').DataTable({
@@ -1050,7 +1096,7 @@
 
                     document.getElementById('specialtyList').innerHTML = '';
 
-                    document.getElementById('specialtySelect').value = '';
+                    $('#specialtySelect').val('').trigger('change');
 
                     this.errors = {};
 
@@ -1120,7 +1166,7 @@
                     });
 
                     // Resetear select
-                    document.getElementById('specialtySelect').value = '';
+                    $('#specialtySelect').val('').trigger('change');
 
                     this.open = true;
                 },
@@ -1149,7 +1195,7 @@
 
                     document.getElementById('specialtyList').innerHTML = '';
 
-                    document.getElementById('specialtySelect').value = '';
+                    $('#specialtySelect').val('').trigger('change');
                 },
 
                 submit() {
@@ -1474,7 +1520,7 @@
         let selectedSpecialties = [];
 
 
-        specialtySelect.addEventListener('change', function() {
+        $(specialtySelect).on('change', function() {
 
             let id = this.value;
             let name = this.options[this.selectedIndex].text;
@@ -1485,7 +1531,7 @@
 
             // evitar repetidos
             if (selectedSpecialties.includes(id)) {
-                this.value = '';
+                $(this).val('').trigger('change');
                 return;
             }
 
@@ -1528,7 +1574,7 @@
             specialtyList.appendChild(div);
 
 
-            this.value = '';
+            $(this).val('').trigger('change');
 
         });
 
