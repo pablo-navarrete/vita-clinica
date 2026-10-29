@@ -11,6 +11,7 @@ class ProfessionalSchedule extends Model
     use HasFactory;
     protected $fillable = [
         'customer_id',
+        'clinic_branch_id',
         'user_id',
         'day_of_week',
         'start_time',
@@ -37,5 +38,10 @@ class ProfessionalSchedule extends Model
     public function professional(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function clinicBranch(): BelongsTo
+    {
+        return $this->belongsTo(ClinicBranch::class)->withTrashed();
     }
 }

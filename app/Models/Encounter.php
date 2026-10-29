@@ -9,16 +9,32 @@ class Encounter extends Model
 {
     use HasFactory;
 
+    protected static function booted(): void
+    {
+        static::creating(function (Encounter $encounter) {
+            if (!$encounter->clinic_branch_id || !ClinicBranch::query()
+                ->where('customer_id', $encounter->customer_id)
+                ->where('status', true)->whereKey($encounter->clinic_branch_id)->exists()) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'encounter' => 'La atención debe tener una sede activa de la clínica.',
+                ]);
+            }
+        });
+    }
+
     protected $casts = [
         'started_at' => 'datetime',
         'ended_at' => 'datetime',
     ];
 
     protected $fillable = [
+        'clinic_branch_id',
         'patient_id',
         'appointment_id',
         'professional_id',
         'specialty_id',
+        'modality',
+        'telemedicine_session_id',
         'opened_by',
         'created_by',
         'status',
@@ -34,6 +50,11 @@ class Encounter extends Model
     public function patient()
     {
         return $this->belongsTo(Patient::class);
+    }
+
+    public function clinicBranch()
+    {
+        return $this->belongsTo(ClinicBranch::class)->withTrashed();
     }
 
     public function appointment()
@@ -59,5 +80,20 @@ class Encounter extends Model
     public function createdBy()
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function telemedicineSession()
+    {
+        return $this->belongsTo(TelemedicineSession::class);
+    }
+
+    public function documents()
+    {
+        return $this->hasMany(PatientDocument::class);
+    }
+
+    public function observations()
+    {
+        return $this->hasMany(EncounterObservation::class)->orderBy('created_at');
     }
 }

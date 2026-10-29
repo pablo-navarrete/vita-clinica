@@ -102,9 +102,8 @@ if (! function_exists('themeColor')) {
             ],
 
         ];
-        $color = app()->bound('customer')
-            ? (app('customer')->color ?: 'blue')
-            : 'blue';
+        $customer = app()->bound('customer') ? app('customer') : null;
+        $color = $customer ? ($customer->color ?: 'blue') : 'blue';
 
         return $palette[$color][$shade]
             ?? $palette['blue'][$shade]

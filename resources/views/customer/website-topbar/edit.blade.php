@@ -37,8 +37,9 @@
                         @error('phone')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
                     </div>
                     <div>
-                        <label for="topbar-email" class="mb-1 block text-sm font-medium text-gray-700">Correo</label>
+                        <label for="topbar-email" class="mb-1 block text-sm font-medium text-gray-700">Correo de la clínsica</label>
                         <input id="topbar-email" name="email" type="email" value="{{ old('email', $topbar->email) }}" maxlength="160" class="w-full rounded-md border-gray-300 shadow-sm">
+                        <p class="mt-1 text-xs text-gray-500">Correo de contacto de la clínica. Vita lo usará como dirección de respuesta en los correos automáticos.</p>
                         @error('email')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
                     </div>
                 </div>

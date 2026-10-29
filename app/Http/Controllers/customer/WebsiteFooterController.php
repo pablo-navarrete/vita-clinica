@@ -14,7 +14,7 @@ class WebsiteFooterController extends Controller
     {
         $footer = WebsiteFooter::firstOrNew(
             ['customer_id' => app('customer')->id],
-            ['enabled' => true, 'show_social_links' => true, 'title' => app('customer')->name]
+            ['enabled' => true, 'show_social_links' => true, 'brand_display' => 'both', 'title' => app('customer')->name]
         );
 
         return view('customer.website-footer.edit', compact('footer'));
@@ -25,6 +25,7 @@ class WebsiteFooterController extends Controller
         $data = $request->validate([
             'enabled' => ['required', 'boolean'],
             'show_social_links' => ['required', 'boolean'],
+            'brand_display' => ['required', 'in:both,logo,title'],
             'title' => ['nullable', 'string', 'max:120'],
             'description' => ['nullable', 'string', 'max:1200'],
             'phone' => ['nullable', 'string', 'max:40'],

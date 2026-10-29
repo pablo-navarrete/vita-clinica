@@ -38,6 +38,7 @@ class Kernel extends HttpKernel
             \App\Http\Middleware\VerifyCsrfToken::class,
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
             \App\Http\Middleware\IdentifyCustomer::class,
+            \App\Http\Middleware\PersistVitaContentNavigation::class,
         ],
 
         'api' => [
@@ -69,5 +70,6 @@ class Kernel extends HttpKernel
         'tenant' => \App\Http\Middleware\IdentifyCustomer::class,
         'superadmin' => \App\Http\Middleware\EnsureSuperAdmin::class,
         'prevent-doctor-system-configuration' => \App\Http\Middleware\PreventDoctorSystemConfiguration::class,
+        'role-permission' => \App\Http\Middleware\CheckRolePermission::class,
     ];
 }

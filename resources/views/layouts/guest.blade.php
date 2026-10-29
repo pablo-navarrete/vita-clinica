@@ -49,11 +49,14 @@
             inset: 0;
             z-index: 0;
 
-            /*
-             * El fondo utiliza directamente el color
-             * definido por el theme.
-             */
-            background: {{ themeColor(50) }};
+            pointer-events: none;
+            background-color: #f5faff;
+            background-image:
+                linear-gradient(135deg, {{ themeColor(100) }} 0%, transparent 50%, {{ themeColor(200) }} 100%),
+                url('{{ asset('images/login-background-botanical.png') }}');
+            background-position: center;
+            background-size: cover;
+            background-repeat: no-repeat;
         }
 
         /* =========================================================
@@ -341,10 +344,48 @@
                 animation: none;
             }
         }
+
+        .content { padding: 48px 28px; }
+        .auth-layout { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); align-items: center; gap: clamp(40px, 7vw, 100px); width: 100%; max-width: 1080px; }
+        .auth-brand { padding: 24px 8px; }
+        .auth-brand-link { display: inline-flex; align-items: center; gap: 16px; text-decoration: none; margin-bottom: 42px; max-width: 100%; }
+        .auth-logo { width: auto; max-width: 120px; height: 72px; object-fit: contain; }
+        .auth-brand h1 { margin: 0; font-size: clamp(24px, 3vw, 34px); line-height: 1.2; font-weight: 800; letter-spacing: -0.035em; color: {{ themeColor(800) }}; overflow-wrap: anywhere; }
+        .auth-eyebrow { display: block; font-size: 12px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: {{ themeColor(700) }}; }
+        .auth-brand h2 { margin: 18px 0; font-size: clamp(34px, 4vw, 52px); line-height: 1.12; font-weight: 700; letter-spacing: -0.04em; color: #1e293b; }
+        .auth-brand > p { margin: 0; max-width: 430px; font-size: 16px; line-height: 1.85; color: #475569; }
+        .auth-brand-note { display: flex; align-items: center; gap: 10px; margin-top: 32px; font-size: 13px; color: {{ themeColor(700) }}; }
+        .auth-brand-note i { font-size: 19px; }
+        .auth-form-panel { min-width: 0; width: 100%; max-width: 450px; justify-self: end; }
+        .auth-form-panel .login-card { max-width: none; padding: 40px; border: 1px solid rgba(255,255,255,.9); border-radius: 26px; background: rgba(255,255,255,.96); box-shadow: 0 24px 70px rgba(15,23,42,.09); }
+        .auth-form-panel .login-card::before { display: none; }
+        .auth-form-title { margin: 0 0 8px; font-size: 27px; font-weight: 700; letter-spacing: -0.035em; color: #1e293b; }
+        .auth-form-description { margin: 0 0 30px; color: #64748b; font-size: 14px; line-height: 1.6; }
+        .auth-login-form input[type="email"], .auth-login-form input[type="password"] { min-height: 48px; border-radius: 12px; border-color: #cbd5e1; background: #f8fafc; padding: 12px 14px; }
+        .auth-login-form input:focus { border-color: {{ themeColor(500) }}; --tw-ring-color: {{ themeColor(500) }}; }
+        .auth-login-form .auth-submit { width: 100%; justify-content: center; min-height: 48px; border-radius: 12px; margin-top: 24px; font-size: 14px; letter-spacing: 0; text-transform: none; }
+        .auth-login-form .auth-recovery { display: block; text-align: right; font-size: 13px; margin-top: 16px; color: {{ themeColor(700) }}; }
+        @media (max-width: 767px) {
+            .content { padding: 28px 20px; justify-content: center; }
+            .auth-layout { grid-template-columns: minmax(0, 1fr); gap: 24px; max-width: 450px; }
+            .auth-brand { padding: 0; text-align: center; }
+            .auth-brand-link { margin-bottom: 18px; gap: 12px; }
+            .auth-logo { height: 56px; max-width: 95px; }
+            .auth-brand h2 { font-size: 30px; margin: 12px 0; }
+            .auth-brand h2 br { display: none; }
+            .auth-brand > p { font-size: 14px; line-height: 1.6; }
+            .auth-brand-note { display: none; }
+            .auth-form-panel .login-card { padding: 28px 24px; border-radius: 22px; }
+        }
+        @if ($motivation)
+        .auth-brand h2 { margin: 10px 0 12px; overflow-wrap: break-word; text-wrap: balance; }
+        .auth-brand-note { margin-top: 20px; }
+        @endif
     </style>
 </head>
 
 <body>
+    <div class="background" aria-hidden="true"></div>
 
 
 
@@ -355,89 +396,26 @@
     ========================================================== -->
 
     <main class="content">
-
-        <!-- =====================================================
-             LOGO
-        ====================================================== -->
-
-        <div class="logo-container">
-
-            <a href="/" class="logo-link">
-
-                @if (isset(app('logos_by_location')['login']))
-
-                    <img
-                        src="{{ asset('storage/' . app('logos_by_location')['login']->url) }}"
-                        class="logo-image"
-                        alt="{{ app()->bound('customer') ? app('customer')->name : config('app.name') }}"
-                    >
-
-                @else
-
-                <div class="shrink-0 flex items-center">
-                    <a href="#" class="flex items-center">
-                        <img
-                            src="{{ asset('storage/admin/logos/logo-vita-3.png')}}"
-                            alt="Logo Vita"
-                            class="logo-image"
-                        >
-                       
-                    </a>
-                </div>
-
-                @endif
-
-                @if (app()->bound('customer'))
-                    <h1>
-                        {{ app('customer')->name }}
-                    </h1>
-                @else
-                    <h1 class="ml-2"
-                        style="
-                            font-family: 'Exo 2', sans-serif;
-                            font-size: 1.875rem;
-                            line-height: 2.25rem;
-                            font-weight: 700;
-                            letter-spacing: 3px;
-                            background: linear-gradient(90deg, #00C6FF, #7B2FF7);
-                            -webkit-background-clip: text;
-                            background-clip: text;
-                            -webkit-text-fill-color: transparent;
-                        ">
-                        VIT<span style="display:inline-block;">Λ</span>
-                    </h1>
-                @endif
-
-                {{-- 
-                <div class="logo-subtitle">
-                    Plataforma de atención en salud
-                </div>
-                --}}
-
-            </a>
-
+        <div class="auth-layout">
+            <section class="auth-brand" aria-label="Bienvenida">
+                <a href="/" class="auth-brand-link">
+                    @if (isset(app('logos_by_location')['login']))
+                        <img src="{{ asset('storage/' . app('logos_by_location')['login']->url) }}" class="auth-logo" alt="{{ app()->bound('customer') && app('customer') ? app('customer')->name : config('app.name') }}">
+                    @else
+                        <img src="{{ asset('storage/admin/logos/logo-vita-3.png') }}" class="auth-logo" alt="VITA">
+                    @endif
+                    <h1>{{ app()->bound('customer') && app('customer') ? app('customer')->name : config('app.name', 'VITA') }}</h1>
+                </a>
+                <span class="auth-eyebrow">{{ $motivation['label'] ?? 'TECNOLOGÍA AL SERVICIO DE LA SALUD' }}</span>
+                <h2>@if ($motivation){{ $motivation['title'] }}@else Un espacio para<br>cuidar mejor.@endif</h2>
+                <p>{{ $motivation['description'] ?? 'Simplifica tu gestión clínica y dedica más tiempo a lo que realmente importa: tus pacientes.' }}</p>
+                <div class="auth-brand-note"><i class="fa-solid fa-heart-pulse" aria-hidden="true"></i><span>Tecnolog&iacute;a al servicio de la salud</span></div>
+            </section>
+            <section class="auth-form-panel" aria-label="Acceso a la plataforma">
+                <div class="login-card">{{ $slot }}</div>
+                <div class="login-footer"><i class="fa-solid fa-lock" aria-hidden="true"></i> Acceso seguro &middot; Plataforma de salud <strong>VITA</strong></div>
+            </section>
         </div>
-
-
-        <!-- =====================================================
-             LOGIN
-        ====================================================== -->
-
-        <div class="login-card">
-
-            {{ $slot }}
-
-        </div>
-
-
-        <!-- =====================================================
-             FOOTER
-        ====================================================== -->
-
-        <div class="login-footer">
-            Acceso seguro · Plataforma de salud <strong>VITA</strong>
-        </div>
-
     </main>
 
 </body>

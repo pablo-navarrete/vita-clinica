@@ -9,6 +9,7 @@ class PatientAuditLog extends Model
     protected $fillable = [
         'customer_id',
         'patient_id',
+        'clinic_branch_id',
         'user_id',
         'action',
         'section',
@@ -27,5 +28,10 @@ class PatientAuditLog extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function clinicBranch()
+    {
+        return $this->belongsTo(ClinicBranch::class)->withTrashed();
     }
 }

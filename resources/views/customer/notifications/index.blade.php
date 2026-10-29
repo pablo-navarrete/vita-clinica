@@ -9,6 +9,9 @@
         @if (session('success'))
             <div class="rounded-md bg-green-100 px-4 py-3 text-green-800">{{ session('success') }}</div>
         @endif
+        @if (session('info'))
+            <div class="rounded-md bg-blue-50 px-4 py-3 text-blue-800">{{ session('info') }}</div>
+        @endif
 
         <div class="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-white p-5 shadow-sm">
             <div>
@@ -54,7 +57,7 @@
                         </div>
                     </div>
                     @if ($notification->unread())
-                        <form method="POST" action="{{ route('customers.notifications.read', ['customer' => request()->route('customer'), 'notification' => $notification->id]) }}">
+                        <form method="POST" data-mark-notification-read action="{{ route('customers.notifications.read', ['customer' => request()->route('customer'), 'notification' => $notification->id]) }}">
                             @csrf
                             @method('PATCH')
                             <button type="submit" class="text-sm font-medium hover:underline" style="color: {{ themeColor(700) }}">Marcar le&iacute;da</button>
@@ -68,4 +71,44 @@
 
         <div>{{ $notifications->links() }}</div>
     </div>
+
+    <script>
+        document.querySelectorAll('[data-mark-notification-read]').forEach((form) => {
+            form.addEventListener('submit', async (event) => {
+                event.preventDefault();
+                const button = form.querySelector('button[type="submit"]');
+                const article = form.closest('article');
+                button.disabled = true;
+
+                try {
+                    const response = await fetch(form.action, {
+                        method: 'PATCH',
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        },
+                        credentials: 'same-origin',
+                    });
+                    const result = response.headers.get('content-type')?.includes('application/json')
+                        ? await response.json()
+                        : {};
+                    if (!response.ok) throw new Error(result.message || 'No se pudo marcar como leída.');
+
+                    article.classList.remove('bg-blue-50/50');
+                    const badge = article.querySelector('h4')?.parentElement?.querySelector('span');
+                    if (badge) badge.remove();
+                    const icon = article.querySelector('.h-9.w-9');
+                    if (icon) icon.classList.replace('bg-blue-100', 'bg-gray-100');
+                    if (icon) icon.classList.replace('text-blue-700', 'text-gray-500');
+                    form.remove();
+                    if (typeof Toast !== 'undefined') Toast.fire({ icon: 'success', title: result.message });
+                } catch (error) {
+                    button.disabled = false;
+                    if (typeof Toast !== 'undefined') Toast.fire({ icon: 'error', title: error.message });
+                    else alert(error.message);
+                }
+            });
+        });
+    </script>
 @endsection

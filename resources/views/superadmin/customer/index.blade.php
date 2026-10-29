@@ -463,6 +463,10 @@
                                     <button class="view-btn text-yellow-500 mr-2">
                                         <i class="fa-solid fa-eye"></i>
                                     </button>
+
+                                    <a href="/customers/${row.id}/branches" class="text-indigo-600 mr-2" title="Gestionar sedes" aria-label="Gestionar sedes">
+                                        <i class="fa-solid fa-location-dot"></i>
+                                    </a>
                                 `;
                             }
                         }

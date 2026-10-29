@@ -11,6 +11,14 @@
             color: #fff !important;
             transform: translateY(-3px) scale(1.03);
         }
+        @media (max-width: 767.98px) {
+            #clinic-banner-carousel .carousel-item { min-height: 58svh !important; }
+            #clinic-banner-carousel .carousel-caption > div { width: 100%; max-width: calc(100vw - 2rem) !important; padding: .75rem !important; }
+            #clinic-banner-carousel .carousel-caption h1 { font-size: clamp(1.8rem, 8vw, 3rem); line-height: 1.12; overflow-wrap: anywhere; }
+            #clinic-banner-carousel .carousel-caption h6 { font-size: .75rem; letter-spacing: .12rem !important; }
+            #clinic-banner-carousel .carousel-caption p { margin-right: 0 !important; margin-left: 0 !important; padding: 0 !important; font-size: .9rem; }
+            #clinic-banner-carousel .banner-cta-button { padding: .75rem 1rem !important; }
+        }
     </style>
     <section class="container-fluid p-0 mb-5">
         <div id="clinic-banner-carousel" class="carousel slide carousel-fade" data-ride="carousel" data-interval="6000">
@@ -38,6 +46,7 @@
                                 @endif
                                 @if ($banner->button_text && $banner->button_url)
                                     <a class="banner-cta-button btn py-3 px-4 mt-3 text-white" href="{{ $banner->button_url }}"
+                                        @if($banner->button_url === '#publicBookingModal' && $websiteNavigationButton?->public_booking_enabled) data-target="#publicBookingModal" data-toggle="modal" @endif
                                         style="background-color: {{ themeColor(600) }}; border-color: {{ themeColor(600) }};">
                                         {{ $banner->button_text }}
                                     </a>

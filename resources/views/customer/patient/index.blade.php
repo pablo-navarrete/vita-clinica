@@ -7,7 +7,28 @@
 @endsection
 
 @push('styles')
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/css/select2.min.css">
     <style>
+        #patient-appointment-modal .select2-container {
+            width: 100% !important;
+        }
+        #patient-appointment-modal .select2-container .select2-selection--single {
+            min-height: 42px;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            display: flex;
+            align-items: center;
+        }
+        #patient-appointment-modal .select2-container .select2-selection__rendered {
+            padding-left: 0.75rem;
+            color: #111827;
+        }
+        #patient-appointment-modal .select2-container .select2-selection__arrow {
+            height: 40px;
+        }
+        #patient-appointment-modal .select2-dropdown {
+            z-index: 70;
+        }
         #patient-table_wrapper .dataTables_length,
         #patient-table_wrapper .dataTables_filter { margin-bottom: 1rem; }
         #patient-table_wrapper .dataTables_length label,
@@ -106,6 +127,8 @@
                                 <th>#</th>
 
                                 <th>Nombre Completo</th>
+
+                                <th>Sede de ingreso</th>
 
                                 <th>Rut</th>
 
@@ -415,7 +438,7 @@
 
                 <div id="patient-appointment-modal"
                     class="hidden fixed inset-0 items-center justify-center bg-black/50 z-[60] overflow-y-auto p-4">
-                    <div class="bg-white rounded-lg shadow-lg w-full max-w-lg max-h-[90vh] flex flex-col">
+                    <div class="bg-white rounded-xl shadow-2xl w-full max-w-5xl max-h-[92vh] flex flex-col">
                         <div class="px-6 py-4 border-b rounded-t-lg" style="background-color: {{ themeColor(100) }}">
                             <h2 class="text-lg font-bold">Nueva cita médica</h2>
                             <p id="patient-appointment-name" class="mt-1 text-sm text-gray-600"></p>
@@ -423,7 +446,18 @@
                                 class="hidden mt-3 rounded-lg border px-3 py-2 text-sm"></p>
                         </div>
 
-                        <div class="p-6 space-y-4 overflow-y-auto flex-1">
+                        <div class="grid grid-cols-1 gap-4 overflow-y-auto p-6 flex-1 md:grid-cols-2">
+                            @if ($canChooseAppointmentBranch)
+                                <div class="md:col-span-2">
+                                    <label for="patient-appointment-branch" class="block text-sm font-medium mb-1">Sede de atención</label>
+                                    <select id="patient-appointment-branch" class="w-full rounded-lg border-gray-300">
+                                        @foreach ($appointmentBranches as $branch)
+                                            <option value="{{ $branch->id }}" @selected((int) $branch->id === (int) $activeBranchId)>{{ $branch->name }}</option>
+                                        @endforeach
+                                    </select>
+                                    <p class="mt-1 text-xs text-gray-500">La cita y su disponibilidad quedarán asociadas a la sede seleccionada.</p>
+                                </div>
+                            @endif
                             <div>
                                 <label for="patient-appointment-specialty" class="block text-sm font-medium mb-1">Especialidad</label>
                                 <select id="patient-appointment-specialty" class="w-full rounded-lg border-gray-300">
@@ -433,6 +467,13 @@
                                     @endforeach
                                 </select>
                             </div>
+
+                            @if ($isDoctor)
+                                <div class="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
+                                    <span class="block text-xs font-medium uppercase tracking-wide text-gray-500">Profesional</span>
+                                    <span class="mt-1 block font-semibold text-gray-800">{{ $currentProfessionalName ?? 'Tu cuenta no tiene un profesional habilitado' }}</span>
+                                </div>
+                            @endif
 
                             <div id="patient-appointment-professional-container" class="hidden">
                                 <label for="patient-appointment-professional" class="block text-sm font-medium mb-1">Profesional</label>
@@ -454,6 +495,31 @@
                                 </select>
                             </div>
 
+                            <section id="patient-appointment-weekly-panel" data-weekly-url="{{ route('appointments.availability.week', ['customer' => request()->route('customer')]) }}"
+                                data-accent="{{ themeColor(600) }}" data-accent-soft="{{ themeColor(50) }}"
+                                class="rounded-xl border border-gray-200 bg-gray-50 p-4 md:col-span-2">
+                                <div class="mb-3 flex items-center justify-between gap-3">
+                                    <div>
+                                        <h3 class="text-sm font-semibold text-gray-800">Disponibilidad semanal</h3>
+                                        <p id="patient-appointment-weekly-status" class="mt-1 text-xs text-gray-500">{{ $isDoctor ? 'Selecciona una especialidad para consultar tus horarios.' : 'Selecciona un profesional para consultar sus horarios.' }}</p>
+                                        <p id="patient-appointment-weekly-selected" class="hidden mt-1 text-sm font-semibold text-gray-800"></p>
+                                    </div>
+                                    <div class="flex shrink-0 gap-2">
+                                        <button type="button" id="patient-appointment-week-prev" class="rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-700 hover:bg-gray-100" aria-label="Semana anterior"><i class="fa-solid fa-chevron-left"></i></button>
+                                        <button type="button" id="patient-appointment-week-next" class="rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-700 hover:bg-gray-100" aria-label="Semana siguiente"><i class="fa-solid fa-chevron-right"></i></button>
+                                    </div>
+                                </div>
+                                <div id="patient-appointment-weekly-days" class="flex gap-2 overflow-x-auto pb-2" aria-live="polite"></div>
+                            </section>
+
+                            <div>
+                                <label for="patient-appointment-modality" class="block text-sm font-medium mb-1">Modalidad de atención</label>
+                                <select id="patient-appointment-modality" class="w-full rounded-lg border-gray-300">
+                                    <option value="in_person">Presencial</option>
+                                    <option value="telemedicine">Remota (telemedicina)</option>
+                                </select>
+                            </div>
+
                             <div>
                                 <label for="patient-appointment-reason" class="block text-sm font-medium mb-1">Motivo</label>
                                 <input type="text" id="patient-appointment-reason" class="w-full rounded-lg border-gray-300">
@@ -462,7 +528,7 @@
                             <div>
                                 <label for="patient-appointment-notes" class="block text-sm font-medium mb-1">Notas</label>
                                 <textarea id="patient-appointment-notes" class="w-full rounded-lg border-gray-300"></textarea>
-                            </div>
+<label class="mt-3 flex items-start gap-2 text-sm text-gray-600"><input id="patient-appointment-whatsapp-consent" type="checkbox" value="1" class="mt-1 rounded border-gray-300"><span>El paciente autorizo recibir avisos de esta cita por WhatsApp.</span></label>                            </div>
                         </div>
 
                         <div class="border-t px-6 py-4 flex justify-end gap-2">
@@ -557,6 +623,7 @@
     ]);
 @endphp
 
+<script src="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/js/select2.min.js"></script>
 <script>
 
 $(function () {
@@ -585,8 +652,26 @@ $(function () {
     const appointmentSpecialty = $('#patient-appointment-specialty');
     const appointmentProfessional = $('#patient-appointment-professional');
     const appointmentDate = $('#patient-appointment-date');
+    const isLoggedInDoctor = @json($isDoctor);
+    const currentProfessionalId = @json($currentProfessionalId);
+    const currentProfessionalName = @json($currentProfessionalName);
+    let patientAppointmentWeekAnchor = '';
+    let patientAppointmentWeekRequestId = 0;
+    let patientAppointmentSpecialtiesRequestId = 0;
     const patientAppointmentsDetailModal = $('#patient-appointments-detail-modal');
     const patientAppointmentsUrlTemplate = @json($patientAppointmentsUrlTemplate);
+
+    const appointmentSelectLanguage = {
+        noResults: () => 'No se encontraron resultados',
+        searching: () => 'Buscando…',
+        inputTooShort: () => 'Escribe para buscar',
+    };
+    $('#patient-appointment-specialty, #patient-appointment-professional, #patient-appointment-time, #patient-appointment-modality, #patient-appointment-branch').select2({
+        width: '100%',
+        dropdownParent: appointmentModal,
+        language: appointmentSelectLanguage,
+        minimumResultsForSearch: 0,
+    });
 
     function closePatientAppointmentsDetailModal() {
         patientAppointmentsDetailModal.removeClass('flex').addClass('hidden');
@@ -608,6 +693,37 @@ $(function () {
             0: 'Agendada', 1: 'Confirmada', 2: 'En atención',
             3: 'Atendida', 4: 'No asistió', 5: 'Cancelada'
         };
+
+    function patientAppointmentBranchId() {
+        const branchSelect = document.getElementById('patient-appointment-branch');
+        return branchSelect ? branchSelect.value : String(@json($activeBranchId ?? ''));
+    }
+
+    async function loadPatientAppointmentSpecialties() {
+        const branchSelect = document.getElementById('patient-appointment-branch');
+        if (!branchSelect) return;
+        const requestId = ++patientAppointmentSpecialtiesRequestId;
+        appointmentSpecialty.html('<option value="">Cargando especialidades…</option>').val('').trigger('change.select2');
+        appointmentProfessional.html('<option value="">Seleccione especialidad</option>').val('').trigger('change.select2');
+        $('#patient-appointment-professional-container, #patient-appointment-times-container').addClass('hidden');
+
+        try {
+            const params = new URLSearchParams({ clinic_branch_id: branchSelect.value });
+            const response = await fetch(`/appointments/specialties?${params}`, { headers: { 'Accept': 'application/json' } });
+            if (!response.ok) throw new Error('No se pudieron consultar las especialidades de la sede.');
+            const specialties = await response.json();
+            if (requestId !== patientAppointmentSpecialtiesRequestId) return;
+            appointmentSpecialty.html('<option value="">Seleccione especialidad</option>');
+            specialties.forEach(specialty => appointmentSpecialty.append(new Option(specialty.name, specialty.id)));
+            appointmentSpecialty.val('').trigger('change.select2');
+        } catch (error) {
+            if (requestId !== patientAppointmentSpecialtiesRequestId) return;
+            appointmentSpecialty.html('<option value="">No se pudieron cargar especialidades</option>').val('').trigger('change.select2');
+            Swal.fire({ icon: 'error', title: 'Error', text: error.message });
+        }
+    }
+
+    $('#patient-appointment-branch').on('change', loadPatientAppointmentSpecialties);
         const statusColors = {
             0: 'bg-blue-100 text-blue-700',
             1: 'bg-green-100 text-green-700',
@@ -673,14 +789,155 @@ $(function () {
                 .text('No tiene citas futuras.');
         }
         appointmentSpecialty.val('');
+        if (document.getElementById('patient-appointment-branch')) {
+            $('#patient-appointment-branch').val(String(@json($activeBranchId))).trigger('change.select2');
+            loadPatientAppointmentSpecialties();
+        }
         appointmentProfessional.html('<option value="">Seleccione profesional</option>');
+        if (isLoggedInDoctor && currentProfessionalId) {
+            appointmentProfessional.append(new Option(currentProfessionalName, currentProfessionalId, true, true));
+        }
         $('#patient-appointment-professional-container').addClass('hidden');
-        appointmentDate.val(localToday);
+        if (appointmentDate[0]?._flatpickr) appointmentDate[0]._flatpickr.setDate(localToday, false);
+        else appointmentDate.val(localToday);
+        patientAppointmentWeekAnchor = localToday;
         $('#patient-appointment-time').html('<option value="">Seleccione horario</option>');
+        updatePatientSelectedAppointmentSummary();
         $('#patient-appointment-times-container').addClass('hidden');
         $('#patient-appointment-reason, #patient-appointment-notes').val('');
+        $('#patient-appointment-whatsapp-consent').prop('checked', false);
+        $('#patient-appointment-modality').val('in_person');
         appointmentModal.removeClass('hidden').addClass('flex');
         $('body').addClass('overflow-hidden');
+        loadPatientWeeklyAvailability();
+    }
+
+    function patientDateValue(date) {
+        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    }
+
+    function parsePatientDate(value) {
+        const [year, month, day] = value.split('-').map(Number);
+        return new Date(year, month - 1, day, 12);
+    }
+
+    function updatePatientSelectedAppointmentSummary() {
+        const summary = document.getElementById('patient-appointment-weekly-selected');
+        const date = appointmentDate.val();
+        const time = document.getElementById('patient-appointment-time').value;
+        if (!date || !time) {
+            summary.textContent = '';
+            summary.classList.add('hidden');
+            return;
+        }
+
+        const formattedDate = parsePatientDate(date)
+            .toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' });
+        summary.textContent = `${formattedDate.charAt(0).toUpperCase()}${formattedDate.slice(1)} a las ${time}.`;
+        summary.classList.remove('hidden');
+    }
+
+    function patientWeekDates(anchor) {
+        const monday = parsePatientDate(anchor);
+        monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
+        return Array.from({ length: 7 }, (_, index) => {
+            const day = new Date(monday);
+            day.setDate(monday.getDate() + index);
+            return patientDateValue(day);
+        });
+    }
+
+    async function loadPatientWeeklyAvailability() {
+        const panel = document.getElementById('patient-appointment-weekly-panel');
+        const daysContainer = document.getElementById('patient-appointment-weekly-days');
+        const status = document.getElementById('patient-appointment-weekly-status');
+        const previousButton = document.getElementById('patient-appointment-week-prev');
+        const nextButton = document.getElementById('patient-appointment-week-next');
+        const dateInput = appointmentDate[0];
+        const timeSelect = document.getElementById('patient-appointment-time');
+        const professionalId = appointmentProfessional.val();
+        const anchor = patientAppointmentWeekAnchor || appointmentDate.val() || dateInput.min;
+        const dates = patientWeekDates(anchor);
+        const requestId = ++patientAppointmentWeekRequestId;
+        const today = dateInput.min;
+
+        daysContainer.innerHTML = '';
+        if (!professionalId) {
+            status.textContent = 'Selecciona un profesional para consultar sus horarios.';
+            previousButton.disabled = true;
+            nextButton.disabled = true;
+            return;
+        }
+
+        status.textContent = 'Cargando horarios disponibles…';
+        const params = new URLSearchParams({ professional_id: professionalId, date: anchor });
+        if (patientAppointmentBranchId()) params.set('clinic_branch_id', patientAppointmentBranchId());
+        try {
+            const response = await fetch(`${panel.dataset.weeklyUrl}?${params}`, { headers: { 'Accept': 'application/json' } });
+            if (!response.ok) throw new Error('No se pudieron consultar los horarios.');
+            const result = await response.json();
+            if (requestId !== patientAppointmentWeekRequestId) return;
+            const availability = result.availability || {};
+            const selectedDate = appointmentDate.val();
+            const selectedTime = timeSelect.value;
+            updatePatientSelectedAppointmentSummary();
+
+            dates.forEach(value => {
+                const dayDate = parsePatientDate(value);
+                const card = document.createElement('div');
+                card.dataset.date = value;
+                card.className = `min-w-[110px] max-w-[130px] max-h-44 shrink-0 overflow-y-auto rounded-lg border p-2 ${value === selectedDate ? '' : 'border-gray-200 bg-white'}`;
+                if (value === selectedDate) {
+                    card.style.borderColor = panel.dataset.accent;
+                    card.style.backgroundColor = panel.dataset.accentSoft;
+                }
+                const heading = document.createElement('p');
+                heading.className = 'mb-2 text-center text-xs font-semibold capitalize text-gray-700';
+                heading.textContent = dayDate.toLocaleDateString('es-CL', { weekday: 'short', day: '2-digit', month: 'short' }).replace('.', '');
+                card.appendChild(heading);
+                const slots = availability[value] || [];
+                if (value < today || !slots.length) {
+                    const empty = document.createElement('span');
+                    empty.className = 'block py-1 text-center text-xs text-gray-400';
+                    empty.textContent = value < today ? '—' : 'Sin horas';
+                    card.appendChild(empty);
+                } else {
+                    slots.forEach(slot => {
+                        const button = document.createElement('button');
+                        button.type = 'button';
+                        button.dataset.time = slot.value;
+                        const selected = value === selectedDate && slot.value === selectedTime;
+                        button.className = `mb-1 w-full rounded border px-1 py-1 text-xs transition ${selected ? 'text-white' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'}`;
+                        if (selected) {
+                            button.style.borderColor = panel.dataset.accent;
+                            button.style.backgroundColor = panel.dataset.accent;
+                        }
+                        button.textContent = slot.value;
+                        button.title = slot.label;
+                        button.addEventListener('click', () => {
+                            if (dateInput._flatpickr) dateInput._flatpickr.setDate(value, false);
+                            else dateInput.value = value;
+                            timeSelect.innerHTML = '<option value="">Seleccione horario</option>';
+                            slots.forEach(item => timeSelect.add(new Option(item.label, item.value)));
+                            timeSelect.value = slot.value;
+                            patientAppointmentWeekAnchor = value;
+                            timeSelect.dispatchEvent(new Event('change', { bubbles: true }));
+                        });
+                        card.appendChild(button);
+                    });
+                }
+                daysContainer.appendChild(card);
+            });
+            const total = Object.values(availability).reduce((sum, slots) => sum + slots.length, 0);
+            status.textContent = total ? `${total} horario(s) disponible(s). Selecciona uno para completar la cita.` : 'No hay horarios disponibles en este período. Revisa otra semana.';
+            const previousEnd = parsePatientDate(dates[0]);
+            previousEnd.setDate(previousEnd.getDate() - 1);
+            previousButton.disabled = patientDateValue(previousEnd) < today;
+            nextButton.disabled = false;
+        } catch (error) {
+            if (requestId !== patientAppointmentWeekRequestId) return;
+            status.textContent = 'No se pudo consultar la disponibilidad semanal.';
+        }
     }
 
     function loadPatientAppointmentAvailability() {
@@ -695,7 +952,9 @@ $(function () {
             return;
         }
 
-        fetch(`/appointments/availability?professional_id=${encodeURIComponent(professionalId)}&date=${encodeURIComponent(date)}`)
+        const availabilityParams = new URLSearchParams({ professional_id: professionalId, date });
+        if (patientAppointmentBranchId()) availabilityParams.set('clinic_branch_id', patientAppointmentBranchId());
+        fetch(`/appointments/availability?${availabilityParams}`)
             .then(response => response.json())
             .then(slots => {
                 timeSelect.html('<option value="">Seleccione horario</option>');
@@ -723,11 +982,37 @@ $(function () {
         $('#patient-appointment-professional-container').addClass('hidden');
         $('#patient-appointment-times-container').addClass('hidden');
 
-        if (!specialtyId) return;
+        if (!specialtyId) {
+            loadPatientWeeklyAvailability();
+            return;
+        }
 
-        fetch(`/professionals/by-specialty?specialty_id=${encodeURIComponent(specialtyId)}`)
+        const professionalParams = new URLSearchParams({ specialty_id: specialtyId });
+        if (patientAppointmentBranchId()) professionalParams.set('clinic_branch_id', patientAppointmentBranchId());
+        fetch(`/professionals/by-specialty?${professionalParams}`)
             .then(response => response.json())
             .then(professionals => {
+                if (isLoggedInDoctor) {
+                    const ownProfileIsAvailable = professionals.some(professional =>
+                        String(professional.id) === String(currentProfessionalId)
+                    );
+
+                    if (!ownProfileIsAvailable) {
+                        appointmentProfessional.html('<option value="">No tienes esta especialidad asignada</option>');
+                        $('#patient-appointment-times-container').addClass('hidden');
+                        loadPatientWeeklyAvailability();
+                        return;
+                    }
+
+                    appointmentProfessional.html('');
+                    appointmentProfessional.append(new Option(currentProfessionalName, currentProfessionalId, true, true));
+                    appointmentProfessional.val(String(currentProfessionalId));
+                    patientAppointmentWeekAnchor = appointmentDate.val() || appointmentDate[0].min;
+                    loadPatientAppointmentAvailability();
+                    loadPatientWeeklyAvailability();
+                    return;
+                }
+
                 professionals.forEach(professional => {
                     appointmentProfessional.append(new Option(professional.name, professional.id));
                 });
@@ -739,7 +1024,47 @@ $(function () {
             .catch(() => Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudieron cargar los profesionales.' }));
     });
 
-    appointmentProfessional.add(appointmentDate).on('change', loadPatientAppointmentAvailability);
+    appointmentProfessional.on('change', function () {
+        patientAppointmentWeekAnchor = appointmentDate.val() || appointmentDate[0].min;
+        loadPatientAppointmentAvailability();
+        loadPatientWeeklyAvailability();
+    });
+    appointmentDate.on('change', function () {
+        patientAppointmentWeekAnchor = appointmentDate.val() || appointmentDate[0].min;
+        loadPatientAppointmentAvailability();
+        loadPatientWeeklyAvailability();
+        updatePatientSelectedAppointmentSummary();
+    });
+    $('#patient-appointment-time').on('change', function () {
+        updatePatientSelectedAppointmentSummary();
+        const selectedDate = appointmentDate.val();
+        const panel = document.getElementById('patient-appointment-weekly-panel');
+        document.querySelectorAll('#patient-appointment-weekly-days [data-date]').forEach(card => {
+            const selectedDay = card.dataset.date === selectedDate;
+            card.style.borderColor = selectedDay ? panel.dataset.accent : '';
+            card.style.backgroundColor = selectedDay ? panel.dataset.accentSoft : '';
+            card.querySelectorAll('[data-time]').forEach(button => {
+                const selected = selectedDay && button.dataset.time === this.value;
+                button.classList.toggle('text-white', selected);
+                button.style.backgroundColor = selected ? panel.dataset.accent : '';
+                button.style.borderColor = selected ? panel.dataset.accent : '';
+            });
+        });
+    });
+    $('#patient-appointment-week-prev').on('click', function () {
+        const previous = parsePatientDate(patientAppointmentWeekAnchor || appointmentDate.val() || appointmentDate[0].min);
+        previous.setDate(previous.getDate() - 7);
+        const nextAnchor = patientDateValue(previous);
+        if (patientWeekDates(nextAnchor).at(-1) < appointmentDate[0].min) return;
+        patientAppointmentWeekAnchor = nextAnchor;
+        loadPatientWeeklyAvailability();
+    });
+    $('#patient-appointment-week-next').on('click', function () {
+        const next = parsePatientDate(patientAppointmentWeekAnchor || appointmentDate.val() || appointmentDate[0].min);
+        next.setDate(next.getDate() + 7);
+        patientAppointmentWeekAnchor = patientDateValue(next);
+        loadPatientWeeklyAvailability();
+    });
 
     $('#patient-appointment-cancel').on('click', closePatientAppointmentModal);
     appointmentModal.on('click', function (event) {
@@ -755,12 +1080,18 @@ $(function () {
             professional_id: appointmentProfessional.val(),
             date: appointmentDate.val(),
             time: $('#patient-appointment-time').val(),
+            modality: $('#patient-appointment-modality').val(),
             reason: $('#patient-appointment-reason').val(),
-            notes: $('#patient-appointment-notes').val()
+            notes: $('#patient-appointment-notes').val(),
+            whatsapp_consent: $('#patient-appointment-whatsapp-consent').is(':checked')
         };
+        if (patientAppointmentBranchId()) payload.clinic_branch_id = Number(patientAppointmentBranchId());
+
+        if (isLoggedInDoctor) payload.professional_id = currentProfessionalId;
 
         if (!payload.specialty_id || !payload.professional_id || !payload.date || !payload.time) {
-            Swal.fire({ icon: 'warning', title: 'Datos incompletos', text: 'Selecciona especialidad, profesional, fecha y horario.' });
+            const missingFields = isLoggedInDoctor ? 'especialidad, fecha y horario' : 'especialidad, profesional, fecha y horario';
+            Swal.fire({ icon: 'warning', title: 'Datos incompletos', text: `Selecciona ${missingFields}.` });
             return;
         }
 
@@ -812,7 +1143,7 @@ $(function () {
 
         pagingType: 'full_numbers',
 
-        order: [[1, 'asc']],
+        order: [],
 
         language: {
             processing: 'Cargando pacientes...',
@@ -868,6 +1199,10 @@ $(function () {
 
             {
                 data: 'name'
+            },
+
+            {
+                data: 'branch_name'
             },
 
 
@@ -1046,7 +1381,7 @@ $(function () {
                 closePatientAppointmentModal();
             }
 
-            if (!modal.hasClass('hidden')) {
+            if (!modal.hasClass('hidden') && isEdit) {
 
                 closeModal();
 
@@ -1078,8 +1413,7 @@ $(function () {
         actionsMenu.addClass('hidden');
 
 
-        window.location.href =
-            `/patients/${patientId}/medical-record`;
+        window.VitaNavigation.navigate(`/patients/${patientId}/medical-record`);
 
     });
 
@@ -1224,8 +1558,10 @@ $(function () {
             .val(data.rut ?? '');
 
 
-        $('#patient-birth-date')
-            .val(String(data.birth_date ?? '').slice(0, 10));
+        const birthDateInput = document.getElementById('patient-birth-date');
+        const birthDate = String(data.birth_date ?? '').slice(0, 10);
+        if (birthDateInput?._flatpickr) birthDateInput._flatpickr.setDate(birthDate, false);
+        else $('#patient-birth-date').val(birthDate);
 
 
         $('#patient-gender')
@@ -1315,7 +1651,7 @@ $(function () {
 
     $('#patient-modal').on('click', function (e) {
 
-        if (e.target === this) {
+        if (e.target === this && isEdit) {
 
             closeModal();
 
@@ -1336,7 +1672,9 @@ $(function () {
 
         $('#patient-rut').val('');
 
-        $('#patient-birth-date').val('');
+        const birthDateInput = document.getElementById('patient-birth-date');
+        if (birthDateInput?._flatpickr) birthDateInput._flatpickr.clear();
+        else $('#patient-birth-date').val('');
 
         $('#patient-gender').val('Masculino');
 

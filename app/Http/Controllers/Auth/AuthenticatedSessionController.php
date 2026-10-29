@@ -4,7 +4,8 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
-use App\Providers\RouteServiceProvider;
+use App\Models\Customer;
+use App\Support\ClinicBranchContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -15,9 +16,11 @@ class AuthenticatedSessionController extends Controller
     /**
      * Display the login view.
      */
-    public function create(): View
+    public function create(Request $request): View
     {
-        return view('auth.login');
+        return view('auth.login', [
+            'motivation' => app(\App\Support\LoginMotivation::class)->next($request->session(), $request->getHost()),
+        ]);
     }
 
     /**
@@ -30,15 +33,32 @@ class AuthenticatedSessionController extends Controller
 
         $user = Auth::user();
 
+        $customer = app()->bound('customer') ? app('customer') : null;
+        if (!$customer && $request->route('customer')) {
+            $customer = Customer::query()->where('domain', $request->route('customer'))->first();
+        }
+        if ($customer) {
+            $branch = ClinicBranchContext::defaultBranch($user, (int) $customer->id);
+            if ($branch) {
+                $request->session()->put('active_branch_id', (int) $branch->id);
+                $request->session()->put('active_branch_customer_id', (int) $customer->id);
+            } else {
+                $request->session()->forget(['active_branch_id', 'active_branch_customer_id']);
+            }
+        } else {
+            $request->session()->forget(['active_branch_id', 'active_branch_customer_id']);
+        }
+
         // SUPERADMIN
         if ($user->customer_id === null) {
             return redirect('/dashboard');
         }
 
-        // Usuario tenant -> siempre a su dominio
-       return redirect()->to(
-        'http://' . $user->customer->domain . '.' . config('app.domain') . '/dashboard'
-        );
+        // La ruta nombrada usa el dominio de la clínica y conserva HTTP o HTTPS
+        // según la solicitud actual, sin fijar el protocolo manualmente.
+        return redirect()->route('customers.dashboard.index', [
+            'customer' => $user->customer->domain,
+        ]);
     }
 
     /**

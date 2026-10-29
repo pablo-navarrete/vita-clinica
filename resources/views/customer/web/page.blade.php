@@ -53,15 +53,50 @@
         .editing-page .section-layout { display: block; }
         @media (max-width: 700px) { .section-layout { gap: 1rem; } .section-layout-left, .section-layout-right { grid-template-columns: 1fr; } .section-layout-right .section-layout-image { order: 0; } }
         .site-page-section p { color: #4b5563; white-space: pre-line; line-height: 1.8; }
+        .public-booking-section { text-align: center; }
+        .public-booking-section .public-booking-button { display: inline-flex; align-items: center; gap: .6rem; border: 0; border-radius: .5rem; padding: .85rem 1.4rem; color: #fff; font-weight: 600; text-decoration: none; box-shadow: 0 5px 16px #0002; transition: filter .18s, transform .18s; }
+        .public-booking-section .public-booking-button:hover { filter: brightness(.88); transform: translateY(-2px); color: #fff; }
+        #publicBookingModal .modal-content { border-radius: 1rem !important; box-shadow: 0 24px 70px rgba(15,23,42,.3); }
+        #publicBookingModal .modal-header { min-height: 3.75rem; padding: .75rem 1.25rem; }
+        #publicBookingModal .modal-body { background: #f8fafc; }
+        #publicBookingModal .public-booking-frame { display:block; width:100%; height:min(82vh,900px); border:0; }
+        @media(max-width:767.98px) { #publicBookingModal .modal-dialog { margin:.5rem; } #publicBookingModal .public-booking-frame { height:calc(100dvh - 5rem); min-height:600px; } #publicBookingModal .modal-header { padding:.65rem .9rem; } }
         .site-page-editbar { position: sticky; z-index: 10; top: 0; display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; background: #fff; padding: .75rem; box-shadow: 0 2px 10px #0002; }
         .site-page-editbar button, .site-page-editbar select { border: 1px solid #d1d5db; border-radius: .375rem; background: white; padding: .45rem .65rem; }
         .site-page-editbar button { cursor: pointer; }
         .site-page-section.editing { border-color: transparent; }
         [contenteditable="true"] { outline: 2px dashed #94a3b8; outline-offset: 3px; }
-        .builder-controls { display: none; gap: .4rem; margin-bottom: .75rem; }
+        .builder-controls { display: none; flex-wrap: wrap; align-items: center; gap: .4rem; margin-bottom: .75rem; }
         .editing-page .builder-controls { display: flex; }
         .builder-controls button { border: 1px solid #d1d5db; border-radius: .375rem; background: #fff; padding: .35rem .6rem; }
         .dragging { opacity: .45; }
+        @media (max-width: 767.98px) {
+            .site-page-content { width: 100%; max-width: 100%; padding: 0 .75rem 2rem; }
+            .site-page-banner { min-height: 220px; margin-bottom: 1.5rem; padding: 1.5rem .75rem; }
+            .site-page-title { font-size: clamp(1.65rem, 8vw, 2.5rem); overflow-wrap: anywhere; }
+            .site-page-section { min-height: 0; margin-bottom: 1.25rem; padding: 1.25rem 1rem; }
+            .site-page-section h2 { font-size: clamp(1.25rem, 5.5vw, 1.6rem); overflow-wrap: anywhere; }
+            .site-page-section > .section-image, .section-layout-image { max-height: none; }
+            .section-layout { gap: 1rem; }
+            .section-layout-left, .section-layout-right { grid-template-columns: minmax(0, 1fr); }
+            .section-layout-right .section-layout-image { order: 0; }
+            .site-page-editbar { position: sticky; max-height: 50vh; overflow-y: auto; padding: .6rem; }
+            .site-page-editbar strong, .site-page-editbar > span { flex: 1 1 100%; margin: 0 !important; }
+            .site-page-editbar button { min-height: 2.5rem; }
+            #editor-save-status { flex: 1 1 100%; margin-left: 0 !important; }
+            .editing-page .builder-controls { display: flex; }
+            .builder-controls > * { max-width: 100%; }
+            .builder-controls label { display: flex; flex: 1 1 100%; flex-wrap: wrap; gap: .35rem; }
+            .builder-controls select { max-width: 100%; }
+            .editing-page .section-body .website-card-grid { grid-template-columns: minmax(0, 1fr); }
+            .section-body .website-card-circle { max-width: min(260px, 100%); }
+            .note-editor, .note-editor .note-editing-area { max-width: 100%; min-width: 0; }
+            .note-editor .note-toolbar { display: flex; flex-wrap: wrap; }
+            .note-editor .note-toolbar .note-btn-group { margin: .15rem; }
+            .note-editor .note-editable { overflow-wrap: anywhere; }
+            .swal2-popup { width: calc(100vw - 1rem) !important; max-width: 32rem; padding: 1rem; }
+            .icon-picker-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .35rem; margin: .6rem .25rem; }
+        }
     </style>
 </head>
 <body>
@@ -70,7 +105,15 @@
         @include('customer.web.banners')
     @endif
 
-    @php($canEditPage = auth()->check() && !request()->boolean('public_view') && !auth()->user()->roles()->where('roles.name', 'Doctor')->exists())
+    @php
+        $pageEditorUser = auth()->user();
+        $pageEditorHasAdminAccess = $pageEditorUser && (
+            $pageEditorUser->roles()->where('roles.customer_id', app('customer')->id)->where('roles.name', 'Administrador')->exists()
+            || $pageEditorUser->roles()->whereNull('roles.customer_id')->where('roles.name', 'Super Administrador')->exists()
+        );
+        $canEditPage = auth()->check() && !request()->boolean('public_view')
+            && (!$pageEditorUser->roles()->where('roles.customer_id', app('customer')->id)->where('roles.name', 'Doctor')->exists() || $pageEditorHasAdminAccess);
+    @endphp
     @if ($canEditPage)
         <div id="page-editor-toolbar" class="site-page-editbar" hidden>
             <strong class="mr-2">Editando página</strong>
@@ -115,11 +158,13 @@
 
         <div id="page-sections">
             @foreach ($page->sections as $section)
-                <section class="site-page-section" data-section-id="{{ $section->id }}" data-image-position="{{ $section->image_position ?? 'inline' }}">
+                <section class="site-page-section {{ ($section->section_type ?? 'content') === 'booking' ? 'public-booking-section' : '' }}" data-section-id="{{ $section->id }}" data-section-type="{{ $section->section_type ?? 'content' }}" data-image-position="{{ $section->image_position ?? 'inline' }}">
                     @if ($canEditPage)
+                        @if (($section->section_type ?? 'content') !== 'booking')
                         <button type="button" class="inline-edit-icon section-edit-icon" title="Editar esta sección" aria-label="Editar esta sección">
                             <svg aria-hidden="true" viewBox="0 0 20 20" width="18" height="18" fill="currentColor"><path d="M13.586 3.586a2 2 0 0 1 2.828 2.828l-8.9 8.9-3.82.99.99-3.82 8.902-8.898ZM3 17h14v1H3v-1Z"/></svg>
                         </button>
+                        @endif
                         <div class="builder-controls">
                             <button type="button" class="move-section-up" title="Subir sección" aria-label="Subir sección">↑ Subir</button>
                             <button type="button" class="move-section-down" title="Bajar sección" aria-label="Bajar sección">↓ Bajar</button>
@@ -135,6 +180,14 @@
                             <button type="button" class="delete-section text-red-600">Eliminar sección</button>
                         </div>
                     @endif
+                    @if (($section->section_type ?? 'content') === 'booking')
+                        @if ($websiteNavigationButton?->public_booking_enabled)
+                            <a href="#publicBookingModal" class="public-booking-button" data-toggle="modal" data-target="#publicBookingModal" style="background-color: {{ themeColor(600) }}; color:#fff !important"><i class="fa-regular fa-calendar-check"></i> {{ $section->title ?: 'Agendar una cita' }}</a>
+                        @elseif ($canEditPage)
+                            <p class="text-sm text-amber-700">Activa el agendamiento público en Menú para mostrar este botón a los visitantes.</p>
+                        @endif
+                        <div class="section-body" hidden></div>
+                    @else
                     <h2 class="section-title" @if($canEditPage) contenteditable="false" @endif>{{ $section->title }}</h2>
                     @if ($section->image_path && in_array($section->image_position ?? 'inline', ['top', 'left', 'right'], true))
                         <div class="section-layout section-layout-{{ $section->image_position }}">
@@ -147,12 +200,38 @@
                             <img class="section-image" src="{{ asset('storage/' . $section->image_path) }}" alt="{{ $section->image_alt ?? '' }}">
                         @endif
                     @endif
+                    @endif
                 </section>
             @endforeach
         </div>
     </main>
 
     @include('customer.web.footer')
+    @if ($websiteNavigationButton?->public_booking_enabled)
+        <div class="modal fade" id="publicBookingModal" tabindex="-1" role="dialog" aria-labelledby="publicBookingModalTitle" aria-hidden="true">
+            <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable" role="document">
+                <div class="modal-content border-0 rounded-lg overflow-hidden">
+                    <div class="modal-header py-2" style="background-color: {{ themeColor(700) }}; color:#fff;">
+                        <h2 class="modal-title h5 mb-0" id="publicBookingModalTitle" style="color:#fff !important"><i class="fa-regular fa-calendar-check mr-2"></i>Agendar una cita</h2>
+                        <button type="button" class="close text-white" data-dismiss="modal" aria-label="Cerrar"><span aria-hidden="true">&times;</span></button>
+                    </div>
+                    <div class="modal-body p-0"><iframe title="Formulario para agendar una cita" data-src="{{ route('customer.public-booking.index', ['customer' => request()->route('customer'), 'modal' => 1]) }}" class="public-booking-frame" loading="lazy"></iframe></div>
+                </div>
+            </div>
+        </div>
+        <script>
+            document.addEventListener('click', event => {
+                const trigger = event.target.closest('a[href="#publicBookingModal"], [data-target="#publicBookingModal"]');
+                if (!trigger) return;
+                const modal = document.getElementById('publicBookingModal');
+                if (!modal) return;
+                event.preventDefault();
+                const frame = modal.querySelector('iframe[data-src]');
+                if (frame && !frame.src) frame.src = frame.dataset.src;
+                if (window.jQuery) window.jQuery(modal).modal('show');
+            });
+        </script>
+    @endif
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.bundle.min.js"></script>
     @if ($canEditPage)
@@ -256,7 +335,7 @@
 
                     Swal.fire({
                         title: existingCard ? 'Editar tarjeta' : 'Agregar elemento visual',
-                        html: '<select id="card-shape" class="swal2-select"><option value="card">Tarjeta</option><option value="circle">Círculo</option></select><select id="card-media" class="swal2-select"><option value="icon">Icono</option><option value="image">Imagen</option></select><input id="card-icon-search" type="search" class="swal2-input" placeholder="Buscar icono"><div id="card-icon-picker" class="icon-picker-grid"></div><input id="card-icon" type="hidden"><div id="card-current-image" style="display:none;margin:.5rem 1.5rem;text-align:center"></div><input id="card-image" type="file" accept="image/*" class="swal2-file" style="display:none"><input id="card-title" class="swal2-input" placeholder="Título o nombre"><textarea id="card-copy" class="swal2-textarea" placeholder="Descripción"></textarea><label style="display:block;margin:0 1.5rem;text-align:left"><input id="card-button-toggle" type="checkbox"> Agregar botón con enlace</label><input id="card-button-text" class="swal2-input" placeholder="Texto del botón" style="display:none"><input id="card-button-url" class="swal2-input" placeholder="Enlace (https://... o /ruta)" style="display:none">',
+                        html: '<select id="card-shape" class="swal2-select"><option value="card">Tarjeta</option><option value="circle">Círculo</option></select><select id="card-media" class="swal2-select"><option value="icon">Icono</option><option value="image">Imagen</option></select><input id="card-icon-search" type="search" class="swal2-input" placeholder="Buscar icono"><div id="card-icon-picker" class="icon-picker-grid"></div><input id="card-icon" type="hidden"><div id="card-current-image" style="display:none;margin:.5rem 1.5rem;text-align:center"></div><input id="card-image" type="file" accept="image/*" class="swal2-file" style="display:none"><input id="card-title" class="swal2-input" placeholder="Título o nombre"><textarea id="card-copy" class="swal2-textarea" placeholder="Descripción"></textarea><label style="display:block;margin:0 1.5rem;text-align:left"><input id="card-button-toggle" type="checkbox"> Agregar botón con enlace</label><select id="card-button-action" class="swal2-select" style="display:none"><option value="link">Abrir enlace</option><option value="booking">Agendar cita</option></select><input id="card-button-text" class="swal2-input" placeholder="Texto del botón" style="display:none"><input id="card-button-url" class="swal2-input" placeholder="Enlace (https://... o /ruta)" style="display:none">',
                         showCancelButton: true,
                         confirmButtonText: existingCard ? 'Guardar cambios' : 'Agregar',
                         cancelButtonText: 'Cancelar',
@@ -269,6 +348,7 @@
                             const imageInput = document.getElementById('card-image');
                             const imagePreview = document.getElementById('card-current-image');
                             const buttonToggle = document.getElementById('card-button-toggle');
+                            const buttonAction = document.getElementById('card-button-action');
                             const buttonText = document.getElementById('card-button-text');
                             const buttonUrl = document.getElementById('card-button-url');
 
@@ -279,7 +359,8 @@
                             document.getElementById('card-copy').value = existingCard?.querySelector('p')?.textContent?.trim() || '';
                             buttonToggle.checked = Boolean(oldButton);
                             buttonText.value = oldButton?.textContent?.trim() || '';
-                            buttonUrl.value = oldButton?.getAttribute('href') || '';
+                            buttonAction.value = oldButton?.getAttribute('href') === '#publicBookingModal' ? 'booking' : 'link';
+                            buttonUrl.value = oldButton?.getAttribute('href') === '#publicBookingModal' ? '' : (oldButton?.getAttribute('href') || '');
                             if (currentImageUrl) {
                                 imagePreview.innerHTML = `<img src="${currentImageUrl}" alt="Imagen actual" style="max-width:100%;max-height:120px;border-radius:.5rem">`;
                             }
@@ -315,13 +396,15 @@
                                 imageInput.style.display = media.value === 'image' ? '' : 'none';
                             };
                             media.addEventListener('change', updateMedia);
-                            buttonToggle.addEventListener('change', () => {
+                            const syncButtonFields = () => {
+                                buttonAction.style.display = buttonToggle.checked ? '' : 'none';
                                 buttonText.style.display = buttonToggle.checked ? '' : 'none';
-                                buttonUrl.style.display = buttonToggle.checked ? '' : 'none';
-                            });
+                                buttonUrl.style.display = buttonToggle.checked && buttonAction.value === 'link' ? '' : 'none';
+                            };
+                            buttonToggle.addEventListener('change', syncButtonFields);
+                            buttonAction.addEventListener('change', syncButtonFields);
                             updateMedia();
-                            buttonText.style.display = buttonToggle.checked ? '' : 'none';
-                            buttonUrl.style.display = buttonToggle.checked ? '' : 'none';
+                            syncButtonFields();
                         },
                         preConfirm: () => {
                             const title = document.getElementById('card-title').value.trim();
@@ -331,9 +414,10 @@
                             if (media === 'image' && !image && !currentImageUrl) { Swal.showValidationMessage('Selecciona una imagen.'); return false; }
                             const hasButton = document.getElementById('card-button-toggle').checked;
                             const buttonText = document.getElementById('card-button-text').value.trim();
-                            const buttonUrl = document.getElementById('card-button-url').value.trim();
+                            const buttonAction = document.getElementById('card-button-action').value;
+                            const buttonUrl = buttonAction === 'booking' ? '#publicBookingModal' : document.getElementById('card-button-url').value.trim();
                             if (hasButton && (!buttonText || !buttonUrl)) { Swal.showValidationMessage('Completa el texto y el enlace del botón.'); return false; }
-                            if (hasButton && !/^(https?:\/\/|\/|#|mailto:)/i.test(buttonUrl)) { Swal.showValidationMessage('Usa un enlace http(s), una ruta que comience con / o un correo mailto:.'); return false; }
+                            if (hasButton && buttonAction === 'link' && !/^(https?:\/\/|\/|#|mailto:)/i.test(buttonUrl)) { Swal.showValidationMessage('Usa un enlace http(s), una ruta que comience con / o un correo mailto:.'); return false; }
                             return {shape: document.getElementById('card-shape').value, media, icon: document.getElementById('card-icon').value || 'fa-stethoscope', image, title, copy: document.getElementById('card-copy').value.trim(), buttonText, buttonUrl, hasButton};
                         }
                     }).then(async (result) => {
@@ -475,7 +559,7 @@
                         const editor = $(body).next('.note-editor').find('.note-editable');
                         Swal.fire({
                             title: 'Agregar elemento visual',
-                            html: '<select id="card-shape" class="swal2-select"><option value="card">Tarjeta</option><option value="circle">Círculo</option></select><select id="card-media" class="swal2-select"><option value="icon">Icono</option><option value="image">Imagen</option></select><div id="card-icon-picker" class="icon-picker-grid"></div><input id="card-icon" type="hidden" value="fa-stethoscope"><input id="card-image" type="file" accept="image/*" class="swal2-file" style="display:none"><input id="card-title" class="swal2-input" placeholder="Título o nombre"><textarea id="card-copy" class="swal2-textarea" placeholder="Descripción"></textarea><label style="display:block;margin:0 1.5rem;text-align:left"><input id="card-button-toggle" type="checkbox"> Agregar botón con enlace</label><input id="card-button-text" class="swal2-input" placeholder="Texto del botón" style="display:none"><input id="card-button-url" class="swal2-input" placeholder="Enlace (https://... o /ruta)" style="display:none">',
+                            html: '<select id="card-shape" class="swal2-select"><option value="card">Tarjeta</option><option value="circle">Círculo</option></select><select id="card-media" class="swal2-select"><option value="icon">Icono</option><option value="image">Imagen</option></select><div id="card-icon-picker" class="icon-picker-grid"></div><input id="card-icon" type="hidden" value="fa-stethoscope"><input id="card-image" type="file" accept="image/*" class="swal2-file" style="display:none"><input id="card-title" class="swal2-input" placeholder="Título o nombre"><textarea id="card-copy" class="swal2-textarea" placeholder="Descripción"></textarea><label style="display:block;margin:0 1.5rem;text-align:left"><input id="card-button-toggle" type="checkbox"> Agregar botón con enlace</label><select id="card-button-action" class="swal2-select" style="display:none"><option value="link">Abrir enlace</option><option value="booking">Agendar cita</option></select><input id="card-button-text" class="swal2-input" placeholder="Texto del botón" style="display:none"><input id="card-button-url" class="swal2-input" placeholder="Enlace (https://... o /ruta)" style="display:none">',
                             showCancelButton: true,
                             confirmButtonText: 'Agregar',
                             cancelButtonText: 'Cancelar',
@@ -485,6 +569,7 @@
                                 const icon = document.getElementById('card-icon-picker');
                                 const image = document.getElementById('card-image');
                                 const buttonToggle = document.getElementById('card-button-toggle');
+                            const buttonAction = document.getElementById('card-button-action');
                                 const buttonText = document.getElementById('card-button-text');
                                 const buttonUrl = document.getElementById('card-button-url');
                                 const iconOptions = [
@@ -534,11 +619,15 @@
                                     image.style.display = media.value === 'image' ? '' : 'none';
                                 };
                                 media.addEventListener('change', updateMedia);
-                                buttonToggle.addEventListener('change', () => {
+                                const syncButtonFields = () => {
+                                    buttonAction.style.display = buttonToggle.checked ? '' : 'none';
                                     buttonText.style.display = buttonToggle.checked ? '' : 'none';
-                                    buttonUrl.style.display = buttonToggle.checked ? '' : 'none';
-                                });
+                                    buttonUrl.style.display = buttonToggle.checked && buttonAction.value === 'link' ? '' : 'none';
+                                };
+                                buttonToggle.addEventListener('change', syncButtonFields);
+                                buttonAction.addEventListener('change', syncButtonFields);
                                 updateMedia();
+                                syncButtonFields();
                             },
                             preConfirm: () => {
                                 const title = document.getElementById('card-title').value.trim();
@@ -548,9 +637,10 @@
                                 if (media === 'image' && !image) { Swal.showValidationMessage('Selecciona una imagen.'); return false; }
                                 const hasButton = document.getElementById('card-button-toggle').checked;
                                 const buttonText = document.getElementById('card-button-text').value.trim();
-                                const buttonUrl = document.getElementById('card-button-url').value.trim();
+                                const buttonAction = document.getElementById('card-button-action').value;
+                            const buttonUrl = buttonAction === 'booking' ? '#publicBookingModal' : document.getElementById('card-button-url').value.trim();
                                 if (hasButton && (!buttonText || !buttonUrl)) { Swal.showValidationMessage('Completa el texto y el enlace del botón.'); return false; }
-                                if (hasButton && !/^(https?:\/\/|\/|#|mailto:)/i.test(buttonUrl)) { Swal.showValidationMessage('Usa un enlace http(s), una ruta que comience con / o un correo mailto:.'); return false; }
+                                if (hasButton && buttonAction === 'link' && !/^(https?:\/\/|\/|#|mailto:)/i.test(buttonUrl)) { Swal.showValidationMessage('Usa un enlace http(s), una ruta que comience con / o un correo mailto:.'); return false; }
                                 return {shape: document.getElementById('card-shape').value, media, icon: document.getElementById('card-icon').value, image, title, copy: document.getElementById('card-copy').value.trim(), buttonText, buttonUrl, hasButton};
                             }
                         }).then((result) => {
@@ -655,6 +745,7 @@
                         for (const [position, section] of [...sections.children].entries()) {
                             const formData = new FormData();
                             formData.append('_method', section.dataset.sectionId ? 'PUT' : 'POST');
+                            formData.append('section_type', section.dataset.sectionType || 'content');
                             formData.append('title', section.querySelector('.section-title').innerText.trim());
                             const body = section.querySelector('.section-body');
                             const bodyHtml = $(body).data('summernote') ? $(body).summernote('code') : body.innerHTML;

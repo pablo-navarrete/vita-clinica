@@ -9,6 +9,7 @@ class WebsitePageSection extends Model
 {
     protected $fillable = [
         'website_page_id',
+        'section_type',
         'title',
         'body',
         'image_path',

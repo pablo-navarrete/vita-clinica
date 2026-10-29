@@ -25,4 +25,9 @@ class Customer extends Model
         'expires_at',
         'color'
     ];
+
+    public function branches()
+    {
+        return $this->hasMany(ClinicBranch::class);
+    }
 }

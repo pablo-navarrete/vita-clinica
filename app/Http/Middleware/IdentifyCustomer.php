@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 use App\Models\Logo;
 use App\Models\Customer;
+use App\Support\ClinicBranchContext;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -77,6 +78,16 @@ class IdentifyCustomer
     |--------------------------------------------------------------------------
     */
     app()->instance('customer', $customer);
+
+    if ($user) {
+        $activeBranch = ClinicBranchContext::defaultBranch($user, (int) $customer->id);
+        if ($activeBranch) {
+            $request->session()->put('active_branch_id', (int) $activeBranch->id);
+            $request->session()->put('active_branch_customer_id', (int) $customer->id);
+        } else {
+            $request->session()->forget(['active_branch_id', 'active_branch_customer_id']);
+        }
+    }
 
     /*
     |--------------------------------------------------------------------------

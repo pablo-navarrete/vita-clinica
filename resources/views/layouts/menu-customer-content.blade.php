@@ -1,0 +1,363 @@
+@php($vitaContentOnly = request()->boolean('_vita_content') || request()->ajax())
+<!DOCTYPE html>
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+
+    <title>{{ config('app.name', 'VITA') }}</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.bunny.net">
+    <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
+
+    <!-- FontAwesome -->
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <!-- DataTables -->
+    <link rel="stylesheet"
+          href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+
+    <link rel="stylesheet"
+          href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.dataTables.min.css">
+
+    <!--full calendar-->
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.19/index.global.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
+
+    @stack('styles')
+
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
+
+    <style>
+        #vita-module-loading { position:absolute; inset:0; z-index:70; display:grid; place-items:center; background:transparent; }
+        #vita-module-loading[hidden] { display:none; }
+        .vita-module-preloader { display:flex; flex-direction:column; align-items:center; gap:14px; max-width:calc(100% - 40px); padding:24px; text-align:center; color:{{ themeColor(700) }}; font-size:14px; }
+        .vita-module-spinner { width:48px; height:48px; border:4px solid {{ themeColor(100) }}; border-top-color:{{ themeColor(600) }}; border-radius:50%; animation:vita-module-spin .8s linear infinite; }
+        #vita-module-loading-label { font-weight:600; color:{{ themeColor(700) }}; }
+        #vita-module-loading-dismiss { display:none; border:1px solid {{ themeColor(300) }}; border-radius:8px; padding:8px 14px; color:{{ themeColor(700) }}; background:{{ themeColor(50) }}; }
+        #vita-module-loading[data-error="true"] .vita-module-spinner { display:none; }
+        #vita-module-loading[data-error="true"] #vita-module-loading-dismiss { display:block; }
+        @keyframes vita-module-spin { to { transform:rotate(360deg); } }
+        @media(prefers-reduced-motion:reduce) { .vita-module-spinner { animation-duration:2s; } }
+        [x-cloak] {
+            display: none !important;
+        }
+
+        html, body { height: 100%; overflow: hidden; }
+
+        :root { --date-field-accent: {{ themeColor(600) }}; }
+        .flatpickr-calendar {
+            border: 1px solid #e2e8f0 !important;
+            border-radius: 16px !important;
+            box-shadow: 0 18px 45px rgba(15, 23, 42, .18) !important;
+            width: 326px !important;
+            padding: 10px 12px !important;
+            font-family: inherit !important;
+            overflow: visible;
+        }
+        .flatpickr-months { padding: 4px 4px 8px; }
+        .flatpickr-current-month { font-size: 1rem !important; font-weight: 700; }
+        .flatpickr-current-month .flatpickr-monthDropdown-months,
+        .flatpickr-current-month input.cur-year { font-weight: 700 !important; }
+        .flatpickr-weekday { color: #64748b !important; font-weight: 600 !important; }
+        .flatpickr-day { border-radius: 9px !important; color: #334155 !important; }
+        .flatpickr-day:hover { background: color-mix(in srgb, var(--date-field-accent) 12%, white) !important; border-color: transparent !important; }
+        .flatpickr-day.today { border-color: var(--date-field-accent) !important; }
+        .flatpickr-day.selected,
+        .flatpickr-day.startRange,
+        .flatpickr-day.endRange,
+        .flatpickr-day.selected:hover { background: var(--date-field-accent) !important; border-color: var(--date-field-accent) !important; color: #fff !important; }
+        .flatpickr-day.disabled { color: #cbd5e1 !important; }
+        .flatpickr-days, .dayContainer { width: 294px !important; min-width: 294px !important; max-width: 294px !important; }
+        .flatpickr-weekdays, .flatpickr-weekdaycontainer { width: 294px !important; }
+        .flatpickr-day.vita-holiday:not(.selected) { color: #dc2626 !important; background: #fff1f2; border-color: transparent; }
+        .flatpickr-day.vita-holiday:not(.selected):hover { background: #ffe4e6 !important; }
+        .flatpickr-prev-month:hover svg,
+        .flatpickr-next-month:hover svg { fill: var(--date-field-accent) !important; }
+        .date-picker-visible { min-height: 2.75rem; width: 100%; cursor: pointer; }
+        .date-picker-visible:disabled { cursor: not-allowed; }
+        input[type="date"],
+        input[type="datetime-local"],
+        input[type="month"] {
+            min-height: 2.75rem;
+            padding: .55rem .8rem;
+            border: 1px solid #cbd5e1;
+            border-radius: .65rem;
+            background-color: #fff;
+            color: #1f2937;
+            accent-color: var(--date-field-accent);
+            color-scheme: light;
+            transition: border-color .18s ease, box-shadow .18s ease, background-color .18s ease;
+        }
+        input[type="date"]:hover,
+        input[type="datetime-local"]:hover,
+        input[type="month"]:hover { border-color: var(--date-field-accent); }
+        input[type="date"]:focus,
+        input[type="datetime-local"]:focus,
+        input[type="month"]:focus {
+            border-color: var(--date-field-accent);
+            outline: none;
+            box-shadow: 0 0 0 3px color-mix(in srgb, var(--date-field-accent) 18%, transparent);
+        }
+        input[type="date"]::-webkit-calendar-picker-indicator,
+        input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+        input[type="month"]::-webkit-calendar-picker-indicator {
+            padding: .3rem;
+            border-radius: .4rem;
+            cursor: pointer;
+            transition: background-color .18s ease;
+        }
+        input[type="date"]::-webkit-calendar-picker-indicator:hover,
+        input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover,
+        input[type="month"]::-webkit-calendar-picker-indicator:hover {
+            background-color: color-mix(in srgb, var(--date-field-accent) 12%, white);
+        }
+        input[type="date"]:disabled,
+        input[type="datetime-local"]:disabled,
+        input[type="month"]:disabled { cursor: not-allowed; background-color: #f3f4f6; color: #9ca3af; }
+
+        .dataTables_length select {
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            background-image: none !important;
+        }
+
+        .dataTables_wrapper {
+            padding-top: 10px;
+        }
+
+        .dataTables_filter {
+            margin-bottom: 20px !important;
+        }
+
+        .dataTables_filter label {
+            font-weight: 600;
+            color: #374151;
+        }
+
+        .dataTables_filter input {
+            margin-left: 10px !important;
+            border: 1px solid #d1d5db !important;
+            border-radius: 10px !important;
+            padding: 8px 14px !important;
+            outline: none !important;
+            transition: all .2s ease;
+        }
+
+        .dataTables_filter input:focus {
+            border-color: #3b82f6 !important;
+            box-shadow: 0 0 0 3px rgba(59,130,246,.2) !important;
+        }
+
+        .dataTables_length {
+            margin-bottom: 20px !important;
+        }
+
+        .dataTables_length select {
+            border: 1px solid #d1d5db !important;
+            border-radius: 8px !important;
+            padding: 5px 10px !important;
+        }
+
+        table.dataTable {
+            border-collapse: collapse !important;
+        }
+
+        table.dataTable thead th {
+            background-color: {{ themeColor(100) }} !important;
+            color: #1f2937 !important;
+            font-weight: 700;
+            padding: 14px !important;
+            border-bottom: 1px solid #e5e7eb !important;
+        }
+
+        table.dataTable tbody td {
+            padding: 14px !important;
+            border-bottom: 1px solid #f3f4f6;
+        }
+
+        table.dataTable tbody tr.odd > *,
+        table.dataTable.display tbody tr.odd > .sorting_1 { background-color: #f9f9f9 !important; }
+        table.dataTable tbody tr.even > *,
+        table.dataTable.display tbody tr.even > .sorting_1 { background-color: #fff !important; }
+        table.dataTable tbody tr.odd > td:first-child { background-color: #f9f9f9 !important; }
+        table.dataTable tbody tr.even > td:first-child { background-color: #fff !important; }
+        table.dataTable tbody tr:hover > *,
+        table.dataTable.display tbody tr:hover > .sorting_1 { background-color: #f3f4f6 !important; }
+
+        .dataTables_paginate {
+            margin-top: 20px !important;
+        }
+
+        .paginate_button {
+            border-radius: 8px !important;
+            margin: 0 3px !important;
+        }
+
+        .paginate_button.current {
+            background: #DBEAFE !important;
+        }
+
+        .dataTables_info {
+            margin-top: 20px;
+            color: #6b7280;
+        }
+    </style>
+</head>
+
+<body data-vita-content="{{ $vitaContentOnly ? 'true' : 'false' }}" class="h-screen overflow-hidden font-sans antialiased">
+  
+
+<div x-data="{ open: false }" class="flex h-screen min-h-0 overflow-hidden" style="background-color: {{ themeColor(50) }}">
+    @unless($vitaContentOnly)
+        @include('layouts.sidebar-customer')
+    @endunless
+    <div class="flex h-screen min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        @unless($vitaContentOnly)
+            <div class="sticky top-0 z-30 shrink-0">@include('layouts.navigation-customer')</div>
+        @endunless
+        @if($vitaContentOnly)
+            <div class="min-h-0 flex-1 flex flex-col overflow-y-auto">
+            {{-- HEADER OPCIONAL --}}
+            @if(View::hasSection('header'))
+                <header class=" shadow" style="background-color: {{ themeColor(50) }}">
+                    <div class="px-6 py-6">
+                        @yield('header')
+                    </div>
+                </header>
+            @endif
+
+            {{-- CONTENIDO --}}
+            <main class="flex-1 p-6">
+                @yield('content')
+            </main>
+
+        @include('layouts.footer-customer')
+            </div>
+        @else
+            <div id="vita-module-slot" aria-label="Contenido del m&#243;dulo" style="position:relative;flex:1;min-height:0;overflow:hidden">
+                <iframe id="vita-content-current" name="vita-content-initial" title="Contenido del m&#243;dulo" data-initial-url="{{ request()->fullUrlWithQuery(['_vita_frame' => 1, '_vita_content' => 1]) }}" style="border:0;width:100%;height:100%;display:block"></iframe>
+                <div id="vita-module-loading" hidden role="status" aria-live="polite">
+                    <div class="vita-module-preloader">
+                        <span class="vita-module-spinner" aria-hidden="true"></span>
+                        <span id="vita-module-loading-label">Cargando...</span>
+                        <button id="vita-module-loading-dismiss" type="button" onclick="this.closest('#vita-module-loading').hidden = true">Volver al contenido</button>
+                    </div>
+                </div>
+            </div>
+        @endif
+    </div>
+</div>
+
+<!-- JQUERY -->
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+
+<!-- DATATABLES -->
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+
+<!-- DATATABLES RESPONSIVE -->
+<script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
+
+<!-- SWEET ALERT -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<!--fullcalendar-->
+@if($vitaContentOnly && request()->is('appointments*'))
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.19/index.global.min.js"></script>
+@endif
+
+<!--CHART.JS-->
+@if($vitaContentOnly && request()->is('dashboard*'))
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+@endif
+<script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/es.js"></script>
+<script>
+    const vitaChileHolidays = (year) => {
+        const dates = {
+            [`${year}-01-01`]: 'Año Nuevo', [`${year}-05-01`]: 'Día del Trabajo',
+            [`${year}-05-21`]: 'Día de las Glorias Navales', [`${year}-06-29`]: 'San Pedro y San Pablo',
+            [`${year}-07-16`]: 'Día de la Virgen del Carmen', [`${year}-08-15`]: 'Asunción de la Virgen',
+            [`${year}-09-18`]: 'Independencia Nacional', [`${year}-09-19`]: 'Día de las Glorias del Ejército',
+            [`${year}-10-12`]: 'Encuentro de Dos Mundos', [`${year}-10-31`]: 'Día de las Iglesias Evangélicas y Protestantes',
+            [`${year}-11-01`]: 'Día de Todos los Santos', [`${year}-12-08`]: 'Inmaculada Concepción',
+            [`${year}-12-25`]: 'Navidad',
+        };
+        // Viernes Santo y Sábado Santo: Pascua computus gregoriano.
+        const a = year % 19, b = Math.floor(year / 100), c = year % 100;
+        const d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25);
+        const g = Math.floor((b - f + 1) / 3), h = (19 * a + b - d - g + 15) % 30;
+        const i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7;
+        const m = Math.floor((a + 11 * h + 22 * l) / 451);
+        const easter = new Date(year, Math.floor((h + l - 7 * m + 114) / 31) - 1, ((h + l - 7 * m + 114) % 31) + 1);
+        [-2, -1].forEach((offset, index) => {
+            const date = new Date(easter); date.setDate(date.getDate() + offset);
+            dates[`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`] = index === 0 ? 'Viernes Santo' : 'Sábado Santo';
+        });
+        return dates;
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('input[type="date"]').forEach(input => {
+            if (input._flatpickr) return;
+            flatpickr(input, {
+                locale: 'es',
+                dateFormat: 'Y-m-d',
+                altInput: true,
+                altFormat: 'd/m/Y',
+                altInputClass: `${input.className} date-picker-visible`,
+                allowInput: true,
+                disableMobile: true,
+                onDayCreate: (_dates, _dateString, _instance, dayElement) => {
+                    const year = dayElement.dateObj.getFullYear();
+                    const key = `${year}-${String(dayElement.dateObj.getMonth() + 1).padStart(2, '0')}-${String(dayElement.dateObj.getDate()).padStart(2, '0')}`;
+                    const holiday = vitaChileHolidays(year)[key];
+                    if (holiday) { dayElement.classList.add('vita-holiday'); dayElement.title = holiday; }
+                },
+            });
+        });
+    });
+</script>
+
+@if($vitaContentOnly)
+    @stack('scripts')
+@else
+    @stack('chrome-scripts')
+@endif
+@unless($vitaContentOnly)
+    @include('components.vita-assistant')
+@endunless
+<script>
+    const Toast = Swal.mixin({
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+        timer: 3000,
+        timerProgressBar: true
+    });
+
+    @if(session('success'))
+        Toast.fire({
+            icon: 'success',
+            title: @json(session('success'))
+        });
+    @endif
+
+    @if(session('error'))
+        Toast.fire({
+            icon: 'error',
+            title: @json(session('error'))
+        });
+    @endif
+</script>
+
+@unless($vitaContentOnly)
+<script src="{{ asset('js/vita-module-navigation.js') }}?v={{ filemtime(public_path('js/vita-module-navigation.js')) }}"></script>
+@endunless
+<script src="{{ asset('js/vita-navigation-bridge.js') }}?v={{ filemtime(public_path('js/vita-navigation-bridge.js')) }}"></script>
+</body>
+</html>

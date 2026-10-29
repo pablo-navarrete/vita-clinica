@@ -11,6 +11,7 @@ use App\Models\WebsiteSocialSetting;
 use App\Models\WebsiteTopbar;
 use App\Models\Specialty;
 use App\Models\WebsiteMaintenance;
+use App\Models\WebsiteNavigationButton;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Response;
@@ -75,7 +76,14 @@ class WebsitePageController extends Controller
         $page = $this->findPage($id);
         $data = $this->validatedSection($request);
 
-        if (!$request->filled('title') && !$request->filled('body') && !$request->hasFile('image')) {
+        if (($data['section_type'] ?? 'content') === 'booking') {
+            $data['title'] = $data['title'] ?: 'Agendar una cita';
+            $data['body'] = null;
+            $data['image_path'] = null;
+            $data['image_alt'] = null;
+            $data['image_position'] = 'inline';
+            $page->sections()->where('position', '>=', $data['position'])->increment('position');
+        } elseif (!$request->filled('title') && !$request->filled('body') && !$request->hasFile('image')) {
             throw ValidationException::withMessages([
                 'body' => 'Agrega un título, un texto o una imagen para crear la sección.',
             ]);
@@ -88,8 +96,10 @@ class WebsitePageController extends Controller
             );
         }
 
-        $data['body'] = $this->sanitizeRichText($data['body'] ?? '');
-        $data = $this->extractLayoutImage($data);
+        if (($data['section_type'] ?? 'content') === 'content') {
+            $data['body'] = $this->sanitizeRichText($data['body'] ?? '');
+            $data = $this->extractLayoutImage($data);
+        }
         $section = $page->sections()->create($data);
 
         if ($request->expectsJson()) {
@@ -116,6 +126,18 @@ class WebsitePageController extends Controller
         $page = $this->findPage($id);
         $section = $page->sections()->findOrFail($sectionId);
         $data = $this->validatedSection($request);
+        if (($data['section_type'] ?? 'content') === 'booking') {
+            $data['body'] = null;
+            $data['image_path'] = null;
+            $data['image_alt'] = null;
+            $data['image_position'] = 'inline';
+            unset($data['image'], $data['remove_image']);
+            $section->update($data);
+
+            return $request->expectsJson()
+                ? response()->json(['success' => true])
+                : $this->backToEditor($page->id)->with('success', 'Sección de agendamiento actualizada.');
+        }
         $data['body'] = $this->sanitizeRichText($data['body'] ?? '');
 
         $willKeepImage = $section->image_path
@@ -181,7 +203,11 @@ class WebsitePageController extends Controller
     {
         $customerId = app('customer')->id;
         $maintenance = WebsiteMaintenance::query()->firstOrNew(['customer_id' => $customerId]);
-        $canManageWebsite = auth()->check() && !auth()->user()->roles()->where('roles.name', 'Doctor')->exists();
+        $user = auth()->user();
+        $hasAdminAccess = $user && ($user->roles()->where('roles.customer_id', $customerId)->where('roles.name', 'Administrador')->exists()
+            || $user->roles()->whereNull('roles.customer_id')->where('roles.name', 'Super Administrador')->exists());
+        $isDoctorOnly = $user && $user->roles()->where('roles.customer_id', $customerId)->where('roles.name', 'Doctor')->exists() && ! $hasAdminAccess;
+        $canManageWebsite = (bool) $user && ! $isDoctorOnly;
         if ($maintenance->enabled && (request()->boolean('public_view') || !$canManageWebsite)) {
             return response()->view('customer.web.maintenance', compact('maintenance'), 503);
         }
@@ -193,6 +219,7 @@ class WebsitePageController extends Controller
             ->firstOrFail();
 
         $publicMenus = $this->publicMenus($customerId);
+        $websiteNavigationButton = WebsiteNavigationButton::query()->where('customer_id', $customerId)->first();
         $publicBanners = WebsiteBanner::query()
             ->where('customer_id', $customerId)
             ->where('status', true)
@@ -215,6 +242,7 @@ class WebsitePageController extends Controller
         return view('customer.web.page', [
             'page' => $page,
             'publicMenus' => $publicMenus,
+            'websiteNavigationButton' => $websiteNavigationButton,
             'publicBanners' => $publicBanners,
             'publicSpecialties' => $publicSpecialties,
             'hasConfiguredMenus' => $publicMenus->isNotEmpty(),
@@ -240,8 +268,11 @@ class WebsitePageController extends Controller
             'image_alt' => ['nullable', 'string', 'max:160'],
             'image_position' => ['required', 'in:inline,top,left,right'],
             'position' => ['required', 'integer', 'min:0', 'max:999'],
+            'section_type' => ['nullable', 'in:content,booking'],
             'remove_image' => ['nullable', 'boolean'],
         ]);
+
+        $data['section_type'] = $data['section_type'] ?? 'content';
 
         unset($data['image']);
 

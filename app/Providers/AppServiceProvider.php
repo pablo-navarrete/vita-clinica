@@ -14,6 +14,8 @@ use App\Models\ProfessionalSchedule;
 use App\Models\Specialty;
 use App\Models\User;
 use App\Models\WebsiteBanner;
+use App\Models\WebsiteBlogPost;
+use App\Models\WebsiteBlogSetting;
 use App\Models\WebsiteFooter;
 use App\Models\WebsiteMaintenance;
 use App\Models\WebsitePage;
@@ -47,6 +49,7 @@ class AppServiceProvider extends ServiceProvider
             Insurance::class, Specialty::class, Menu::class, WebsitePage::class,
             WebsitePageSection::class, WebsiteBanner::class, WebsiteFooter::class,
             WebsiteSocialSetting::class, WebsiteTopbar::class, WebsiteMaintenance::class,
+            WebsiteBlogPost::class, WebsiteBlogSetting::class,
             Logo::class, LogoLocation::class,
         ] as $model) {
             $model::observe($observer);
@@ -54,12 +57,13 @@ class AppServiceProvider extends ServiceProvider
 
         View::composer('*', function ($view) {
 
-            if (!app()->bound('customer')) {
+            $customer = app()->bound('customer') ? app('customer') : null;
+            if (!$customer) {
                 $view->with('logosByLocation', []);
                 return;
             }
 
-            $customerId = app('customer')->id;
+            $customerId = $customer->id;
 
             $logos = Logo::with('locations')
                 ->where('customer_id', $customerId)

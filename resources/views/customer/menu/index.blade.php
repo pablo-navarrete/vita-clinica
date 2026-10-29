@@ -39,6 +39,33 @@
             </form>
         </section>
 
+        <section class="rounded-lg bg-white p-6 shadow-sm">
+            <h3 class="mb-1 text-lg font-semibold text-gray-800">Boton junto al menu publico</h3>
+            <p class="mb-5 text-sm text-gray-500">Configura un enlace destacado independiente del bloque de agendamiento.</p>
+            <form method="POST" action="{{ route('customers.menus.navigation-button.update', ['customer' => request()->route('customer')]) }}" class="grid grid-cols-1 items-end gap-4 md:grid-cols-12">
+                @csrf
+                @method('PUT')
+                <div class="md:col-span-3"><label for="navigation-button-enabled" class="mb-1 block text-sm font-medium text-gray-700">Mostrar boton</label><select id="navigation-button-enabled" name="enabled" class="w-full rounded-md border-gray-300 shadow-sm"><option value="1" @selected((string) old('enabled', $navigationButton->enabled ? '1' : '0') === '1')>Si, mostrar</option><option value="0" @selected((string) old('enabled', $navigationButton->enabled ? '1' : '0') === '0')>No mostrar</option></select>@error('enabled') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror</div>
+                <div class="md:col-span-4"><label for="navigation-button-label" class="mb-1 block text-sm font-medium text-gray-700">Texto del boton</label><input id="navigation-button-label" name="label" required maxlength="60" value="{{ old('label', $navigationButton->label) }}" class="w-full rounded-md border-gray-300 shadow-sm" placeholder="Ej. Contactar">@error('label') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror</div>
+                <div class="md:col-span-5"><label for="navigation-button-destination" class="mb-1 block text-sm font-medium text-gray-700">Al hacer clic, abrir</label><select id="navigation-button-destination" name="destination" class="w-full rounded-md border-gray-300 shadow-sm"><option value="contact" @selected(old('destination', $navigationButton->destination) === 'contact')>Seccion de contacto</option><option value="whatsapp" @selected(old('destination', $navigationButton->destination) === 'whatsapp')>WhatsApp</option><option value="page" @selected(old('destination', $navigationButton->destination) === 'page')>Una pagina del sitio</option><option value="booking" @selected(old('destination', $navigationButton->destination) === 'booking')>Agendar cita (abrir modal)</option><option value="custom" @selected(old('destination', $navigationButton->destination) === 'custom')>Enlace personalizado</option></select>@error('destination') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror</div>
+                <div id="navigation-button-page-field" class="md:col-span-6"><label for="navigation-button-menu" class="mb-1 block text-sm font-medium text-gray-700">Pagina publica</label><select id="navigation-button-menu" name="menu_id" class="w-full rounded-md border-gray-300 shadow-sm"><option value="">Selecciona una pagina</option>@foreach ($menus->where('status', true) as $publicMenu)<option value="{{ $publicMenu->id }}" @selected((string) old('menu_id', $navigationButton->menu_id) === (string) $publicMenu->id)>{{ $publicMenu->name }}</option>@endforeach</select>@error('menu_id') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror</div>
+                <div id="navigation-button-whatsapp-field" class="md:col-span-6"><label for="navigation-button-whatsapp" class="mb-1 block text-sm font-medium text-gray-700">WhatsApp con codigo de pais</label><input id="navigation-button-whatsapp" name="whatsapp_phone" type="tel" maxlength="40" value="{{ old('whatsapp_phone', $navigationButton->whatsapp_phone) }}" class="w-full rounded-md border-gray-300 shadow-sm" placeholder="56912345678">@error('whatsapp_phone') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror</div>
+                <div id="navigation-button-custom-field" class="md:col-span-12"><label for="navigation-button-url" class="mb-1 block text-sm font-medium text-gray-700">Enlace personalizado</label><input id="navigation-button-url" name="custom_url" maxlength="500" value="{{ old('custom_url', $navigationButton->custom_url) }}" class="w-full rounded-md border-gray-300 shadow-sm" placeholder="https://... , /reservas o mailto:correo@clinica.cl">@error('custom_url') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror</div>
+                <div class="md:col-span-12"><button type="submit" class="rounded-md px-4 py-2 font-semibold text-white hover:brightness-90" style="background-color: {{ themeColor(600) }}"><i class="fa-solid fa-floppy-disk mr-1"></i> Guardar boton</button></div>
+            </form>
+        </section>
+
+        <section class="rounded-lg bg-white p-6 shadow-sm">
+            <h3 class="mb-1 text-lg font-semibold text-gray-800">Agendamiento publico</h3>
+            <p class="mb-4 text-sm text-gray-500">Activa el formulario y despues agrega su bloque desde el editor de una pagina para elegir donde mostrarlo.</p>
+            <form method="POST" action="{{ route('customers.menus.public-booking.update', ['customer' => request()->route('customer')]) }}" class="flex flex-wrap items-end gap-4">
+                @csrf
+                @method('PUT')
+                <div class="w-full sm:max-w-xs"><label for="public-booking-enabled" class="mb-1 block text-sm font-medium text-gray-700">Permitir solicitudes de hora</label><select id="public-booking-enabled" name="public_booking_enabled" class="w-full rounded-md border-gray-300 shadow-sm"><option value="1" @selected((string) old('public_booking_enabled', $navigationButton->public_booking_enabled ? '1' : '0') === '1')>Activado</option><option value="0" @selected((string) old('public_booking_enabled', $navigationButton->public_booking_enabled ? '1' : '0') === '0')>Desactivado</option></select>@error('public_booking_enabled') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror</div>
+                <button type="submit" class="rounded-md px-4 py-2 font-semibold text-white hover:brightness-90" style="background-color: {{ themeColor(600) }}"><i class="fa-solid fa-floppy-disk mr-1"></i> Guardar agendamiento</button>
+            </form>
+        </section>
+
         <section class="overflow-hidden rounded-lg bg-white p-6 shadow-sm">
             <div class="mb-4 flex items-center justify-between">
                 <h3 class="text-lg font-semibold text-gray-800">Páginas del menú</h3>
@@ -143,6 +170,23 @@
         #menus-table tbody tr.dt-rowReorder-moving { background-color: #f3f4f6; }
         #menus-table .reorder-handle { touch-action: none; }
     </style>
+@endpush
+
+@push('scripts')
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const destination = document.getElementById('navigation-button-destination');
+            if (!destination) return;
+            const fields = {
+                page: document.getElementById('navigation-button-page-field'),
+                whatsapp: document.getElementById('navigation-button-whatsapp-field'),
+                custom: document.getElementById('navigation-button-custom-field'),
+            };
+            const updateFields = () => Object.entries(fields).forEach(([key, element]) => element.hidden = destination.value !== key);
+            destination.addEventListener('change', updateFields);
+            updateFields();
+        });
+    </script>
 @endpush
 
 @push('scripts')
@@ -252,7 +296,7 @@
                     showMessage('success', result.message);
                 } catch (error) {
                     showMessage('error', error.message || 'No se pudo guardar el orden.');
-                    window.location.reload();
+                    window.VitaNavigation.refresh();
                 }
             });
         });

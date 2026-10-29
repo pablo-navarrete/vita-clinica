@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\ClinicActivityLog;
+use App\Models\ClinicBranch;
 use Illuminate\Database\Eloquent\Model;
 
 class ClinicActivityLogger
@@ -16,6 +17,7 @@ class ClinicActivityLogger
         'Specialty' => 'Especialidades', 'Menu' => 'Administración web',
         'WebsitePage' => 'Administración web', 'WebsitePageSection' => 'Administración web',
         'WebsiteBanner' => 'Administración web', 'WebsiteFooter' => 'Administración web',
+        'WebsiteBlogPost' => 'Administración web', 'WebsiteBlogSetting' => 'Administración web',
         'WebsiteSocialSetting' => 'Administración web', 'WebsiteTopbar' => 'Administración web',
         'WebsiteMaintenance' => 'Administración web', 'Logo' => 'Administración web',
         'LogoLocation' => 'Administración web',
@@ -58,7 +60,9 @@ class ClinicActivityLogger
         'WebsitePage' => ['title' => 'título', 'slug' => 'enlace', 'status' => 'estado', 'banner_path' => 'banner'],
         'WebsitePageSection' => ['title' => 'título', 'body' => 'contenido', 'image_path' => 'imagen', 'image_position' => 'posición de imagen', 'position' => 'orden'],
         'WebsiteBanner' => ['title' => 'título', 'subtitle' => 'subtítulo', 'description' => 'descripción', 'image_path' => 'imagen', 'image_alt' => 'texto alternativo', 'button_text' => 'texto del botón', 'button_url' => 'enlace del botón', 'position' => 'posición', 'status' => 'estado'],
-        'WebsiteFooter' => ['enabled' => 'visibilidad', 'title' => 'título', 'description' => 'descripción', 'phone' => 'teléfono', 'email' => 'correo', 'address' => 'dirección', 'show_social_links' => 'redes sociales'],
+        'WebsiteBlogPost' => ['title' => 'título', 'excerpt' => 'resumen', 'content' => 'contenido', 'image_path' => 'imagen', 'status' => 'estado', 'published_at' => 'fecha de publicación'],
+        'WebsiteBlogSetting' => ['enabled' => 'visibilidad del blog', 'title' => 'nombre del blog', 'banner_path' => 'imagen del banner'],
+        'WebsiteFooter' => ['enabled' => 'visibilidad', 'brand_display' => 'marca del footer', 'title' => 'título', 'description' => 'descripción', 'phone' => 'teléfono', 'email' => 'correo', 'address' => 'dirección', 'show_social_links' => 'redes sociales'],
         'WebsiteSocialSetting' => ['social_links' => 'enlaces de redes sociales', 'show_in_topbar' => 'visibilidad de redes'],
         'WebsiteTopbar' => ['enabled' => 'visibilidad', 'show_social_links' => 'redes sociales', 'phone' => 'teléfono', 'email' => 'correo'],
         'WebsiteMaintenance' => ['enabled' => 'modo mantenimiento', 'message' => 'mensaje'],
@@ -113,7 +117,8 @@ class ClinicActivityLogger
             $summary,
             $changedLabels,
             get_class($model),
-            $model->getKey()
+            $model->getKey(),
+            $model
         );
     }
 
@@ -144,10 +149,12 @@ class ClinicActivityLogger
         string $summary,
         array $changes,
         ?string $subjectType,
-        int|string|null $subjectId
+        int|string|null $subjectId,
+        ?Model $model = null
     ): void {
         ClinicActivityLog::create([
             'customer_id' => $customerId,
+            'clinic_branch_id' => self::branchId($customerId, $model),
             'user_id' => auth()->id(),
             'actor_name' => auth()->user()?->name,
             'module' => $module,
@@ -160,12 +167,53 @@ class ClinicActivityLogger
         ]);
     }
 
+    private static function branchId(int $customerId, ?Model $model = null): ?int
+    {
+        if ((int) session('active_branch_customer_id') === $customerId && session()->has('active_branch_id')) {
+            $activeBranchId = ClinicBranch::withTrashed()
+                ->where('customer_id', $customerId)
+                ->whereKey((int) session('active_branch_id'))
+                ->value('id');
+
+            if ($activeBranchId !== null) {
+                return (int) $activeBranchId;
+            }
+        }
+
+        if (!$model) {
+            return null;
+        }
+
+        $branchId = $model->getAttribute('clinic_branch_id');
+        if (!$branchId) {
+            foreach (['appointment', 'patient', 'medicalRecord'] as $relation) {
+                if (method_exists($model, $relation) && ($related = $model->{$relation})) {
+                    $branchId = $related->getAttribute('clinic_branch_id');
+                    if (!$branchId && method_exists($related, 'patient')) {
+                        $branchId = $related->patient?->getAttribute('clinic_branch_id');
+                    }
+                    if ($branchId) {
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (!$branchId) {
+            return null;
+        }
+
+        $branchId = ClinicBranch::withTrashed()->where('customer_id', $customerId)->whereKey((int) $branchId)->value('id');
+
+        return $branchId === null ? null : (int) $branchId;
+    }
+
     private static function subjectLabel(Model $model, string $type): string
     {
         $value = match ($type) {
             'Patient', 'User', 'Insurance', 'Specialty', 'Menu', 'WebsitePage', 'WebsiteFooter',
-            'WebsiteBanner', 'Logo' => $model->getAttribute(match ($type) {
-                'WebsitePage', 'WebsiteBanner', 'WebsiteFooter' => 'title',
+            'WebsiteBanner', 'WebsiteBlogPost', 'Logo' => $model->getAttribute(match ($type) {
+                'WebsitePage', 'WebsiteBanner', 'WebsiteBlogPost', 'WebsiteFooter' => 'title',
                 default => 'name',
             }),
             'Appointment', 'Encounter' => $model->patient?->name,
@@ -174,6 +222,7 @@ class ClinicActivityLogger
             'Allergie', 'ChronicDiseases', 'RegularMedication', 'PreviousSurgerie' => $model->medicalRecord?->patient?->name,
             'MedicalRecord' => $model->patient?->name,
             'WebsiteSocialSetting' => 'Redes sociales',
+            'WebsiteBlogSetting' => 'Visibilidad del blog',
             'WebsiteTopbar' => 'Barra superior',
             'WebsiteMaintenance' => 'Modo mantenimiento',
             'LogoLocation' => $model->location,
@@ -201,6 +250,7 @@ class ClinicActivityLogger
             'Insurance' => 'previsión', 'Specialty' => 'especialidad', 'Menu' => 'menú',
             'WebsitePage' => 'página web', 'WebsitePageSection' => 'sección web',
             'WebsiteBanner' => 'banner', 'WebsiteFooter' => 'footer',
+            'WebsiteBlogPost' => 'artículo del blog', 'WebsiteBlogSetting' => 'visibilidad del blog',
             'WebsiteSocialSetting' => 'redes sociales', 'WebsiteTopbar' => 'barra superior',
             'WebsiteMaintenance' => 'modo mantenimiento', 'Logo' => 'logo', 'LogoLocation' => 'ubicación de logo',
             default => 'registro',

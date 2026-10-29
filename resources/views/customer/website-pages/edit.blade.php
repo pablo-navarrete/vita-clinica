@@ -12,9 +12,9 @@
 @endsection
 
 @section('content')
-    <div id="website-page-admin-editor" class="mx-auto max-w-7xl space-y-6 sm:px-6 lg:px-8"
+    <div id="website-page-admin-editor" class="mx-auto w-full min-w-0 max-w-7xl space-y-6 sm:px-6 lg:px-8"
         data-image-upload-url="{{ route('customers.website-pages.images.store', ['customer' => request()->route('customer'), 'id' => $page->id]) }}">
-        <section class="rounded-lg bg-white p-6 shadow-sm">
+        <section class="rounded-lg bg-white p-4 shadow-sm sm:p-6">
             <h3 class="mb-1 text-lg font-semibold text-gray-800">@if ($page->slug === 'inicio') Nombre de la p&aacute;gina principal @else Banner y t&iacute;tulo de la p&aacute;gina @endif</h3>
             @unless ($page->slug === 'inicio')
                 <p class="mb-5 text-sm text-gray-500">La imagen se mostrará como fondo y el título de la página aparecerá sobre ella.</p>
@@ -62,7 +62,7 @@
             </form>
         </section>
 
-        <section class="rounded-lg bg-white p-6 shadow-sm">
+        <section class="rounded-lg bg-white p-4 shadow-sm sm:p-6">
             <h3 class="mb-1 text-lg font-semibold text-gray-800">Nueva sección</h3>
             <p class="mb-5 text-sm text-gray-500">Puedes agregar título, texto, imagen o combinar los tres. Las imágenes aceptadas son de hasta 5 MB.</p>
 
@@ -119,15 +119,43 @@
             </form>
         </section>
 
+        <section class="rounded-lg border border-indigo-100 bg-indigo-50/50 p-4 shadow-sm sm:p-6">
+            <div class="mb-4">
+                <h3 class="mb-1 text-lg font-semibold text-gray-800"><i class="fa-regular fa-calendar-check mr-2" style="color: {{ themeColor(600) }}"></i>Agregar agendamiento</h3>
+                <p class="text-sm text-gray-600">Inserta un botón que abre el formulario de agendamiento. Elige dónde dejarlo; después podrás cambiar su posición con los controles de subir y bajar del editor.</p>
+            </div>
+            <form method="POST" action="{{ route('customers.website-pages.sections.store', ['customer' => request()->route('customer'), 'id' => $page->id]) }}" class="flex flex-wrap items-end gap-4">
+                @csrf
+                <input type="hidden" name="section_type" value="booking">
+                <input type="hidden" name="title" value="Agendar una cita">
+                <input type="hidden" name="body" value="">
+                <input type="hidden" name="image_position" value="inline">
+                <div class="w-full sm:max-w-lg">
+                    <label for="booking-position" class="mb-1 block text-sm font-medium text-gray-700">Dónde mostrarlo</label>
+                    <select id="booking-position" name="position" class="w-full rounded-md border-gray-300 shadow-sm" required>
+                        <option value="0">Al inicio de la página</option>
+                        @foreach ($page->sections as $positionIndex => $existingSection)
+                            <option value="{{ $positionIndex + 1 }}">Después de: {{ $existingSection->title ?: 'Sección ' . ($positionIndex + 1) }}</option>
+                        @endforeach
+                    </select>
+                    @error('position') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
+                </div>
+                <button type="submit" class="rounded-md px-4 py-2 font-semibold text-white hover:brightness-90" style="background-color: {{ themeColor(600) }}">
+                    <i class="fa-solid fa-plus mr-1"></i> Agregar agendamiento
+                </button>
+            </form>
+        </section>
+
         <section class="space-y-4">
             <h3 class="text-lg font-semibold text-gray-800">Secciones de la página ({{ $page->sections->count() }})</h3>
             @forelse ($page->sections as $section)
-                <article class="rounded-lg bg-white p-6 shadow-sm">
+                <article class="min-w-0 rounded-lg bg-white p-4 shadow-sm sm:p-6">
                     <form method="POST" enctype="multipart/form-data"
                         action="{{ route('customers.website-pages.sections.update', ['customer' => request()->route('customer'), 'id' => $page->id, 'sectionId' => $section->id]) }}"
                         class="grid grid-cols-1 gap-4 md:grid-cols-2">
                         @csrf
                         @method('PUT')
+                        <input type="hidden" name="section_type" value="{{ $section->section_type ?? 'content' }}">
                         <div>
                             <label for="title-{{ $section->id }}" class="mb-1 block text-sm font-medium text-gray-700">Título</label>
                             <input id="title-{{ $section->id }}" name="title" value="{{ $section->title }}" maxlength="160"
@@ -209,6 +237,17 @@
         .website-card h3 { margin:0 0 .5rem; font-size:1.1rem; font-weight:600; }
         .website-card p { margin:0; color:#4b5563; line-height:1.6; }
         .website-card-button { display:inline-block; margin-top:1rem; border-radius:.375rem; background:{{ themeColor(600) }}; padding:.55rem 1rem; color:#fff; font-weight:600; text-decoration:none; }
+        @media (max-width: 767.98px) {
+            #website-page-admin-editor { padding-right: .25rem; padding-left: .25rem; }
+            #website-page-admin-editor > section, #website-page-admin-editor article { min-width: 0; }
+            #website-page-admin-editor .note-editor, #website-page-admin-editor .note-editing-area { max-width: 100%; min-width: 0; }
+            #website-page-admin-editor .note-toolbar { display: flex; flex-wrap: wrap; }
+            #website-page-admin-editor .note-toolbar .note-btn-group { margin: .15rem; }
+            #website-page-admin-editor .note-editable { overflow-wrap: anywhere; }
+            .swal2-popup { width: calc(100vw - 1rem) !important; max-width: 32rem; padding: 1rem; }
+            .swal2-popup .icon-picker-grid { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; gap: .35rem !important; margin: .6rem .25rem !important; }
+            .swal2-popup label[style*="margin:0 1.5rem"] { margin-right: .5rem !important; margin-left: .5rem !important; }
+        }
     </style>
 @endpush
 
@@ -240,7 +279,7 @@
 
             document.querySelectorAll('[data-add-visual]').forEach((button) => button.addEventListener('click', async () => {
                 const textarea = document.getElementById(button.dataset.addVisual);
-                const html = '<select id="visual-shape" class="swal2-select"><option value="card">Tarjeta</option><option value="circle">Círculo</option></select><select id="visual-media" class="swal2-select"><option value="icon">Icono</option><option value="image">Imagen</option></select><div id="visual-icons" class="icon-picker-grid" style="display:grid;grid-template-columns:repeat(6,1fr);gap:.5rem;margin:.75rem 1.5rem"></div><input id="visual-icon" type="hidden" value="fa-stethoscope"><input id="visual-image" type="file" accept="image/*" class="swal2-file" style="display:none"><input id="visual-title" class="swal2-input" placeholder="Título o nombre"><textarea id="visual-copy" class="swal2-textarea" placeholder="Descripción"></textarea><label style="display:block;margin:0 1.5rem;text-align:left"><input id="visual-button-toggle" type="checkbox"> Agregar botón con enlace</label><input id="visual-button-text" class="swal2-input" placeholder="Texto del botón" style="display:none"><input id="visual-button-url" class="swal2-input" placeholder="Enlace (https://... o /ruta)" style="display:none">';
+                const html = '<select id="visual-shape" class="swal2-select"><option value="card">Tarjeta</option><option value="circle">Círculo</option></select><select id="visual-media" class="swal2-select"><option value="icon">Icono</option><option value="image">Imagen</option></select><div id="visual-icons" class="icon-picker-grid" style="display:grid;grid-template-columns:repeat(6,1fr);gap:.5rem;margin:.75rem 1.5rem"></div><input id="visual-icon" type="hidden" value="fa-stethoscope"><input id="visual-image" type="file" accept="image/*" class="swal2-file" style="display:none"><input id="visual-title" class="swal2-input" placeholder="Título o nombre"><textarea id="visual-copy" class="swal2-textarea" placeholder="Descripción"></textarea><label style="display:block;margin:0 1.5rem;text-align:left"><input id="visual-button-toggle" type="checkbox"> Agregar botón con enlace</label><select id="visual-button-action" class="swal2-select" style="display:none"><option value="link">Abrir enlace</option><option value="booking">Agendar cita</option></select><input id="visual-button-text" class="swal2-input" placeholder="Texto del botón" style="display:none"><input id="visual-button-url" class="swal2-input" placeholder="Enlace (https://... o /ruta)" style="display:none">';
                 const result = await Swal.fire({
                     title:'Agregar elemento visual', html, showCancelButton:true, confirmButtonText:'Agregar', cancelButtonText:'Cancelar', focusConfirm:false,
                     didOpen:() => {
@@ -248,15 +287,15 @@
                         icons.forEach((name) => { const option=document.createElement('button'); option.type='button'; option.title=name.replace('fa-','').replaceAll('-',' '); option.setAttribute('aria-label',option.title); option.style.cssText='height:42px;border:1px solid #d1d5db;border-radius:6px;background:#fff;cursor:pointer'; const glyph=document.createElement('i'); glyph.className=`fa-solid ${name}`; option.append(glyph); option.onclick=() => {iconValue.value=name; picker.querySelectorAll('button').forEach((item)=>item.style.background='#fff'); option.style.background='{{ themeColor(100) }}';}; picker.append(option); if(name===iconValue.value) option.style.background='{{ themeColor(100) }}'; });
                         const media=document.getElementById('visual-media'), image=document.getElementById('visual-image');
                         const syncMedia=()=>{picker.style.display=media.value==='icon'?'grid':'none'; image.style.display=media.value==='image'?'':'none';}; media.onchange=syncMedia; syncMedia();
-                        const toggle=document.getElementById('visual-button-toggle'); toggle.onchange=()=>{document.getElementById('visual-button-text').style.display=toggle.checked?'':'none'; document.getElementById('visual-button-url').style.display=toggle.checked?'':'none';};
+                        const toggle=document.getElementById('visual-button-toggle'), action=document.getElementById('visual-button-action'), text=document.getElementById('visual-button-text'), url=document.getElementById('visual-button-url'); const sync=()=>{action.style.display=toggle.checked?'':'none';text.style.display=toggle.checked?'':'none';url.style.display=toggle.checked&&action.value==='link'?'':'none';};toggle.onchange=sync;action.onchange=sync;sync();
                     },
                     preConfirm:() => {
                         const title=document.getElementById('visual-title').value.trim(), media=document.getElementById('visual-media').value, image=document.getElementById('visual-image').files[0];
-                        const hasButton=document.getElementById('visual-button-toggle').checked, buttonText=document.getElementById('visual-button-text').value.trim(), buttonUrl=document.getElementById('visual-button-url').value.trim();
+                        const hasButton=document.getElementById('visual-button-toggle').checked, buttonText=document.getElementById('visual-button-text').value.trim(), action=document.getElementById('visual-button-action').value, buttonUrl=action==='booking'?'#publicBookingModal':document.getElementById('visual-button-url').value.trim();
                         if(!title) {Swal.showValidationMessage('Escribe un título.');return false;}
                         if(media==='image'&&!image) {Swal.showValidationMessage('Selecciona una imagen.');return false;}
                         if(hasButton&&(!buttonText||!buttonUrl)) {Swal.showValidationMessage('Completa el texto y el enlace del botón.');return false;}
-                        if(hasButton&&!/^(https?:\/\/|\/|#|mailto:)/i.test(buttonUrl)) {Swal.showValidationMessage('Usa una URL http(s), ruta local o mailto:.');return false;}
+                        if(hasButton&&action==='link'&&!/^(https?:\/\/|\/|#|mailto:)/i.test(buttonUrl)) {Swal.showValidationMessage('Usa una URL http(s), ruta local o mailto:.');return false;}
                         return {shape:document.getElementById('visual-shape').value,media,image,icon:document.getElementById('visual-icon').value,title,copy:document.getElementById('visual-copy').value.trim(),hasButton,buttonText,buttonUrl};
                     }
                 });

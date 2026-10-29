@@ -15,7 +15,7 @@
                 <div class="p-6">
 
                     <!-- Encabezado -->
-                    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <div class="flex flex-col gap-4">
 
                         <div>
                             <h2 class="text-xl font-semibold text-gray-800">
@@ -32,16 +32,16 @@
                         </div>
 
                         <!-- Filtros -->
-                        <div class="flex flex-col sm:flex-row gap-3">
+                        <div class="flex flex-col sm:flex-row sm:flex-wrap sm:items-end gap-3">
 
                             <!-- Año -->
-                            <div>
+                            <div class="w-full sm:w-36">
                                 <label for="year" class="block text-sm font-medium text-gray-700 mb-1">
                                     Año
                                 </label>
 
                                 <select id="year"
-                                    class="border-gray-300 rounded-md shadow-sm
+                                    class="w-full h-[42px] border-gray-300 rounded-md shadow-sm
                                        focus:border-indigo-500 focus:ring-indigo-500">
                                     @foreach ($years as $year)
                                         <option value="{{ $year }}" @selected($year === $currentYear)>
@@ -52,13 +52,13 @@
                             </div>
 
                             <!-- Mes -->
-                            <div>
+                            <div class="w-full sm:w-44">
                                 <label for="month" class="block text-sm font-medium text-gray-700 mb-1">
                                     Mes
                                 </label>
 
                                 <select id="month"
-                                    class="border-gray-300 rounded-md shadow-sm
+                                    class="w-full h-[42px] border-gray-300 rounded-md shadow-sm
                                        focus:border-indigo-500 focus:ring-indigo-500">
 
                                     <option value="">Todos los meses</option>
@@ -78,13 +78,25 @@
                                 </select>
                             </div>
 
+                            @if ($showBranchStatistics)
+                                <div class="w-full sm:w-56">
+                                    <label for="branch-filter" class="block text-sm font-medium text-gray-700 mb-1">Sede</label>
+                                    <select id="branch-filter" class="w-full h-[42px] border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                        <option value="">Todas las sedes</option>
+                                        @foreach ($branches as $branch)
+                                            <option value="{{ $branch->id }}">{{ $branch->name }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            @endif
+
                             @unless ($isDoctor)
-                                <div>
+                                <div class="w-full sm:w-56">
                                     <label for="professional-filter" class="block text-sm font-medium text-gray-700 mb-1">
                                         Profesional
                                     </label>
                                     <select id="professional-filter"
-                                        class="border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                        class="w-full h-[42px] border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                                         <option value="">Todos los profesionales</option>
                                         @foreach ($professionals as $professional)
                                             <option value="{{ $professional->id }}">
@@ -185,6 +197,33 @@
         <div class="rounded-md bg-gray-100 p-3"><p class="text-xs text-gray-600">Canceladas</p><p id="today-cancelled" class="mt-1 text-xl font-bold text-gray-800">0</p></div>
     </div>
 </section>
+
+<section class="mt-6 rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+    <div class="mb-4 flex items-center gap-3">
+        <span class="grid h-10 w-10 place-items-center rounded-xl bg-emerald-50 text-emerald-700"><i class="fa-regular fa-calendar-check"></i></span>
+        <div>
+            <h3 class="text-lg font-semibold text-gray-800">Próximas citas</h3>
+            <p id="next-appointments-description" class="text-sm text-gray-500">{{ $isDoctor ? 'Tus tres próximas citas agendadas o confirmadas.' : 'Las tres citas más cercanas, una por profesional.' }}</p>
+        </div>
+    </div>
+    <div id="next-appointments-list" class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <p class="col-span-full rounded-lg bg-gray-50 px-4 py-6 text-center text-sm text-gray-500">Cargando próximas citas...</p>
+    </div>
+</section>
+
+@include('customer.dashboard.ongoing-encounters')
+
+@if ($showBranchStatistics)
+    <section class="mt-6 rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+        <div class="mb-4">
+            <h3 id="branch-statistics-title" class="text-lg font-semibold text-gray-800">Comparativo por sede</h3>
+            <p id="branch-statistics-description" class="text-sm text-gray-500">Pacientes registrados, citas y atenciones del período seleccionado. Incluye el total de la clínica.</p>
+        </div>
+        <div class="relative h-[420px] w-full">
+            <canvas id="branchStatisticsChart"></canvas>
+        </div>
+    </section>
+@endif
 
 <div class="mt-8 space-y-8">
 
@@ -289,11 +328,13 @@
 
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/css/select2.min.css">
     <style>
-        #professional-filter + .select2-container {
+        #professional-filter + .select2-container,
+        #branch-filter + .select2-container {
             min-width: 14rem;
         }
 
-        #professional-filter + .select2-container .select2-selection--single {
+        #professional-filter + .select2-container .select2-selection--single,
+        #branch-filter + .select2-container .select2-selection--single {
             height: 42px;
             border: 1px solid #d1d5db;
             border-radius: 0.375rem;
@@ -301,12 +342,14 @@
             align-items: center;
         }
 
-        #professional-filter + .select2-container .select2-selection__rendered {
+        #professional-filter + .select2-container .select2-selection__rendered,
+        #branch-filter + .select2-container .select2-selection__rendered {
             padding-left: 0.75rem;
             color: #111827;
         }
 
-        #professional-filter + .select2-container .select2-selection__arrow {
+        #professional-filter + .select2-container .select2-selection__arrow,
+        #branch-filter + .select2-container .select2-selection__arrow {
             height: 40px;
         }
     </style>
@@ -317,6 +360,8 @@
             const yearSelect = document.getElementById('year');
             const monthSelect = document.getElementById('month');
             const professionalSelect = document.getElementById('professional-filter');
+            const branchSelect = document.getElementById('branch-filter');
+            let professionalSelect2Ready = false;
 
             if (professionalSelect && window.jQuery?.fn.select2) {
                 $('#professional-filter').select2({
@@ -327,6 +372,18 @@
                         searching: () => 'Buscando...'
                     }
                 });
+                professionalSelect2Ready = true;
+            }
+
+            if (branchSelect && window.jQuery?.fn.select2) {
+                $('#branch-filter').select2({
+                    width: 'resolve',
+                    minimumResultsForSearch: 0,
+                    language: {
+                        noResults: () => 'No se encontraron sedes',
+                        searching: () => 'Buscando...'
+                    }
+                });
             }
 
             let appointmentsChart = null;
@@ -334,6 +391,7 @@
             let attendanceChart = null;
             let specialtyChart = null;
             let patientsRegisteredChart = null;
+            let branchStatisticsChart = null;
             const isDoctor = @json($isDoctor);
 
             const percentageLabels = {
@@ -408,6 +466,64 @@ Chart.register(percentageLabels);
                 });
             }
 
+            function renderBranchStatisticsChart(branchStatistics) {
+                const canvas = document.getElementById('branchStatisticsChart');
+                if (!canvas) return;
+                if (branchStatisticsChart) branchStatisticsChart.destroy();
+
+                const selectedBranchId = branchSelect?.value || '';
+                const selectedBranch = branchStatistics.find(branch => String(branch.id) === String(selectedBranchId));
+                const visibleBranches = selectedBranchId ? (selectedBranch ? [selectedBranch] : []) : branchStatistics;
+                document.getElementById('branch-statistics-title').textContent = selectedBranch
+                    ? `Resumen de sede: ${selectedBranch.name}`
+                    : 'Comparativo por sede';
+                document.getElementById('branch-statistics-description').textContent = selectedBranch
+                    ? 'Pacientes registrados, citas y atenciones del período seleccionado en esta sede.'
+                    : 'Pacientes registrados, citas y atenciones del período seleccionado. Incluye el total de la clínica.';
+
+                branchStatisticsChart = new Chart(canvas, {
+                    type: 'bar',
+                    data: {
+                        labels: visibleBranches.map(branch => branch.name),
+                        datasets: [
+                            { label: 'Pacientes registrados', data: visibleBranches.map(branch => Number(branch.patients)), backgroundColor: '#38bdf8' },
+                            { label: 'Citas', data: visibleBranches.map(branch => Number(branch.appointments)), backgroundColor: '#818cf8' },
+                            { label: 'Atenciones realizadas', data: visibleBranches.map(branch => Number(branch.attended)), backgroundColor: '#34d399' }
+                        ]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { position: 'bottom' } },
+                        scales: { x: { beginAtZero: true, ticks: { precision: 0 } } }
+                    }
+                });
+            }
+
+            function updateProfessionalOptions(professionals) {
+                if (!professionalSelect) return false;
+
+                const currentValue = professionalSelect.value;
+                const availableIds = new Set(professionals.map(professional => String(professional.id)));
+                const selectedProfessionalIsUnavailable = currentValue && !availableIds.has(currentValue);
+                const options = [new Option('Todos los profesionales', '')];
+
+                professionals.forEach(professional => {
+                    const inactiveLabel = Number(professional.status) === 1 ? '' : ' (Inactivo)';
+                    options.push(new Option(`${professional.name}${inactiveLabel}`, professional.id));
+                });
+
+                professionalSelect.replaceChildren(...options);
+                professionalSelect.value = selectedProfessionalIsUnavailable ? '' : currentValue;
+
+                if (professionalSelect2Ready) {
+                    $('#professional-filter').val(professionalSelect.value).trigger('change.select2');
+                }
+
+                return Boolean(selectedProfessionalIsUnavailable);
+            }
+
             async function loadStatistics() {
 
                 const year = yearSelect.value;
@@ -431,6 +547,10 @@ Chart.register(percentageLabels);
                     url.searchParams.append('month', month);
                 }
 
+                if (branchSelect?.value) {
+                    url.searchParams.append('branch_id', branchSelect.value);
+                }
+
                 if (professionalSelect?.value) {
                     url.searchParams.append('professional_id', professionalSelect.value);
                 }
@@ -445,6 +565,10 @@ Chart.register(percentageLabels);
                 const response = await fetch(url);
 
                 const data = await response.json();
+                if (updateProfessionalOptions(data.professionals || [])) {
+                    return loadStatistics();
+                }
+                renderBranchStatisticsChart(data.branchStatistics || []);
 
                 if (!isDoctor) {
                     const selectedProfessional = professionalSelect?.selectedOptions[0];
@@ -453,8 +577,20 @@ Chart.register(percentageLabels);
                         : 'todos los profesionales';
                     document.getElementById('dashboard-statistics-description').textContent =
                         `Estadísticas de ${professionalLabel} según el período seleccionado`;
+                    document.getElementById('next-appointments-description').textContent = selectedProfessional?.value
+                        ? `Las tres próximas citas agendadas o confirmadas de ${professionalLabel}.`
+                        : 'Las tres citas más cercanas, una por profesional.';
                 }
 
+
+                if (!isDoctor) {
+                    const branchDescription = branchSelect
+                        ? (branchSelect.value ? `Sede: ${branchSelect.selectedOptions[0].textContent.trim()}` : 'Todas las sedes')
+                        : (@json($activeBranchName) ? `Sede: ${@json($activeBranchName)}` : '');
+                    const description = document.getElementById('dashboard-statistics-description');
+                    const baseDescription = description.textContent.split(' · ')[0];
+                    description.textContent = branchDescription ? `${baseDescription} · ${branchDescription}` : baseDescription;
+                }
 
                 /*
                 |--------------------------------------------------------------------------
@@ -482,6 +618,59 @@ Chart.register(percentageLabels);
                 document.getElementById('today-attended').textContent = today.attended;
                 document.getElementById('today-no-show').textContent = today.noShow;
                 document.getElementById('today-cancelled').textContent = today.cancelled;
+
+                const nextAppointmentsList = document.getElementById('next-appointments-list');
+                nextAppointmentsList.replaceChildren();
+                if (!data.nextAppointments?.length) {
+                    const empty = document.createElement('p');
+                    empty.className = 'col-span-full rounded-lg bg-gray-50 px-4 py-6 text-center text-sm text-gray-500';
+                    empty.textContent = 'No hay citas futuras agendadas o confirmadas.';
+                    nextAppointmentsList.appendChild(empty);
+                } else {
+                    data.nextAppointments.forEach(appointment => {
+                        const card = document.createElement('article');
+                        card.className = Number(appointment.position) === 1
+                            ? 'rounded-lg border-2 border-emerald-400 bg-emerald-50 p-4 shadow-md ring-2 ring-emerald-100'
+                            : 'rounded-lg border border-gray-200 bg-gray-50 p-4';
+                        if (Number(appointment.position) === 1) {
+                            const priority = document.createElement('p');
+                            priority.className = 'mb-2 inline-flex items-center gap-1.5 rounded-full bg-emerald-600 px-2.5 py-1 text-xs font-bold text-white';
+                            priority.innerHTML = '<i class="fa-solid fa-bell"></i> Siguiente en atender';
+                            card.appendChild(priority);
+                        }
+                        if (!isDoctor) {
+                            const professional = document.createElement('p');
+                            professional.className = 'mb-1 text-xs font-semibold uppercase tracking-wide text-gray-500';
+                            professional.textContent = appointment.professional;
+                            card.appendChild(professional);
+                        }
+                        const patient = document.createElement('p');
+                        patient.className = Number(appointment.position) === 1 ? 'text-xl font-bold text-gray-900' : 'text-lg font-semibold text-gray-900';
+                        patient.textContent = appointment.patient + (appointment.patient_rut ? ` · ${appointment.patient_rut}` : '');
+                        const specialty = document.createElement('p');
+                        specialty.className = 'mt-1 text-xs text-gray-500';
+                        specialty.textContent = appointment.specialty;
+                        const details = document.createElement('div');
+                        details.className = 'mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-gray-200 pt-3';
+                        const date = document.createElement('span');
+                        date.className = 'text-sm font-medium text-gray-700';
+                        date.textContent = `${appointment.date} · ${appointment.time}`;
+                        const status = document.createElement('span');
+                        status.className = `rounded-full px-2.5 py-1 text-xs font-semibold ${Number(appointment.status_code) === 1 ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`;
+                        status.textContent = appointment.status;
+                        const actions = document.createElement('div');
+                        actions.className = 'mt-3 flex justify-end';
+                        const openRecord = document.createElement('a');
+                        openRecord.href = appointment.patient_url;
+                        openRecord.className = 'inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-semibold text-white transition hover:brightness-90';
+                        openRecord.style.backgroundColor = @json(themeColor(600));
+                        openRecord.innerHTML = `<i class="fa-solid ${appointment.can_start ? 'fa-stethoscope' : 'fa-eye'}"></i>${appointment.can_start ? 'Atender' : 'Ver ficha'}`;
+                        actions.appendChild(openRecord);
+                        details.append(date, status);
+                        card.append(patient, specialty, details, actions);
+                        nextAppointmentsList.appendChild(card);
+                    });
+                }
 
                 /*
                 |--------------------------------------------------------------------------
@@ -1087,6 +1276,12 @@ Chart.register(percentageLabels);
                 $('#professional-filter').on('change', loadStatistics);
             } else {
                 professionalSelect?.addEventListener('change', loadStatistics);
+            }
+
+            if (branchSelect && window.jQuery) {
+                $('#branch-filter').on('change', loadStatistics);
+            } else {
+                branchSelect?.addEventListener('change', loadStatistics);
             }
 
 

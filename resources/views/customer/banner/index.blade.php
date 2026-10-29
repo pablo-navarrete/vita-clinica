@@ -68,6 +68,7 @@
                             <option value="#servicios" @selected(old('button_destination') === '#servicios')>Servicios</option>
                             <option value="#especialidades" @selected(old('button_destination') === '#especialidades')>Especialidades</option>
                         </optgroup>
+                        <option value="#publicBookingModal" @selected(old('button_destination') === '#publicBookingModal')>Agendar cita (abrir modal)</option>
                         <option value="__custom__" @selected(old('button_destination') === '__custom__')>Enlace personalizado…</option>
                     </select>
                     @error('button_destination') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
@@ -87,8 +88,15 @@
                 </div>
                 <div class="md:col-span-8">
                     <label for="image" class="mb-1 block text-sm font-medium text-gray-700">Imagen del banner</label>
-                    <input id="image" name="image" type="file" accept="image/*" required
-                        class="block w-full rounded-md border border-gray-300 text-sm text-gray-700 file:mr-4 file:rounded-l-md file:border-0 file:bg-gray-100 file:px-4 file:py-2">
+                    <input id="image" name="image" type="file" accept="image/*" required class="sr-only">
+                    <label id="banner-image-dropzone" for="image" class="mt-2 flex min-h-48 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 px-5 py-6 text-center transition hover:border-blue-400 hover:bg-blue-50">
+                        <img id="banner-image-preview" src="" alt="Vista previa de la imagen del banner" class="mb-3 hidden max-h-48 max-w-full rounded-lg object-cover shadow-sm">
+                        <span id="banner-image-placeholder">
+                            <i class="fa-solid fa-cloud-arrow-up mb-2 text-3xl text-gray-400"></i>
+                            <span class="block text-sm font-semibold text-gray-700">Arrastra una imagen aquí o haz clic</span>
+                        </span>
+                        <span id="banner-image-filename" class="mt-1 text-xs text-gray-500">JPG, PNG o WEBP</span>
+                    </label>
                     <p class="mt-1 text-xs text-gray-500">Imagen de hasta 10 MB. Usa una imagen horizontal para la portada.</p>
                     @error('image') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
                 </div>
@@ -174,6 +182,40 @@
     <script src="https://cdn.datatables.net/rowreorder/1.4.1/js/dataTables.rowReorder.min.js"></script>
     <script>
         $(function () {
+            const imageInput = document.getElementById('image');
+            const imageDropzone = document.getElementById('banner-image-dropzone');
+            const imagePreview = document.getElementById('banner-image-preview');
+            const imagePlaceholder = document.getElementById('banner-image-placeholder');
+            const imageFilename = document.getElementById('banner-image-filename');
+            if (imageInput && imageDropzone && imagePreview && imagePlaceholder && imageFilename) {
+                let previewUrl = null;
+                const showImage = file => {
+                    if (!file || !file.type.startsWith('image/')) return;
+                    if (previewUrl) URL.revokeObjectURL(previewUrl);
+                    previewUrl = URL.createObjectURL(file);
+                    imagePreview.src = previewUrl;
+                    imagePreview.classList.remove('hidden');
+                    imagePlaceholder.classList.add('hidden');
+                    imageFilename.textContent = file.name;
+                };
+                imageInput.addEventListener('change', () => showImage(imageInput.files[0]));
+                imageDropzone.addEventListener('dragover', event => {
+                    event.preventDefault();
+                    imageDropzone.classList.add('border-blue-500', 'bg-blue-50');
+                });
+                imageDropzone.addEventListener('dragleave', () => imageDropzone.classList.remove('border-blue-500', 'bg-blue-50'));
+                imageDropzone.addEventListener('drop', event => {
+                    event.preventDefault();
+                    imageDropzone.classList.remove('border-blue-500', 'bg-blue-50');
+                    const file = event.dataTransfer.files[0];
+                    if (!file || !file.type.startsWith('image/')) return;
+                    const transfer = new DataTransfer();
+                    transfer.items.add(file);
+                    imageInput.files = transfer.files;
+                    showImage(file);
+                });
+            }
+
             const buttonDestination = document.getElementById('button_destination');
             const customUrlContainer = document.getElementById('button-custom-url-container');
             if (buttonDestination && customUrlContainer) {
@@ -250,7 +292,7 @@
                     notify('success', result.message);
                 } catch (error) {
                     notify('error', error.message || 'No se pudo guardar el orden.');
-                    window.location.reload();
+                    window.VitaNavigation.refresh();
                 }
             });
 

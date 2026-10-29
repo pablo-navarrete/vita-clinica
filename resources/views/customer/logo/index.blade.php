@@ -178,6 +178,7 @@
                 },
                 responsive: false,
                 autoWidth: false,
+                order: [],
 
                 columns: [
 
@@ -276,7 +277,7 @@
                             throw data;
                         }
 
-                        location.reload();
+                        window.VitaNavigation.refresh();
 
                         Swal.fire({
                             toast: true,
@@ -339,7 +340,7 @@
                                 timer: 1500
                             });
 
-                            location.reload();
+                            window.VitaNavigation.refresh();
                         });
 
                 });
@@ -539,7 +540,7 @@
                             });
 
                             this.close();
-                            location.reload();
+                            window.VitaNavigation.refresh();
                         })
                         .catch(err => {
 

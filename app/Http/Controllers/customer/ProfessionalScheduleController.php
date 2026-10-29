@@ -8,6 +8,8 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use App\Models\Appointment;
+use App\Models\ClinicBranch;
+use App\Support\ClinicBranchContext;
 use Yajra\DataTables\Facades\DataTables;
 
 
@@ -16,8 +18,29 @@ class ProfessionalScheduleController extends Controller
 
     public function getSchedule($customer, $professional)
     {
-        $schedules = ProfessionalSchedule::where('customer_id', app('customer')->id)
-            ->where('user_id', $professional)
+        $customerId = (int) app('customer')->id;
+        $activeBranchId = $this->activeBranchId();
+        $headquartersBranchId = (int) ClinicBranch::query()
+            ->where('customer_id', $customerId)->where('status', true)->orderBy('id')->value('id');
+        $allBranches = request()->boolean('all_branches')
+            && ClinicBranchContext::canAdministerAllBranches(request()->user(), $customerId)
+            && ClinicBranchContext::hasPermissionInBranch(request()->user(), $customerId, $activeBranchId, 'schedules.manage');
+        $branchId = $allBranches ? null : $this->scheduleBranchId(request(), request()->query('branch_id', $activeBranchId));
+        $professionalUser = User::query()->where('customer_id', $customerId)->whereKey($professional)->firstOrFail();
+        $professionalBranchIds = $professionalUser->branches()
+            ->where('clinic_branches.customer_id', $customerId)
+            ->where('clinic_branches.status', true)
+            ->pluck('clinic_branches.id')->map(fn ($id) => (int) $id)->all();
+        $scheduleQuery = ProfessionalSchedule::query()
+            ->join('clinic_branches', 'clinic_branches.id', '=', 'professional_schedules.clinic_branch_id')
+            ->where('professional_schedules.customer_id', $customerId)
+            ->where('professional_schedules.user_id', $professional)
+            ->where('clinic_branches.customer_id', $customerId)
+            ->where('clinic_branches.status', true)
+            ->when($allBranches, fn ($query) => $query->whereIn('professional_schedules.clinic_branch_id', $professionalBranchIds))
+            ->select('professional_schedules.*', 'clinic_branches.name as branch_name')
+            ->when(!$allBranches, fn ($query) => $query->where('professional_schedules.clinic_branch_id', $branchId))
+            ->orderBy('clinic_branches.id')
             ->orderByRaw("
             CASE day_of_week
                 WHEN 1 THEN 1
@@ -29,11 +52,15 @@ class ProfessionalScheduleController extends Controller
                 WHEN 0 THEN 7
             END
         ")
+            ->orderBy('professional_schedules.start_time')
             ->get();
 
-        $schedules->each(function ($schedule) use ($professional) {
+        $schedules = $scheduleQuery;
 
-            $schedule->future_appointments_count = Appointment::where('customer_id', app('customer')->id)
+        $schedules->each(function ($schedule) use ($professional, $customerId) {
+
+            $schedule->future_appointments_count = Appointment::where('customer_id', $customerId)
+                ->where('clinic_branch_id', $schedule->clinic_branch_id)
                 ->where('professional_id', $professional)
 
                 // Solo citas futuras
@@ -59,7 +86,8 @@ class ProfessionalScheduleController extends Controller
                 ->count();
         });
 
-        return response()->json($schedules);
+        return response()->json($schedules)
+            ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
     }
 
     /** Return only the schedules owned by the authenticated professional. */
@@ -67,15 +95,18 @@ class ProfessionalScheduleController extends Controller
     {
         $user = $request->user();
         $customerId = app('customer')->id;
+        $branchId = $this->activeBranchId();
 
         $schedules = ProfessionalSchedule::where('customer_id', $customerId)
+            ->where('clinic_branch_id', $branchId)
             ->where('user_id', $user->id)
             ->orderByRaw('CASE day_of_week WHEN 1 THEN 1 WHEN 2 THEN 2 WHEN 3 THEN 3 WHEN 4 THEN 4 WHEN 5 THEN 5 WHEN 6 THEN 6 WHEN 0 THEN 7 END')
             ->orderBy('start_time')
             ->get();
 
-        $schedules->each(function ($schedule) use ($user, $customerId) {
+        $schedules->each(function ($schedule) use ($user, $customerId, $branchId) {
             $schedule->future_appointments_count = Appointment::where('customer_id', $customerId)
+                ->where('clinic_branch_id', $branchId)
                 ->where('professional_id', $user->id)
                 ->where('start_at', '>=', now())
                 ->whereNotIn('status', [4, 5])
@@ -85,90 +116,13 @@ class ProfessionalScheduleController extends Controller
                 ->count();
         });
 
-        return response()->json($schedules);
-    }
-
-    /** Add availability for the authenticated professional only. */
-    public function storeMySchedule(Request $request)
-    {
-        $validated = $request->validate([
-            'day_of_week' => ['required', 'integer', 'between:0,6'],
-            'start_time' => ['required', 'date_format:H:i'],
-            'end_time' => ['required', 'date_format:H:i', 'after:start_time'],
-        ]);
-
-        $customerId = app('customer')->id;
-        $user = $request->user();
-
-        $overlap = ProfessionalSchedule::where('customer_id', $customerId)
-            ->where('user_id', $user->id)
-            ->where('day_of_week', $validated['day_of_week'])
-            ->where('start_time', '<', $validated['end_time'])
-            ->where('end_time', '>', $validated['start_time'])
-            ->exists();
-
-        if ($overlap) {
-            return response()->json([
-                'message' => 'El horario ingresado se cruza con otro horario existente.',
-            ], 422);
-        }
-
-        $schedule = ProfessionalSchedule::create([
-            'customer_id' => $customerId,
-            'user_id' => $user->id,
-            'day_of_week' => $validated['day_of_week'],
-            'start_time' => $validated['start_time'],
-            'end_time' => $validated['end_time'],
-        ]);
-
-        return response()->json([
-            'success' => true,
-            'data' => $schedule,
-            'message' => 'Horario agregado correctamente.',
-        ]);
-    }
-
-    /** Delete an owned schedule only when it has no future affected appointments. */
-    public function destroyMySchedule(Request $request)
-    {
-        $customerId = app('customer')->id;
-        $user = $request->user();
-        $id = $request->route('id');
-
-        $schedule = ProfessionalSchedule::where('customer_id', $customerId)
-            ->where('user_id', $user->id)
-            ->whereKey($id)
-            ->firstOrFail();
-
-        $appointments = Appointment::where('customer_id', $customerId)
-            ->where('professional_id', $user->id)
-            ->where('start_at', '>=', now())
-            ->whereNotIn('status', [4, 5])
-            ->whereRaw('DAYOFWEEK(start_at) = ?', [$schedule->day_of_week === 0 ? 1 : $schedule->day_of_week + 1])
-            ->whereTime('start_at', '>=', $schedule->start_time)
-            ->whereTime('end_at', '<=', $schedule->end_time)
-            ->orderBy('start_at')
-            ->get();
-
-        if ($appointments->isNotEmpty()) {
-            return response()->json([
-                'success' => false,
-                'has_appointments' => true,
-                'future_appointments_count' => $appointments->count(),
-                'message' => 'Este horario tiene citas futuras. Debes gestionar las citas afectadas antes de eliminarlo.',
-            ], 422);
-        }
-
-        $schedule->delete();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Horario eliminado correctamente.',
-        ]);
+        return response()->json($schedules)
+            ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
     }
 
     public function store(Request $request)
     {
+        $this->ensureScheduleAdministrator($request);
 
         $validator = Validator::make(
             $request->all(),
@@ -199,11 +153,19 @@ class ProfessionalScheduleController extends Controller
 
 
         $professionalId = request()->route('professional');
+        $branchId = $this->scheduleBranchId($request, $request->input('clinic_branch_id'));
 
 
         $professional = User::where('customer_id', app('customer')->id)
             ->where('id', $professionalId)
             ->firstOrFail();
+
+        if (!$professional->branches()->where('clinic_branches.id', $branchId)->where('clinic_branches.status', true)->exists()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'El profesional no tiene asignada la sede seleccionada.',
+            ], 422);
+        }
 
 
 
@@ -235,7 +197,7 @@ class ProfessionalScheduleController extends Controller
 
                 'success' => false,
 
-                'message' => 'El horario ingresado se cruza con otro horario existente.'
+                    'message' => 'El horario se cruza con otro horario del profesional en alguna de sus sedes.'
 
             ], 422);
         }
@@ -245,6 +207,8 @@ class ProfessionalScheduleController extends Controller
         $schedule = ProfessionalSchedule::create([
 
             'customer_id' => app('customer')->id,
+
+            'clinic_branch_id' => $branchId,
 
             'user_id' => $professional->id,
 
@@ -271,13 +235,18 @@ class ProfessionalScheduleController extends Controller
 
     public function destroy(Request $request)
     {
+        $this->ensureScheduleAdministrator($request);
+
         $id = $request->route('id');
+        $branchId = $this->scheduleBranchId($request, $request->input('clinic_branch_id'));
 
         $schedule = ProfessionalSchedule::where('customer_id', app('customer')->id)
+            ->where('clinic_branch_id', $branchId)
             ->where('id', $id)
             ->firstOrFail();
 
         $appointments = Appointment::where('customer_id', app('customer')->id)
+            ->where('clinic_branch_id', $schedule->clinic_branch_id)
             ->where('professional_id', $schedule->user_id)
             ->where('start_at', '>=', now())
             ->whereNotIn('status', [4, 5])
@@ -343,12 +312,67 @@ class ProfessionalScheduleController extends Controller
         ]);
     }
 
+    public function update(Request $request)
+    {
+        $this->ensureScheduleAdministrator($request);
+        $branchId = $this->scheduleBranchId($request, $request->input('clinic_branch_id'));
+        $schedule = ProfessionalSchedule::query()
+            ->where('customer_id', app('customer')->id)
+            ->where('clinic_branch_id', $branchId)
+            ->whereKey($request->route('id'))
+            ->firstOrFail();
+
+        $validator = Validator::make($request->all(), [
+            'day_of_week' => 'required|integer|between:0,6',
+            'start_time' => 'required|date_format:H:i',
+            'end_time' => 'required|date_format:H:i|after:start_time',
+        ], [
+            'end_time.after' => 'La hora de término debe ser posterior a la hora de inicio.',
+        ]);
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $appointments = Appointment::query()->where('customer_id', app('customer')->id)
+            ->where('clinic_branch_id', $branchId)
+            ->where('professional_id', $schedule->user_id)
+            ->where('start_at', '>=', now())->whereNotIn('status', [4, 5])
+            ->whereRaw('DAYOFWEEK(start_at) = ?', [(int) $schedule->day_of_week === 0 ? 1 : (int) $schedule->day_of_week + 1])
+            ->whereTime('start_at', '>=', $schedule->start_time)
+            ->whereTime('end_at', '<=', $schedule->end_time)->exists();
+        if ($appointments) {
+            return response()->json(['message' => 'No se puede modificar este horario porque tiene citas futuras. Gestiona primero las citas afectadas.'], 422);
+        }
+
+        $overlap = ProfessionalSchedule::query()->where('customer_id', app('customer')->id)
+            ->where('user_id', $schedule->user_id)->where('day_of_week', $request->day_of_week)
+            ->where('id', '!=', $schedule->id)
+            ->where('start_time', '<', $request->end_time)
+            ->where('end_time', '>', $request->start_time)->exists();
+        if ($overlap) {
+            return response()->json(['message' => 'El horario se cruza con otro horario del profesional en alguna de sus sedes.'], 422);
+        }
+
+        $schedule->update($request->only('day_of_week', 'start_time', 'end_time'));
+        return response()->json(['success' => true, 'data' => $schedule, 'message' => 'Horario actualizado correctamente.']);
+    }
+
+    private function ensureScheduleAdministrator(Request $request): void
+    {
+        $customerId = (int) app('customer')->id;
+        $branchId = $this->activeBranchId();
+        $allowed = $request->user()?->roles()->whereNull('roles.customer_id')->where('roles.name', 'Super Administrador')->exists()
+            || ClinicBranchContext::hasPermissionInBranch($request->user(), $customerId, $branchId, 'schedules.manage');
+        abort_unless($allowed, 403, 'No tienes permiso para administrar horarios en esta sede.');
+    }
+
 
     public function affectedAppointments(Request $request)
     {
 
         $id = $request->route('schedule');
         $scheduleQuery = ProfessionalSchedule::where('customer_id', app('customer')->id)
+            ->where('clinic_branch_id', $this->activeBranchId())
             ->where('id', $id);
 
         if ($request->routeIs('customers.my-schedules.affected-appointments')) {
@@ -358,6 +382,7 @@ class ProfessionalScheduleController extends Controller
         $schedule = $scheduleQuery->firstOrFail();
 
         $affectedAppointmentsCount = Appointment::where('customer_id', app('customer')->id)
+        ->where('clinic_branch_id', $schedule->clinic_branch_id)
         ->where('professional_id', $schedule->user_id)
         ->where('start_at', '>=', now())
         ->whereNotIn('status', [4, 5])
@@ -395,6 +420,7 @@ class ProfessionalScheduleController extends Controller
         $id = $request->route('schedule');
 
         $scheduleQuery = ProfessionalSchedule::where('customer_id', app('customer')->id)
+            ->where('clinic_branch_id', $this->activeBranchId())
             ->where('id', $id);
 
         if ($request->routeIs('customers.my-schedules.affected-appointments.data')) {
@@ -409,6 +435,7 @@ class ProfessionalScheduleController extends Controller
             'professional',
         ])
             ->where('customer_id', app('customer')->id)
+            ->where('clinic_branch_id', $schedule->clinic_branch_id)
 
             // Mismo profesional
             ->where('professional_id', $schedule->user_id)
@@ -795,6 +822,38 @@ class ProfessionalScheduleController extends Controller
                 ->make(true);
     }
 
+    private function activeBranchId(): int
+    {
+        $customerId = (int) app('customer')->id;
+        abort_unless((int) session('active_branch_customer_id') === $customerId, 422, 'Selecciona una sede activa.');
 
+        $branchId = ClinicBranch::query()
+            ->where('customer_id', $customerId)
+            ->where('status', true)
+            ->whereKey((int) session('active_branch_id'))
+            ->value('id');
 
+        abort_unless($branchId, 422, 'La sede seleccionada no está disponible.');
+        return (int) $branchId;
+    }
+
+    private function scheduleBranchId(Request $request, mixed $requestedBranchId = null): int
+    {
+        $customerId = (int) app('customer')->id;
+        $activeBranchId = $this->activeBranchId();
+        $headquartersBranchId = (int) ClinicBranch::query()
+            ->where('customer_id', $customerId)->where('status', true)->orderBy('id')->value('id');
+        $requestedBranchId = $requestedBranchId !== null ? (int) $requestedBranchId : $activeBranchId;
+        $availableBranchIds = ClinicBranchContext::canAdministerAllBranches($request->user(), $customerId)
+            ? ClinicBranchContext::centralAdministrationBranches($request->user(), $customerId)->pluck('id')->map(fn ($id) => (int) $id)->all()
+            : [$activeBranchId];
+
+        abort_unless(in_array($requestedBranchId, $availableBranchIds, true), 403, 'No tienes acceso a la sede seleccionada.');
+        if (!ClinicBranchContext::canAdministerAllBranches($request->user(), $customerId)) {
+            abort_unless($requestedBranchId === $activeBranchId, 403, 'Desde esta sede solo puedes administrar sus propios horarios.');
+        }
+        abort_unless(ClinicBranchContext::hasPermissionInBranch($request->user(), $customerId, $activeBranchId, 'schedules.manage'), 403, 'No tienes permiso para administrar horarios.');
+
+        return $requestedBranchId;
+    }
 }

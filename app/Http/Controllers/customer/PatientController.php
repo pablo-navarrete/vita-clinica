@@ -7,6 +7,7 @@ use App\Models\Appointment;
 use App\Models\Specialty;
 use Illuminate\Validation\Rule;
 use App\Models\Patient;
+use App\Models\User;
 use App\Support\PatientAuditLogger;
 use Illuminate\Http\Request;
 use Yajra\DataTables\Facades\DataTables;
@@ -19,12 +20,59 @@ class PatientController extends Controller
     {
 
         $customerId = app('customer')->id;
+        $activeBranch = \App\Support\ClinicBranchContext::defaultBranch(auth()->user(), (int) $customerId);
+        $activeBranchId = $activeBranch?->id;
+        $appointmentBranches = $activeBranch
+            ? \App\Support\ClinicBranchContext::availableBranches(auth()->user(), (int) $customerId)
+            : collect();
+        $canChooseAppointmentBranch = $activeBranchId
+            && $appointmentBranches->count() > 1
+            && \App\Support\ClinicBranchContext::isHeadquartersActive((int) $customerId)
+            && \App\Support\ClinicBranchContext::canOperateAcrossBranches(auth()->user(), (int) $customerId)
+            && \App\Support\ClinicBranchContext::hasPermissionInBranch(
+                auth()->user(), (int) $customerId, (int) $activeBranchId, 'appointments.create'
+            );
         $insurances = Insurance::where('customer_id', $customerId)->where('status', 1)->get();
-        $specialties = Specialty::where('customer_id', $customerId)
-            ->where('status', 1)
-            ->orderBy('name')
+        $user = auth()->user();
+        $isCentralAppointmentCreator = $user && $activeBranchId
+            && \App\Support\ClinicBranchContext::canAdministerAllBranches($user, (int) $customerId)
+            && \App\Support\ClinicBranchContext::hasPermissionInBranch($user, (int) $customerId, (int) $activeBranchId, 'appointments.create');
+        $isDoctor = $user && $activeBranchId
+            && $user->hasClinicRole('Doctor', (int) $customerId, (int) $activeBranchId)
+            && !$isCentralAppointmentCreator;
+        $currentProfessionalId = null;
+        $currentProfessionalName = null;
+
+        if ($isDoctor) {
+            $professional = User::where('customer_id', $customerId)
+                ->where('status', 1)
+                ->whereKey($user->id)
+                ->first(['id', 'name']);
+
+            $currentProfessionalId = $professional?->id;
+            $currentProfessionalName = $professional?->name;
+        }
+
+        $specialties = Specialty::query()
+            ->where('specialties.customer_id', $customerId)
+            ->where('specialties.status', 1)
+            ->whereHas('users', fn ($users) => $users
+                ->where('users.customer_id', $customerId)
+                ->where('users.status', 1)
+                ->when($isDoctor && $currentProfessionalId, fn ($query) => $query->whereKey($currentProfessionalId))
+                ->where('specialty_user.customer_id', $customerId)
+                ->where('specialty_user.clinic_branch_id', $activeBranchId ?? 0)
+                ->whereHas('branches', fn ($branches) => $branches
+                    ->where('clinic_branches.id', $activeBranchId ?? 0)
+                    ->where('clinic_branches.status', true)
+                    ->where('clinic_branch_user.status', true)))
+            ->orderBy('specialties.name')
             ->get();
-        return view('customer.patient.index', compact('insurances', 'specialties'));
+
+        return view('customer.patient.index', compact(
+            'insurances', 'specialties', 'isDoctor', 'currentProfessionalId', 'currentProfessionalName',
+            'activeBranchId', 'appointmentBranches', 'canChooseAppointmentBranch'
+        ));
     }
 
     // datatable
@@ -32,7 +80,7 @@ class PatientController extends Controller
     {
         $customerId = app('customer')->id;
         $now = now();
-        $query = Patient::with('insurance')
+        $query = Patient::with(['insurance', 'clinicBranch'])
             ->withCount(['appointments as total_appointments_count' => function ($appointments) use ($customerId) {
                 $appointments->where('customer_id', $customerId);
             }])
@@ -42,7 +90,9 @@ class PatientController extends Controller
                     ->whereIn('status', [0, 1, 2])
                     ->where('start_at', '>=', $now);
             }])
-            ->where('customer_id', $customerId);
+            ->where('customer_id', $customerId)
+            ->orderByDesc('created_at')
+            ->orderByDesc('id');
 
         return DataTables::of($query)
             ->addIndexColumn()
@@ -83,6 +133,8 @@ class PatientController extends Controller
             ->addColumn('insurance', function ($row) {
                 return $row->insurance?->name ?? 'Sin previsión';
             })
+            ->addColumn('branch_name', fn ($row) => $row->clinicBranch?->name ?? 'Sin sede')
+            ->filterColumn('branch_name', fn ($query, $keyword) => $query->whereHas('clinicBranch', fn ($branchQuery) => $branchQuery->where('name', 'like', "%{$keyword}%")))
             ->addColumn('insurance_id', function ($row) {
                     return $row->insurance_id;
             })
@@ -199,6 +251,10 @@ class PatientController extends Controller
 
             'customer_id' => app('customer')->id,
 
+            'clinic_branch_id' => (int) session('active_branch_customer_id') === (int) app('customer')->id
+                ? session('active_branch_id')
+                : null,
+
             'name' => $request->name,
 
             'rut' => $request->rut,
@@ -224,7 +280,7 @@ class PatientController extends Controller
             'customer_id' => app('customer')->id,
         ]);
 
-        $patientFields = ['name', 'rut', 'birth_date', 'gender', 'phone', 'email', 'address', 'status', 'insurance_id'];
+        $patientFields = ['clinic_branch_id', 'name', 'rut', 'birth_date', 'gender', 'phone', 'email', 'address', 'status', 'insurance_id'];
         PatientAuditLogger::record(
             $patient,
             'created',

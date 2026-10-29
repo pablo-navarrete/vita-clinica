@@ -2,6 +2,8 @@
     @php($socialLinks = $websiteSocialSettings?->social_links ?? [])
     @php($socialNetworks = \App\Models\WebsiteSocialSetting::networks())
     @php($footerName = $websiteFooter?->title ?: app('customer')->name)
+    @php($footerBrandDisplay = $websiteFooter?->brand_display ?? 'both')
+    @php($footerLogo = $logosByLocation['footer'] ?? null)
 
     <style>
         .clinic-site-footer { margin-top: 5rem; color: #d1d5db; background: linear-gradient(135deg, #111827 0%, #1f2937 100%); border-top: 4px solid {{ themeColor(600) }}; }
@@ -28,8 +30,13 @@
         <div class="container py-lg-4">
             <div class="row">
                 <section class="col-lg-5 col-md-12 mb-5 mb-lg-0">
-                    <a href="{{ url('/') }}" class="d-inline-block mb-3 text-decoration-none">
-                        <h2 class="mb-0 font-weight-bold">{{ $footerName }}</h2>
+                    <a href="{{ url('/') }}" class="d-inline-flex align-items-center mb-3 text-decoration-none" style="gap: .85rem">
+                        @if (in_array($footerBrandDisplay, ['logo', 'both'], true) && $footerLogo)
+                            <img src="{{ asset('storage/' . $footerLogo->url) }}" alt="Logo de {{ $footerName }}" style="display:block; max-width:180px; max-height:64px; object-fit:contain">
+                        @endif
+                        @if (in_array($footerBrandDisplay, ['title', 'both'], true))
+                            <h2 class="mb-0 font-weight-bold">{{ $footerName }}</h2>
+                        @endif
                     </a>
                     @if ($websiteFooter?->description)
                         <p class="footer-description mb-4">{{ $websiteFooter->description }}</p>
@@ -69,7 +76,7 @@
                     </nav>
                 </section>
 
-                <section class="col-lg-4 col-sm-6">
+                <section id="servicios" class="col-lg-4 col-sm-6">
                     <h3 class="footer-heading">Servicios</h3>
                     @forelse ($publicSpecialties as $specialty)
                         <div class="footer-specialty"><i class="fa-solid fa-circle-check"></i><span>{{ $specialty->name }}</span></div>
@@ -94,3 +101,6 @@
         </div>
     </div>
 @endif
+
+@include('components.vita-assistant', ['publicMode' => true])
+@vite('resources/js/vita-assistant/public.js')

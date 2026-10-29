@@ -24,806 +24,7 @@
 
 
 @section('content')
-    <div class="py-12">
-
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-
-            <div class="bg-white shadow-xl rounded-xl overflow-hidden">
-
-
-                {{-- HEADER PACIENTE --}}
-
-                <div class="px-6 py-6" style="background-color: {{ themeColor(600) }}">
-
-                    <div class="flex justify-between items-start">
-
-                        {{-- Información del paciente --}}
-                        <div>
-
-                            <h1 class="text-2xl font-bold text-white">
-                                {{ $medicalRecord->patient->name }}
-                            </h1>
-
-                            <p class="text-blue-100 mt-1">
-                                RUT: {{ $medicalRecord->patient->rut }}
-                            </p>
-
-                        </div>
-
-                    </div>
-
-                </div>
-
-
-                <div class="p-6 space-y-10">
-
-                    @if (session('error'))
-                        <div class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{{ session('error') }}</div>
-                    @endif
-
-                    {{-- DATOS PACIENTE --}}
-
-                    <section>
-                        <div class="-mx-6 -mt-6 mb-6 px-6 py-4 " style="background-color: {{ themeColor(100) }}">
-                            <h2 class="text-lg font-bold text-gray-800">
-                                Datos del Paciente
-                            </h2>
-                        </div>
-
-
-                        <div class="grid md:grid-cols-3 gap-6">
-
-                            <div>
-
-                                <p class="text-sm text-gray-500">
-                                    Nombre completo
-                                </p>
-
-                                <p class="font-semibold">
-
-                                    {{ $medicalRecord->patient->name }}
-
-                                </p>
-
-                            </div>
-
-                            <div>
-
-                                <p class="text-sm text-gray-500">
-                                    RUT
-                                </p>
-
-                                <p class="font-semibold">
-
-                                    {{ $medicalRecord->patient->rut }}
-
-                                </p>
-
-                            </div>
-
-                            <div>
-
-                                <p class="text-sm text-gray-500">
-                                    Fecha nacimiento
-                                </p>
-
-                                <p class="font-semibold">
-
-                                    {{ $medicalRecord->patient->birth_date?->format('d/m/Y') ?? '-' }}
-
-                                </p>
-
-                            </div>
-                            <div>
-
-                                <p class="text-sm text-gray-500">
-                                    Sexo
-                                </p>
-
-                                <p class="font-semibold">
-
-                                    {{ $medicalRecord->patient->gender ?? '-' }}
-
-                                </p>
-
-                            </div>
-
-                            <div>
-
-                                <p class="text-sm text-gray-500">
-                                    Teléfono
-                                </p>
-
-                                <p class="font-semibold">
-
-                                    {{ $medicalRecord->patient->phone ?? '-' }}
-
-                                </p>
-
-                            </div>
-
-                            <div>
-
-                                <p class="text-sm text-gray-500">
-                                    Correo
-                                </p>
-
-                                <p class="font-semibold">
-
-                                    {{ $medicalRecord->patient->email ?? '-' }}
-
-                                </p>
-
-                            </div>
-
-                            <div>
-
-                                <p class="text-sm text-gray-500">
-                                    Dirección
-                                </p>
-
-                                <p class="font-semibold">
-
-                                    {{ $medicalRecord->patient->address ?? '-' }}
-
-                                </p>
-
-                            </div>
-
-
-                            <div>
-
-                                <p class="text-sm text-gray-500">
-                                    Previsión
-                                </p>
-
-                                <p class="font-semibold">
-
-                                    {{ $patient->insurance?->name ?? 'Sin previsión' }}
-
-                                </p>
-
-                            </div>
-
-                            <div>
-
-                                <p class="text-sm text-gray-500">
-                                    Fecha de ingreso
-                                </p>
-
-                                <p class="font-semibold">
-
-                                    {{ $medicalRecord->patient->created_at?->format('d/m/Y - H:i') ?? '-' }}
-
-                                </p>
-
-                            </div>
-
-
-
-                        </div>
-
-
-                    </section>
-
-                    <section class="rounded-xl border border-gray-200 bg-white p-5">
-                        <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
-                            <div>
-                                <h2 class="text-lg font-bold text-gray-800">Registro de actividad</h2>
-                                <p class="mt-1 text-sm text-gray-500">Quién creó o modificó los datos y la ficha clínica.</p>
-                            </div>
-                            <span class="text-xs text-gray-500">Últimos 100 cambios</span>
-                        </div>
-
-                        @if ($auditLogs->isEmpty())
-                            <p class="rounded-lg bg-gray-50 px-4 py-3 text-sm text-gray-500">No hay cambios registrados todavía.</p>
-                        @else
-                            <div class="space-y-3">
-                                @foreach ($auditLogs as $auditLog)
-                                    <article class="rounded-lg border border-gray-100 bg-gray-50 p-4">
-                                        <div class="flex flex-col justify-between gap-1 sm:flex-row sm:items-start">
-                                            <div>
-                                                @if ($auditLog->action === 'legacy')
-                                                    <p class="font-semibold text-gray-800">Registro previo a la auditoría</p>
-                                                    <p class="mt-1 text-sm text-gray-600">El usuario que lo creó y los cambios anteriores no quedaron registrados.</p>
-                                                @else
-                                                    <p class="font-semibold text-gray-800">
-                                                        {{ $auditLog->user?->name ?? 'Usuario eliminado' }}
-                                                        <span class="font-normal text-gray-600">
-                                                            @switch($auditLog->action)
-                                                                @case('created') creó @break
-                                                                @case('updated') modificó @break
-                                                                @case('started') inició @break
-                                                                @case('finished') finalizó @break
-                                                                @case('cancelled') canceló @break
-                                                                @default actualizó
-                                                            @endswitch
-                                                            {{ strtolower($auditLog->section) }}
-                                                        </span>
-                                                    </p>
-                                                @endif
-                                            </div>
-                                            <time class="text-xs text-gray-500" datetime="{{ $auditLog->created_at->toIso8601String() }}">
-                                                {{ $auditLog->created_at->timezone('America/Santiago')->format('d/m/Y H:i') }}
-                                            </time>
-                                        </div>
-
-                                        @if (!empty($auditLog->changes))
-                                            <ul class="mt-3 space-y-1 text-sm text-gray-600">
-                                                @foreach ($auditLog->changes as $field => $change)
-                                                    @php
-                                                        $beforeValue = $change['before'] ?? null;
-                                                        $afterValue = $change['after'] ?? null;
-                                                        $formatAuditValue = fn ($value) => is_array($value)
-                                                            ? json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
-                                                            : ($value === null || $value === '' ? 'Sin dato' : (string) $value);
-                                                    @endphp
-                                                    <li>
-                                                        <span class="font-medium text-gray-700">{{ ucfirst(str_replace('_', ' ', $field)) }}:</span>
-                                                        {{ $formatAuditValue($beforeValue) }}
-                                                        <span class="px-1 text-gray-400">→</span>
-                                                        {{ $formatAuditValue($afterValue) }}
-                                                    </li>
-                                                @endforeach
-                                            </ul>
-                                        @endif
-                                    </article>
-                                @endforeach
-                            </div>
-                        @endif
-                    </section>
-
-                    {{-- RESUMEN CLINICO FICTICIO --}}
-
-                    <section>
-                        <div class="-mx-6 -mt-6 mb-6 px-6 py-4 " style="background-color: {{ themeColor(100) }}">
-
-                            <h2 class="text-lg font-bold text-gray-800 ">
-
-                                Resumen Clínico
-
-                            </h2>
-                        </div>
-
-                        <div class="grid md:grid-cols-3 gap-5">
-
-                            <div class="bg-gray-50 rounded-xl p-5">
-
-                                <p class="text-sm text-gray-500">
-
-                                    Total atenciones
-
-                                </p>
-
-                                <p class="text-3xl font-bold">
-
-                                    {{ $totalAttentions }}
-
-                                </p>
-
-                            </div>
-
-                            <div class="bg-gray-50 rounded-xl p-5">
-
-                                <p class="text-sm text-gray-500">
-
-                                    Última atención
-
-                                </p>
-
-                                <p class="font-bold">
-
-                                    {{ $lastAttentionDate ? \Illuminate\Support\Carbon::parse($lastAttentionDate)->format('d/m/Y') : 'Sin atenciones registradas' }}
-
-                                </p>
-
-                            </div>
-
-                            <div class="bg-gray-50 rounded-xl p-5">
-
-                                <p class="text-sm text-gray-500">
-
-                                    Último médico
-
-                                </p>
-
-                                <p class="font-bold">
-
-                                    {{ $lastAttentionProfessional ?? 'Sin profesional registrado' }}
-
-                                </p>
-
-                            </div>
-
-                        </div>
-
-                    </section>
-
-                    {{-- antecedentesmedicos- --}}
-
-                    <section>
-
-                        <div class="-mx-6 -mt-6 mb-6 px-6 py-4 " style="background-color: {{ themeColor(100) }}">
-
-                            <h2 class="text-lg font-bold text-gray-800 ">
-                                Antecedentes Médicos
-                            </h2>
-
-                        </div>
-
-                        <div class="grid md:grid-cols-2 gap-5">
-
-                            {{-- Alergias --}}
-
-                            <div class="border rounded-xl">
-
-                                <div class="flex justify-between items-center px-5 py-3 border rounded-t-xl"
-                                    style="background-color: {{ themeColor(50) }}">
-
-                                    <h3 class="font-semibold text-gray-800 flex items-center gap-2">
-                                        <i class="fa-solid fa-triangle-exclamation text-yellow-500"></i>
-                                        Alergias
-                                    </h3>
-
-                                    <a href="javascript:void(0)" onclick="openAllergyModal()"
-                                        class="inline-flex items-center gap-2 text-sm font-medium hover:underline"
-                                        style="color: {{ themeColor(600) }}">
-
-                                        <i class="fa-solid fa-pen-to-square"></i>
-                                        Editar
-
-                                    </a>
-
-                                </div>
-
-                                <div class="mt-3 p-5 ">
-                                    @if ($allergies->isEmpty())
-                                        <p class="text-gray-800"> No existen alergias registradas.</p>
-                                    @else
-                                        @foreach ($allergies as $allergen)
-                                            <div class="relative inline-block group p-1">
-                                                <span
-                                                    class="inline-flex px-3 py-1 rounded-full bg-red-100 text-red-700 text-sm cursor-pointer">
-                                                    {{ $allergen->allergen }}
-                                                </span>
-
-                                                <div
-                                                    class="absolute left-1/2 -translate-x-1/2 bottom-full mb-2
-                                                        hidden group-hover:block
-                                                        bg-red-600 text-white text-xs rounded-lg px-3 py-2
-                                                        shadow-lg whitespace-nowrap z-50">
-                                                    {{ $allergen->reaction }}
-
-                                                    <div
-                                                        class="absolute left-1/2 top-full -translate-x-1/2
-                                                                border-4 border-transparent border-t-red-600">
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        @endforeach
-                                    @endif
-                                </div>
-
-                            </div>
-
-                            {{-- Enfermedades --}}
-                            <div class="border rounded-xl">
-
-                                <div class="flex justify-between items-center px-5 py-3 border rounded-t-xl"
-                                    style="background-color: {{ themeColor(50) }}">
-
-                                    <h3 class="font-semibold text-gray-800 flex items-center gap-2">
-                                        <i class="fa-solid fa-triangle-exclamation text-yellow-500"></i>
-                                        Enfermedades cronicas
-                                    </h3>
-
-                                    <a href="javascript:void(0)" onclick="openChronicDiseasesModal()"
-                                        class="inline-flex items-center gap-2 text-sm font-medium hover:underline"
-                                        style="color: {{ themeColor(600) }}">
-
-                                        <i class="fa-solid fa-pen-to-square"></i>
-                                        Editar
-
-                                    </a>
-
-                                </div>
-                                <div class="mt-3 p-5">
-                                    @if ($chronicDiseases->isEmpty())
-                                        <p class="text-gray-800"> No existen Enfermedades Cronicas.</p>
-                                    @else
-                                        @foreach ($chronicDiseases as $chronicDisease)
-                                            <div class="relative inline-block group p-1">
-                                                <span
-                                                    class="inline-flex px-3 py-1 rounded-full bg-yellow-100 text-yellow-700 text-sm cursor-pointer">
-                                                    {{ $chronicDisease->name }}
-                                                </span>
-                                            </div>
-                                        @endforeach
-                                    @endif
-                                </div>
-
-                            </div>
-
-                            {{-- Medicamentos --}}
-                            <div class="border rounded-xl">
-
-                                <div class="flex justify-between items-center px-5 py-3 border rounded-t-xl"
-                                    style="background-color: {{ themeColor(50) }}">
-
-                                    <h3 class="font-semibold text-gray-800">
-
-                                        Medicamentos Habituales
-
-                                    </h3>
-                                    <a href="javascript:void(0)" onclick="openRegularMedicationsModal()"
-                                        class="inline-flex items-center gap-2 text-sm font-medium hover:underline"
-                                        style="color: {{ themeColor(600) }}">
-
-                                        <i class="fa-solid fa-pen-to-square"></i>
-                                        Editar
-
-                                    </a>
-                                </div>
-                                <div class="mt-3 p-5">
-                                    @if ($regularMedications->isEmpty())
-                                        <p class="text-gray-800"> No existen Medicamentos Habituales.</p>
-                                    @else
-                                        @foreach ($regularMedications as $regular)
-                                            <div class="relative inline-block group p-1">
-                                                <span
-                                                    class="inline-flex px-3 py-1 rounded-full bg-green-100 text-green-700 text-sm cursor-pointer">
-                                                    {{ $regular->name }}
-                                                </span>
-                                            </div>
-                                        @endforeach
-                                    @endif
-                                </div>
-
-
-                            </div>
-
-
-
-                            {{-- Cirugías --}}
-                            <div class="border rounded-xl">
-
-                                <div class="flex justify-between items-center px-5 py-3 border rounded-t-xl"
-                                    style="background-color: {{ themeColor(50) }}">
-
-                                    <h3 class="font-semibold text-gray-800">
-
-                                        Cirugías Previas
-
-                                    </h3>
-                                    <a href="javascript:void(0)" onclick="openPreviousSurgeriesModal()"
-                                        class="inline-flex items-center gap-2 text-sm font-medium hover:underline"
-                                        style="color: {{ themeColor(600) }}">
-
-                                        <i class="fa-solid fa-pen-to-square"></i>
-                                        Editar
-
-                                    </a>
-                                </div>
-
-                                <div class="mt-3 p-5">
-                                    @if ($previousSurgeries->isEmpty())
-                                        <p class="text-gray-800"> No existen Cirugías Previas.</p>
-                                    @else
-                                        @foreach ($previousSurgeries as $regular)
-                                            <div class="relative inline-block group p-1">
-                                                <span
-                                                    class="inline-flex px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-sm cursor-pointer">
-                                                    {{ $regular->name }}
-                                                </span>
-                                            </div>
-                                        @endforeach
-                                    @endif
-                                </div>
-
-                            </div>
-
-                        </div>
-
-                    </section>
-
-                    {{-- Atencion actual --}}
-
-                    <section id="current-encounter-section">
-
-                        <div class="-mx-6 -mt-6 mb-6 px-6 py-4 flex justify-between items-center "
-                            style="background-color: {{ themeColor(100) }}" >
-                            <h2 class="text-lg font-bold text-gray-800">
-
-                                Atención Actual
-
-                            </h2>
-
-                            
-                            @if($canCreateEncounter && $specialties->isNotEmpty() && !$currentEncounter)
-
-                                <a href="javascript:void(0)" onclick="openEncountersModal()" style="background-color: {{ themeColor(600) }}"
-                                class="hover:brightness-90 transition text-white font-bold py-2 px-4 rounded">
-                                <i class="fa-solid fa-circle-plus"></i>
-                                Nueva atención
-
-                                </a>
-                            @endif
-                            @if ($canCreateEncounter && $specialties->isEmpty())
-                                <span class="text-sm text-amber-700">No tienes especialidades activas asignadas; contacta al administrador.</span>
-                            @endif
-
-                        </div>
-
-
-                    @if($currentEncounter)
-
-                        <div class="border rounded-xl mb-5 hover:shadow-md transition">
-
-                            <div class="flex justify-between items-start p-5 border rounded-t-xl" style="background-color: {{ themeColor(50) }}">
-
-                                <!-- Izquierda -->
-                                <div class="flex gap-4" >
-
-                                    <div
-                                        class="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center flex-shrink-0">
-                                        <i class="fa-solid fa-user-doctor text-blue-600 text-lg"></i>
-                                    </div>
-
-                                    <div>
-
-                                        <h3 class="font-bold text-gray-800">
-                                            Atención #{{ $currentEncounter->id }}
-                                        </h3>
-
-                                        <p class="text-sm text-gray-500 mt-1">
-                                            {{ \Illuminate\Support\Carbon::parse($currentEncounter->started_at)->format('d/m/Y · H:i') }} hrs
-                                        </p>
-
-                                    </div>
-
-                                </div>
-
-                                <!-- Derecha -->
-                                <span class="rounded-full bg-blue-100 px-3 py-1 text-sm font-semibold text-blue-700">
-                                    En curso
-                                </span>
-
-                            </div>
-
-                            <div class="grid md:grid-cols-4 gap-5 mt-6 p-5">
-
-                                <div>
-                                    <p class="text-sm text-gray-500">Profesional</p>
-                                    <p class="font-medium">
-                                            {{ $currentEncounter->professional?->name ?? $currentEncounter->appointment?->professional?->name ?? 'Sin profesional asociado' }}
-                                    </p>
-                                </div>
-
-                                <div>
-                                    <p class="text-sm text-gray-500">Especialidad</p>
-                                    <p class="font-medium">
-                                    {{ $currentEncounter->specialty?->name ?? $currentEncounter->appointment?->specialty?->name ?? 'Sin especialidad asociada' }}
-                                    </p>
-                                </div>
-
-                                <div>
-                                    <p class="text-sm text-gray-500">Motivo</p>
-                                    <p class="font-medium">
-                                        {{ $currentEncounter->chief_complaint ?? 'Sin motivo registrado' }}
-                                    </p>
-                                </div>
-
-                                 <div>
-                                    <p class="text-sm text-gray-500">Estado</p>
-                                   <span class="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm">
-                                    En curso
-                                </span>
-                                </div>
-
-                            </div>
-
-                            <div class="grid gap-4 border-t px-5 py-4 text-sm sm:grid-cols-2">
-                                <div>
-                                    <p class="text-gray-500">Iniciado por</p>
-                                    <p class="font-medium">{{ $currentEncounter->openedBy?->name ?? 'No registrado' }}</p>
-                                </div>
-                                <div>
-                                    <p class="text-gray-500">Fecha y hora de inicio</p>
-                                    <p class="font-medium">{{ $currentEncounter->started_at?->format('d/m/Y H:i') ?? 'No registrada' }}</p>
-                                </div>
-                            </div>
-
-                            @if ($canManageCurrentEncounter)
-                            <div class="border-t px-5 py-5">
-                                <form action="{{ route('patients.encounters.finish', ['customer' => request()->route('customer'), 'id' => $patient->id, 'encounter' => $currentEncounter->id]) }}" method="POST" class="space-y-4">
-                                    @csrf
-                                    @method('PATCH')
-                                    <h4 class="font-semibold text-gray-800">Cerrar atención</h4>
-                                    <div>
-                                        <label for="encounter-assessment" class="mb-1 block text-sm font-medium text-gray-700">Evaluación clínica / diagnóstico</label>
-                                        <textarea id="encounter-assessment" name="clinical_assessment" rows="4" required maxlength="20000" class="w-full rounded-lg border-gray-300" placeholder="Registra la evaluación clínica y el diagnóstico">{{ old('clinical_assessment', $currentEncounter->clinical_assessment) }}</textarea>
-                                        @error('clinical_assessment')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
-                                    </div>
-                                    <div>
-                                        <label for="encounter-treatment-plan" class="mb-1 block text-sm font-medium text-gray-700">Plan / tratamiento (opcional)</label>
-                                        <textarea id="encounter-treatment-plan" name="treatment_plan" rows="3" maxlength="20000" class="w-full rounded-lg border-gray-300" placeholder="Indicaciones, tratamiento o seguimiento">{{ old('treatment_plan', $currentEncounter->treatment_plan) }}</textarea>
-                                    </div>
-                                    <div class="flex flex-wrap items-end justify-between gap-4">
-                                        <button type="submit" style="background-color: {{ themeColor(600) }}" class="rounded px-4 py-2 font-semibold text-white hover:brightness-90">Finalizar atención</button>
-                                    </div>
-                                </form>
-                                <form action="{{ route('patients.encounters.cancel', ['customer' => request()->route('customer'), 'id' => $patient->id, 'encounter' => $currentEncounter->id]) }}" method="POST" class="mt-4 flex flex-wrap items-end gap-3 border-t pt-4">
-                                    @csrf
-                                    @method('PATCH')
-                                    <div class="min-w-64 flex-1">
-                                        <label for="encounter-cancellation-reason" class="mb-1 block text-sm font-medium text-gray-700">Motivo para cancelar</label>
-                                        <input id="encounter-cancellation-reason" name="cancellation_reason" required maxlength="2000" class="w-full rounded-lg border-gray-300" value="{{ old('cancellation_reason') }}" placeholder="Indica por qué se cancela">
-                                        @error('cancellation_reason')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
-                                    </div>
-                                    <button type="submit" class="rounded border border-red-300 px-4 py-2 font-semibold text-red-700 hover:bg-red-50">Cancelar atención</button>
-                                </form>
-                            </div>
-                            @elseif (!$currentEncounter->professional_id && !$currentEncounter->appointment?->professional_id)
-                                <p class="border-t px-5 py-4 text-sm text-amber-700">Esta atención no tiene un médico responsable asignado.</p>
-                            @else
-                                <p class="border-t px-5 py-4 text-sm text-gray-500">Solo el médico responsable puede finalizar o cancelar esta atención.</p>
-                            @endif
-
-                          
-
-                        </div>
-                    @else
-                        <h3 class="font-semibold text-gray-800">
-                            No hay una atención activa
-                        </h3>
-
-                        <p class="text-gray-500 mt-1">
-                            El paciente no tiene ninguna atención en curso. Puede crear una nueva atención para comenzar la atención clínica.
-                        </p>
-                    @endif
-
-                    </section>
-
-                    {{-- HISTORIAL --}}
-                    <section id="encounter-history">
-                        <div class="-mx-6 -mt-6 mb-6 px-6 py-4" style="background-color: {{ themeColor(100) }}">
-                            <h2 class="text-lg font-bold text-gray-800">Historial de atenciones</h2>
-                        </div>
-
-                        <form method="GET"
-                            action="{{ route('patients.medical-record.show', ['customer' => request()->route('customer'), 'id' => $patient->id]) }}"
-                            class="mb-6 grid gap-3 rounded-lg border bg-gray-50 p-4 md:grid-cols-2 xl:grid-cols-3">
-                            <input type="search" name="search" value="{{ request('search') }}"
-                                placeholder="Buscar en motivo, evaluación o plan"
-                                class="rounded-lg border-gray-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-
-                            <select name="specialty_id"
-                                class="rounded-lg border-gray-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                                <option value="">Todas las especialidades</option>
-                                @foreach ($specialtyOptions as $specialtyOption)
-                                    <option value="{{ $specialtyOption->id }}" @selected((string) request('specialty_id') === (string) $specialtyOption->id)>
-                                        {{ $specialtyOption->name }}
-                                    </option>
-                                @endforeach
-                            </select>
-
-                            <select name="professional_id"
-                                class="rounded-lg border-gray-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                                <option value="">Todos los profesionales</option>
-                                @foreach ($professionalOptions as $professionalOption)
-                                    <option value="{{ $professionalOption->id }}" @selected((string) request('professional_id') === (string) $professionalOption->id)>
-                                        {{ $professionalOption->name }}
-                                    </option>
-                                @endforeach
-                            </select>
-
-                            <div class="flex items-center gap-2">
-                                <a href="{{ route('patients.medical-record.show', ['customer' => request()->route('customer'), 'id' => $patient->id]) }}"
-                                    class="rounded-lg border bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-100">
-                                    Limpiar
-                                </a>
-                            </div>
-                        </form>
-
-                        <div class="space-y-4">
-                            @forelse ($encounters as $encounter)
-                                @php
-                                    $encounterDate = $encounter->started_at ?? $encounter->created_at;
-                                    $encounterStatus = (int) $encounter->status;
-                                @endphp
-                                <article class="overflow-hidden rounded-xl border">
-                                    <div class="flex flex-col gap-3 border-b p-5 sm:flex-row sm:items-start sm:justify-between"
-                                        style="background-color: {{ themeColor(50) }}">
-                                        <div>
-                                            <h3 class="font-bold text-gray-800">Atención #{{ $encounter->id }}</h3>
-                                            <p class="mt-1 text-sm text-gray-500">
-                                                {{ \Illuminate\Support\Carbon::parse($encounterDate)->format('d/m/Y H:i') }} hrs
-                                            </p>
-                                        </div>
-                                        <span class="inline-flex w-fit rounded-full px-3 py-1 text-sm font-semibold {{ $encounterStatus === 2 ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700' }}">
-                                            {{ $encounterStatus === 2 ? 'Terminada' : 'Cancelada' }}
-                                        </span>
-                                    </div>
-                                    <div class="grid gap-4 p-5 sm:grid-cols-2 lg:grid-cols-3">
-                                        <div>
-                                            <p class="text-sm text-gray-500">Profesional</p>
-                                            <p class="font-medium">{{ $encounter->professional?->name ?? $encounter->appointment?->professional?->name ?? 'Sin profesional asociado' }}</p>
-                                        </div>
-                                        <div>
-                                            <p class="text-sm text-gray-500">Especialidad</p>
-                                            <p class="font-medium">{{ $encounter->specialty?->name ?? $encounter->appointment?->specialty?->name ?? 'Sin especialidad asociada' }}</p>
-                                        </div>
-                                        <div>
-                                            <p class="text-sm text-gray-500">Motivo</p>
-                                            <p class="whitespace-pre-wrap break-words font-medium">{{ $encounter->chief_complaint ?? 'Sin motivo registrado' }}</p>
-                                        </div>
-                                        <div>
-                                            <p class="text-sm text-gray-500">Evaluación clínica</p>
-                                            <p class="whitespace-pre-wrap break-words font-medium">{{ $encounter->clinical_assessment ?? 'Sin evaluación registrada' }}</p>
-                                        </div>
-                                        <div>
-                                            <p class="text-sm text-gray-500">Plan / tratamiento</p>
-                                            <p class="whitespace-pre-wrap break-words font-medium">{{ $encounter->treatment_plan ?? 'Sin plan registrado' }}</p>
-                                        </div>
-                                        @if ($encounterStatus === 3)
-                                            <div>
-                                                <p class="text-sm text-gray-500">Motivo de cancelación</p>
-                                                <p class="whitespace-pre-wrap break-words font-medium">{{ $encounter->cancellation_reason ?? 'Sin motivo indicado' }}</p>
-                                            </div>
-                                        @endif
-                                    </div>
-                                    <div class="grid gap-4 border-t px-5 py-4 text-sm sm:grid-cols-2">
-                                        <div>
-                                            <p class="text-gray-500">Iniciado por</p>
-                                            <p class="font-medium">{{ $encounter->openedBy?->name ?? 'No registrado' }}</p>
-                                        </div>
-                                        <div>
-                                            <p class="text-gray-500">Atención cerrada el</p>
-                                            <p class="font-medium">{{ $encounter->ended_at?->format('d/m/Y H:i') ?? 'No registrado' }}</p>
-                                        </div>
-                                    </div>
-                                </article>
-                            @empty
-                                <p class="rounded-lg bg-gray-50 px-5 py-8 text-center text-sm text-gray-500">
-                                    Todavía no hay atenciones finalizadas o canceladas.
-                                </p>
-                            @endforelse
-                        </div>
-                        @if ($encounters->hasPages())
-                            <div class="mt-6">
-                                {{ $encounters->links() }}
-                            </div>
-                        @endif
-                    </section>
-
-                    {{-- BOTONES --}}
-
-
-                    <div class="border-t pt-6 flex justify-end gap-3">
-
-
-                        <a href="/patient" class="px-5 py-2 rounded-lg bg-gray-200">
-
-                            Volver
-
-                        </a>
-
-                        <button style="background-color: {{ themeColor(600) }}"
-                            class="hover:brightness-90 transition text-white font-bold py-2 px-4 rounded">
-                            <i class="fa-solid fa-print"></i>
-                            Imprimir ficha
-
-                        </button>
-
-                    </div>
-
-                </div>
-
-            </div>
-
-        </div>
-
-    </div>
+    @include('customer.patient.record-workspace.shell')
 
     {{-- modal editar / crear alergias --}}
 
@@ -1316,8 +517,8 @@
 
 
     {{-- Modal para iniciar una atención --}}
-    <div id="modalEncounters" class="fixed inset-0 z-50 hidden flex items-center justify-center overflow-y-auto bg-black/50 p-4">
-        <div class="flex max-h-[90vh] w-full max-w-2xl flex-col rounded-xl bg-white shadow-xl">
+    <div id="modalEncounters" class="fixed inset-0 z-50 hidden flex items-center justify-center overflow-hidden bg-black/50 p-4">
+        <div class="flex max-h-[calc(100vh-2rem)] w-full max-w-2xl flex-col rounded-xl bg-white shadow-xl">
             <div class="rounded-t-lg border-b px-6 py-4" style="background-color: {{ themeColor(100) }}">
                 <h2 class="text-lg font-bold">Nueva atención médica</h2>
                 <p class="mt-1 text-sm text-gray-600">Paciente: {{ $patient->name }} · RUT: {{ $patient->rut }}</p>
@@ -1325,17 +526,35 @@
 
             <form action="{{ route('patients.encounters.store', ['customer' => request()->route('customer'), 'id' => $patient->id]) }}" method="POST" class="flex min-h-0 flex-1 flex-col">
                 @csrf
+                <input type="hidden" id="encounter-direct-session" name="telemedicine_session_id" value="{{ old('telemedicine_session_id') }}">
                 <div class="space-y-4 overflow-y-auto p-6">
                     @error('encounter')
                         <p class="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{{ $message }}</p>
                     @enderror
+
+                    @if ($ownActiveEncounters->isNotEmpty())
+                        <div id="encounter-open-warning" class="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                            <p>Ya tienes {{ $ownActiveEncounters->count() }} atención(es) abierta(s) para este paciente. Si eliges una cita nueva, puedes iniciar otra atención.</p>
+                            <label class="mt-3 flex items-start gap-2">
+                                <input id="confirm-open-encounter" type="checkbox" name="confirm_open_encounter" value="1" @checked(old('confirm_open_encounter')) class="mt-1 rounded border-gray-300">
+                                <span>He revisado las atenciones abiertas y deseo iniciar otra consulta sin cita.</span>
+                            </label>
+                            @error('confirm_open_encounter')<p class="mt-2 text-red-700">{{ $message }}</p>@enderror
+                        </div>
+                    @endif
 
                     <div>
                         <label for="encounter-appointment" class="mb-1 block text-sm font-medium text-gray-700">Cita asociada (opcional)</label>
                         <select id="encounter-appointment" name="appointment_id" class="w-full rounded-lg border-gray-300">
                             <option value="">Sin cita asociada</option>
                             @foreach ($patientAppointments as $appointment)
-                                <option value="{{ $appointment->id }}" data-specialty-id="{{ $appointment->specialty_id }}" @selected(old('appointment_id', $preselectedAppointmentId) == $appointment->id)>
+                                @php
+                                    $telemedicineReady = $appointment->telemedicineSession
+                                        && $appointment->telemedicineSession->status === 'in_progress'
+                                        && $appointment->telemedicineSession->patient_consent_at
+                                        && !$appointment->telemedicineSession->ended_at;
+                                @endphp
+                                <option value="{{ $appointment->id }}" data-specialty-id="{{ $appointment->specialty_id }}" data-modality="{{ $appointment->modality ?? 'in_person' }}" data-telemedicine-ready="{{ $telemedicineReady ? '1' : '0' }}" @selected(old('appointment_id', $preselectedAppointmentId) == $appointment->id)>
                                     {{ \Illuminate\Support\Carbon::parse($appointment->start_at)->format('d/m/Y H:i') }} · {{ $appointment->professional?->name ?? 'Sin profesional' }} · {{ $appointment->specialty?->name ?? 'Sin especialidad' }}
                                 </option>
                             @endforeach
@@ -1343,6 +562,16 @@
                         @error('appointment_id')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
+                    </div>
+
+                    <div>
+                        <label for="encounter-modality" class="mb-1 block text-sm font-medium text-gray-700">Modalidad de atención</label>
+                        <select id="encounter-modality" name="modality" required class="w-full rounded-lg border-gray-300">
+                            <option value="in_person" @selected(old('modality', $preselectedEncounterModality) === 'in_person')>Presencial</option>
+                            <option value="telemedicine" @selected(old('modality', $preselectedEncounterModality) === 'telemedicine')>Telemedicina</option>
+                        </select>
+                        <p id="encounter-telemedicine-note" class="mt-1 text-xs text-gray-500">Al iniciar una atenci?n por telemedicina, su sala de video se crea dentro de la atenci?n. El paciente acepta el consentimiento al ingresar.</p>
+                        @error('modality')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
                     </div>
 
                     <div>
@@ -1388,6 +617,16 @@
             padding-left: 0.75rem; color: #111827;
         }
         #encounter-history .select2-container--default .select2-selection__arrow { height: 40px; }
+        #modalEncounters .select2-container { width: 100% !important; }
+        #modalEncounters .select2-container--default .select2-selection--single {
+            height: 42px; border: 1px solid #d1d5db; border-radius: 0.5rem;
+            display: flex; align-items: center;
+        }
+        #modalEncounters .select2-container--default .select2-selection__rendered {
+            padding-left: 0.75rem; color: #111827;
+        }
+        #modalEncounters .select2-container--default .select2-selection__arrow { height: 40px; }
+        #modalEncounters .select2-dropdown { z-index: 60; }
     </style>
 @endpush
 @push('scripts')
@@ -1433,7 +672,7 @@
             const reaction = document.getElementById('reaction').value.trim();
 
             if (allergen === '') {
-                alert('Ingrese un alérgeno');
+                window.showClinicalRecordToast('Ingrese un alérgeno');
                 return;
             }
 
@@ -1526,7 +765,7 @@
             const name = document.getElementById('chronicDiseasesName').value.trim();
 
             if (name === '') {
-                alert('Ingrese una enfermedad cronica');
+                window.showClinicalRecordToast('Ingrese una enfermedad cronica');
                 return;
             }
 
@@ -1608,7 +847,7 @@
             const name = document.getElementById('regularMedicationName').value.trim();
 
             if (name === '') {
-                alert('Ingrese un medicamento habitual');
+                window.showClinicalRecordToast('Ingrese un medicamento habitual');
                 return;
             }
 
@@ -1691,7 +930,7 @@
             const name = document.getElementById('previousSurgeriesName').value.trim();
 
             if (name === '') {
-                alert('Ingrese una cirugía previa');
+                window.showClinicalRecordToast('Ingrese una cirugía previa');
                 return;
             }
 
@@ -1749,22 +988,72 @@
 
         const encounterAppointmentSelect = document.getElementById('encounter-appointment');
         const encounterSpecialtySelect = document.getElementById('encounter-specialty');
+        const encounterModalitySelect = document.getElementById('encounter-modality');
+        const telemedicineModalityOption = encounterModalitySelect?.querySelector('option[value="telemedicine"]');
+        const telemedicineModalityNote = document.getElementById('encounter-telemedicine-note');
+        let encounterAppointmentInitialized = false;
+        function syncEncounterSelect(element) {
+            if (element && window.jQuery?.fn.select2) jQuery(element).trigger('change.select2');
+        }
+        function updateEncounterModality(autoSelect = false) {
+            if (!encounterAppointmentSelect || !encounterModalitySelect || !telemedicineModalityOption) return;
+            const selectedAppointment = encounterAppointmentSelect.options[encounterAppointmentSelect.selectedIndex];
+            const isAppointmentSelected = Boolean(encounterAppointmentSelect.value);
+            const confirmation = document.getElementById('confirm-open-encounter');
+            const warning = document.getElementById('encounter-open-warning');
+            if (confirmation) {
+                confirmation.required = !isAppointmentSelected;
+                confirmation.disabled = isAppointmentSelected;
+                warning?.classList.toggle('hidden', isAppointmentSelected);
+            }
+            const appointmentModality = isAppointmentSelected ? (selectedAppointment?.dataset.modality || 'in_person') : 'in_person';
+            telemedicineModalityOption.disabled = false;
+            if (autoSelect) encounterModalitySelect.value = appointmentModality;
+            telemedicineModalityNote.textContent = 'Al iniciar una atención por telemedicina, su sala de video se crea dentro de la atención, con o sin cita. El paciente acepta el consentimiento al ingresar.';
+            syncEncounterSelect(encounterModalitySelect);
+        }
         if (encounterAppointmentSelect && encounterSpecialtySelect) {
-            encounterAppointmentSelect.addEventListener('change', function () {
+            const onEncounterAppointmentChange = function () {
+                document.getElementById('encounter-direct-session').value = '';
+                document.getElementById('encounter-direct-session').dataset.ready = '0';
                 const selectedOption = this.options[this.selectedIndex];
                 const specialtyId = selectedOption?.dataset.specialtyId;
-                if (specialtyId) encounterSpecialtySelect.value = specialtyId;
+                if (specialtyId) {
+                    encounterSpecialtySelect.value = specialtyId;
+                    syncEncounterSelect(encounterSpecialtySelect);
+                }
                 encounterSpecialtySelect.required = !this.value;
-            });
+                updateEncounterModality(encounterAppointmentInitialized);
+            };
+            if (window.jQuery) jQuery(encounterAppointmentSelect).on('change.encounter', onEncounterAppointmentChange);
+            else encounterAppointmentSelect.addEventListener('change', onEncounterAppointmentChange);
             encounterSpecialtySelect.required = !encounterAppointmentSelect.value;
             if (encounterAppointmentSelect.value) {
                 encounterAppointmentSelect.dispatchEvent(new Event('change'));
+            } else {
+                updateEncounterModality();
             }
+            encounterAppointmentInitialized = true;
         }
 
-        @if ($openEncounterModal || $errors->has('encounter') || $errors->has('chief_complaint') || $errors->has('appointment_id') || $errors->has('specialty_id'))
+        @if ($openEncounterModal || $errors->has('encounter') || $errors->has('chief_complaint') || $errors->has('appointment_id') || $errors->has('specialty_id') || $errors->has('modality') || $errors->has('confirm_open_encounter'))
             document.addEventListener('DOMContentLoaded', openEncountersModal);
         @endif
+    </script>
+    <script>
+        (() => {
+            const exportMenu = document.getElementById('medical-record-export-menu');
+            if (!exportMenu) return;
+
+            document.addEventListener('click', event => {
+                if (!exportMenu.contains(event.target)) exportMenu.open = false;
+                if (event.target.closest('#medical-record-export-menu a')) exportMenu.open = false;
+            });
+
+            document.addEventListener('keydown', event => {
+                if (event.key === 'Escape') exportMenu.open = false;
+            });
+        })();
     </script>
     <script>
         (() => {
@@ -1784,7 +1073,22 @@
                 });
             }
 
+            function initializeEncounterSelects() {
+                if (!window.jQuery || !jQuery.fn.select2) return;
+                jQuery('#encounter-appointment, #encounter-modality, #encounter-specialty').select2({
+                    width: '100%',
+                    minimumResultsForSearch: 0,
+                    dropdownParent: jQuery('#modalEncounters'),
+                    language: {
+                        noResults: () => 'No se encontraron opciones',
+                        searching: () => 'Buscando...',
+                    },
+                });
+            }
+
             initializeHistorySelects();
+            initializeEncounterSelects();
+            window.addEventListener('clinical-record-refreshed', initializeHistorySelects);
 
             async function updateEncounterHistory(url, updateAddress = true) {
                 const currentHistory = document.getElementById('encounter-history');
@@ -1825,7 +1129,7 @@
                 } catch (error) {
                     if (error.name !== 'AbortError') {
                         console.error(error);
-                        alert('No se pudo actualizar el historial de atenciones.');
+                        window.showClinicalRecordToast('No se pudo actualizar el historial de atenciones.');
                     }
                 } finally {
                     document.getElementById('encounter-history')?.classList.remove('opacity-50');
@@ -1835,7 +1139,7 @@
 
             document.addEventListener('submit', event => {
                 const form = event.target.closest('#encounter-history form');
-                if (!form) return;
+                if (!form || form.method.toLowerCase() !== 'get') return;
                 event.preventDefault();
                 const url = new URL(form.action);
                 new FormData(form).forEach((value, key) => {

@@ -27,7 +27,6 @@ class WebsiteSocialController extends Controller
             'social_links' => ['nullable', 'array', 'max:12'],
             'social_links.*.network' => ['required', 'string', 'distinct', 'in:' . implode(',', $networks)],
             'social_links.*.url' => ['required', 'url:http,https', 'max:500'],
-            'show_in_topbar' => ['required', 'boolean'],
         ]);
         $data['social_links'] = array_values($data['social_links'] ?? []);
 

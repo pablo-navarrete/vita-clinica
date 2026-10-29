@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class ClinicActivityLog extends Model
 {
     protected $fillable = [
-        'customer_id', 'user_id', 'actor_name', 'module', 'action', 'subject_type',
+        'customer_id', 'clinic_branch_id', 'user_id', 'actor_name', 'module', 'action', 'subject_type',
         'subject_id', 'subject_label', 'summary', 'changes',
     ];
 
@@ -16,5 +16,10 @@ class ClinicActivityLog extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function clinicBranch()
+    {
+        return $this->belongsTo(ClinicBranch::class)->withTrashed();
     }
 }

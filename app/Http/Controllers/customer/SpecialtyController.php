@@ -13,8 +13,8 @@ class SpecialtyController extends Controller
 
     public function index()
     {
-     
-        return view('customer.specialties.index');
+        $canManageCentralConfiguration = $this->canManageCentralConfiguration();
+        return view('customer.specialties.index', compact('canManageCentralConfiguration'));
     }
 
        // datatable 
@@ -28,6 +28,8 @@ class SpecialtyController extends Controller
             ->addIndexColumn()
 
             ->addColumn('actions', function ($row) {
+
+                if (!$this->canManageCentralConfiguration()) return '';
 
                 $actions = '
                     <button class="edit-specialties-btn text-blue-500 mr-2">
@@ -52,6 +54,7 @@ class SpecialtyController extends Controller
     }
     public function store(Request $request)
     {
+        abort_unless($this->canManageCentralConfiguration(), 403, 'El catálogo de especialidades se administra desde la sede principal con permisos centrales.');
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
             'status' => 'required|in:0,1',
@@ -82,6 +85,7 @@ class SpecialtyController extends Controller
       //cambiar estado
     public function toggleStatus(Request $request)
     {
+        abort_unless($this->canManageCentralConfiguration(), 403, 'El catálogo de especialidades se administra desde la sede principal con permisos centrales.');
         $id = $request->route('id');
 
         $specialty = Specialty::where('id', $id)->firstOrFail();
@@ -96,6 +100,7 @@ class SpecialtyController extends Controller
 
     public function update(Request $request, $id)
     {
+         abort_unless($this->canManageCentralConfiguration(), 403, 'El catálogo de especialidades se administra desde la sede principal con permisos centrales.');
          $id = $request->route('id');
 
         $specialty = Specialty::where('id', $id)
@@ -139,6 +144,7 @@ class SpecialtyController extends Controller
 
     public function destroy(Request $request)
     {
+        abort_unless($this->canManageCentralConfiguration(), 403, 'El catálogo de especialidades se administra desde la sede principal con permisos centrales.');
 
         $id = $request->route('id');
         $specialty = Specialty::where('customer_id', app('customer')->id)
@@ -157,5 +163,16 @@ class SpecialtyController extends Controller
         return response()->json([
             'message' => 'Especialidad eliminada correctamente.'
         ]);
+    }
+
+    private function canManageCentralConfiguration(): bool
+    {
+        $user = request()->user();
+        $customerId = (int) app('customer')->id;
+        $branchId = \App\Support\ClinicBranchContext::defaultBranch($user, $customerId)?->id;
+
+        return $user && $branchId
+            && \App\Support\ClinicBranchContext::canAdministerAllBranches($user, $customerId)
+            && \App\Support\ClinicBranchContext::hasPermissionInBranch($user, $customerId, (int) $branchId, 'clinic_configuration.manage');
     }
 }

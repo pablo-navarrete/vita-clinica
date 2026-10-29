@@ -631,7 +631,7 @@ class="px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition">
                             confirmButtonText: 'Aceptar'
                         }).then(() => {
 
-                            location.reload();
+                            window.VitaNavigation.refresh();
 
                         });
 
@@ -669,8 +669,7 @@ class="px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition">
             actionsMenu.addClass('hidden');
 
 
-            window.location.href =
-                `/patients/${patientId}/medical-record`;
+            window.VitaNavigation.navigate(`/patients/${patientId}/medical-record`);
 
         });
 

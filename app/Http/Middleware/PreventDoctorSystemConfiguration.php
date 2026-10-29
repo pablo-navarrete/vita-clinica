@@ -10,10 +10,18 @@ class PreventDoctorSystemConfiguration
 {
     public function handle(Request $request, Closure $next): Response
     {
-        $isDoctor = $request->user()
-            ?->roles()
-            ->where('roles.name', 'Doctor')
+        $user = $request->user();
+        $isSuperAdmin = $user?->roles()
+            ->whereNull('roles.customer_id')
+            ->where('roles.name', 'Super Administrador')
             ->exists();
+        $isClinicAdmin = $user && app()->bound('customer')
+            ? $user->roles()->where('roles.customer_id', app('customer')->id)->where('roles.name', 'Administrador')->exists()
+            : false;
+
+        $isDoctor = ! $isSuperAdmin && ! $isClinicAdmin && $user
+            ? $user->roles()->where('roles.name', 'Doctor')->exists()
+            : false;
 
         abort_if($isDoctor, 403, 'No tienes permiso para acceder a la configuración del sistema.');
 

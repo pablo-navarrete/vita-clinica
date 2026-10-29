@@ -11,6 +11,7 @@ use App\Models\WebsiteBanner;
 use App\Models\WebsiteTopbar;
 use App\Models\Specialty;
 use App\Models\WebsiteMaintenance;
+use App\Models\WebsiteNavigationButton;
 
 class WebController extends Controller
 {
@@ -21,12 +22,17 @@ class WebController extends Controller
     {
         $customerId = (int) app('customer')->id;
         $maintenance = WebsiteMaintenance::query()->firstOrNew(['customer_id' => $customerId]);
-        $canManageWebsite = auth()->check() && !auth()->user()->roles()->where('roles.name', 'Doctor')->exists();
+        $user = auth()->user();
+        $hasAdminAccess = $user && ($user->roles()->where('roles.customer_id', $customerId)->where('roles.name', 'Administrador')->exists()
+            || $user->roles()->whereNull('roles.customer_id')->where('roles.name', 'Super Administrador')->exists());
+        $isDoctorOnly = $user && $user->roles()->where('roles.customer_id', $customerId)->where('roles.name', 'Doctor')->exists() && ! $hasAdminAccess;
+        $canManageWebsite = (bool) $user && ! $isDoctorOnly;
         if ($maintenance->enabled && (request()->boolean('public_view') || !$canManageWebsite)) {
             return response()->view('customer.web.maintenance', compact('maintenance'), 503);
         }
         WebsitePage::ensureHomeForCustomer($customerId);
         $publicMenus = $this->publicMenus($customerId);
+        $websiteNavigationButton = WebsiteNavigationButton::query()->where('customer_id', $customerId)->first();
         $publicBanners = WebsiteBanner::query()
             ->where('customer_id', $customerId)
             ->where('status', true)
@@ -56,6 +62,7 @@ class WebController extends Controller
             return view('customer.web.page', [
                 'page' => $homePage,
                 'publicMenus' => $publicMenus,
+                'websiteNavigationButton' => $websiteNavigationButton,
                 'publicBanners' => $publicBanners,
                 'publicSpecialties' => $publicSpecialties,
                 'hasConfiguredMenus' => $publicMenus->isNotEmpty(),
@@ -67,6 +74,7 @@ class WebController extends Controller
 
         return view('customer.web.index', [
             'publicMenus' => $publicMenus,
+            'websiteNavigationButton' => $websiteNavigationButton,
             'publicBanners' => $publicBanners,
             'publicSpecialties' => $publicSpecialties,
             'hasConfiguredMenus' => $publicMenus->isNotEmpty(),

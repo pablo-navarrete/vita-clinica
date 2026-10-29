@@ -8,6 +8,28 @@
         --primary: {{ themeColor(600) }};
     }
 
+    html, body { max-width: 100%; overflow-x: clip; }
+
+    @media (max-width: 991.98px) {
+        .public-clinic-brand { min-width: 0; max-width: calc(100% - 3.75rem); gap: .5rem !important; white-space: normal; }
+        .public-clinic-logo { width: auto !important; max-width: 3.5rem; max-height: 3.5rem !important; }
+        .public-clinic-name { min-width: 0; overflow-wrap: anywhere; font-size: clamp(1.05rem, 4.8vw, 1.65rem); line-height: 1.15; }
+        .public-clinic-brand + .navbar-toggler { flex: 0 0 auto; margin-left: auto; }
+        .navbar-light .navbar-collapse .navbar-nav { align-items: stretch; }
+        .navbar-light .navbar-collapse .navbar-nav .nav-link { padding: .65rem .5rem; }
+        .website-topbar-contact { gap: .3rem .8rem; }
+        .website-topbar-contact small { font-size: .75rem; overflow-wrap: anywhere; }
+        .public-admin-bar > .d-flex { gap: .2rem .4rem !important; }
+        .public-admin-bar .public-admin-link { max-width: 100%; white-space: normal; line-height: 1.25; }
+        .public-admin-bar form { display: inline-flex !important; }
+    }
+
+    @media (max-width: 575.98px) {
+        .public-admin-bar .public-admin-link { padding: .3rem .4rem !important; font-size: .72rem; }
+        .navbar.navbar-light { padding: .75rem 1rem; }
+        .website-topbar-contact { max-width: 100%; }
+    }
+
     a,
     .text-primary,
     a.text-primary:hover,
@@ -15,6 +37,26 @@
     .navbar-light .navbar-nav .nav-link:hover,
     .navbar-light .navbar-nav .nav-link.active {
         color: var(--clinic-primary) !important;
+    }
+
+    html body .navbar .public-navigation-cta,
+    html body .navbar .public-navigation-cta:hover,
+    html body .navbar .public-navigation-cta:focus {
+        color: #fff !important;
+        text-decoration: none;
+    }
+
+    html body .navbar .public-navigation-cta {
+        transition: background-color .2s ease, border-color .2s ease, box-shadow .2s ease, transform .2s ease;
+    }
+
+    html body .navbar .public-navigation-cta:hover,
+    html body .navbar .public-navigation-cta:focus-visible {
+        background-color: var(--clinic-primary-hover) !important;
+        border-color: var(--clinic-primary-hover) !important;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, .28);
+        color: #fff !important;
+        transform: translateY(-3px) scale(1.03);
     }
 
     .navbar-light .navbar-nav .nav-link {

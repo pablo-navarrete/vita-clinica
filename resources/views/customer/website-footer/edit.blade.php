@@ -25,6 +25,16 @@
                         Mostrar redes sociales agregadas en el footer
                     </label>
                 </div>
+                <div class="mb-5">
+                    <label for="footer-brand-display" class="mb-1 block text-sm font-medium text-gray-700">Marca que se mostrará junto al título</label>
+                    <select id="footer-brand-display" name="brand_display" class="w-full rounded-md border-gray-300 shadow-sm md:max-w-md">
+                        <option value="both" @selected(old('brand_display', $footer->brand_display ?? 'both') === 'both')>Logo y título</option>
+                        <option value="logo" @selected(old('brand_display', $footer->brand_display ?? 'both') === 'logo')>Solo logo</option>
+                        <option value="title" @selected(old('brand_display', $footer->brand_display ?? 'both') === 'title')>Solo título</option>
+                    </select>
+                    <p class="mt-1 text-xs text-gray-500">Para mostrar el logo, actívalo en la ubicación “Footer” del módulo Logo.</p>
+                    @error('brand_display')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+                </div>
                 <div class="grid gap-4 md:grid-cols-2">
                     <div>
                         <label for="footer-title" class="mb-1 block text-sm font-medium text-gray-700">Título</label>

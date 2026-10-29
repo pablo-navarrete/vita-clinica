@@ -5,6 +5,7 @@ namespace App\Http\Controllers\customer;
 use App\Http\Controllers\Controller;
 use App\Models\Menu;
 use App\Models\WebsitePage;
+use App\Models\WebsiteNavigationButton;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -28,7 +29,79 @@ class MenuController extends Controller
             ->orderBy('position')
             ->orderBy('id')
             ->get();
-        return view('customer.menu.index', compact('menus'));
+        $navigationButton = WebsiteNavigationButton::firstOrNew(['customer_id' => $customerId], [
+            'enabled' => false,
+            'public_booking_enabled' => false,
+            'label' => 'Contactar',
+            'destination' => 'contact',
+        ]);
+
+        return view('customer.menu.index', compact('menus', 'navigationButton'));
+    }
+
+    public function updateNavigationButton(Request $request): RedirectResponse
+    {
+        $customerId = (int) app('customer')->id;
+        $data = $request->validate([
+            'enabled' => ['required', 'boolean'],
+            'label' => ['required', 'string', 'max:60'],
+            'destination' => ['required', 'in:contact,whatsapp,page,custom,booking'],
+            'menu_id' => ['nullable', 'integer'],
+            'whatsapp_phone' => ['nullable', 'string', 'max:40'],
+            'custom_url' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        if ($data['destination'] === 'page') {
+            $menu = Menu::query()
+                ->where('customer_id', $customerId)
+                ->where('status', true)
+                ->where('id', $data['menu_id'] ?? 0)
+                ->first();
+            if (! $menu) {
+                throw ValidationException::withMessages(['menu_id' => 'Selecciona una página pública activa.']);
+            }
+        }
+
+
+
+        if ($data['destination'] === 'whatsapp') {
+            $phone = preg_replace('/[^0-9]/', '', (string) ($data['whatsapp_phone'] ?? ''));
+            if (strlen($phone) < 8 || strlen($phone) > 15) {
+                throw ValidationException::withMessages(['whatsapp_phone' => 'Ingresa el número con código de país, solo dígitos (por ejemplo: 56912345678).']);
+            }
+            $data['whatsapp_phone'] = $phone;
+        }
+
+        if ($data['destination'] === 'custom' && ! $this->isAllowedPublicUrl((string) ($data['custom_url'] ?? ''))) {
+            throw ValidationException::withMessages(['custom_url' => 'Usa una ruta, ancla, correo, teléfono o enlace http/https válido.']);
+        }
+
+        if ($data['destination'] !== 'page') {
+            $data['menu_id'] = null;
+        }
+        if ($data['destination'] !== 'whatsapp') {
+            $data['whatsapp_phone'] = null;
+        }
+        if ($data['destination'] !== 'custom') {
+            $data['custom_url'] = null;
+        }
+
+        WebsiteNavigationButton::updateOrCreate(['customer_id' => $customerId], $data);
+
+        return redirect()->route('customers.menus.index', ['customer' => request()->route('customer')])
+            ->with('success', 'Botón de navegación actualizado.');
+    }
+
+    public function updatePublicBooking(Request $request): RedirectResponse
+    {
+        $data = $request->validate(['public_booking_enabled' => ['required', 'boolean']]);
+        WebsiteNavigationButton::firstOrCreate(
+            ['customer_id' => (int) app('customer')->id],
+            ['enabled' => false, 'label' => 'Contactar', 'destination' => 'contact']
+        )->update(['public_booking_enabled' => $data['public_booking_enabled']]);
+
+        return redirect()->route('customers.menus.index', ['customer' => request()->route('customer')])
+            ->with('success', 'Agendamiento público actualizado.');
     }
 
     public function store(Request $request): RedirectResponse
@@ -265,6 +338,27 @@ class MenuController extends Controller
         }
 
         return $slug;
+    }
+
+    private function isAllowedPublicUrl(string $url): bool
+    {
+        $url = trim($url);
+        if (preg_match('/^#[A-Za-z][A-Za-z0-9_-]*$/', $url) === 1) {
+            return true;
+        }
+        if (Str::startsWith($url, '/') && ! Str::startsWith($url, '//')) {
+            return true;
+        }
+
+        $scheme = strtolower((string) parse_url($url, PHP_URL_SCHEME));
+        if ($scheme === 'mailto') {
+            return filter_var(substr($url, 7), FILTER_VALIDATE_EMAIL) !== false;
+        }
+        if ($scheme === 'tel') {
+            return preg_match('/^tel:\+?[0-9(). -]{5,30}$/i', $url) === 1;
+        }
+
+        return filter_var($url, FILTER_VALIDATE_URL) !== false && in_array($scheme, ['http', 'https'], true);
     }
 
     private function normalizePositions(int $customerId): void

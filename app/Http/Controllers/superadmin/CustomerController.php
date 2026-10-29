@@ -4,12 +4,78 @@ namespace App\Http\Controllers\superadmin;
 
 use Illuminate\Http\Request;
 use App\Models\Customer;
+use App\Models\ClinicBranch;
 use Yajra\DataTables\Facades\DataTables;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
 
 class CustomerController extends Controller
 {
+    public function branches(Customer $customer)
+    {
+        return view('superadmin.customer.branches', [
+            'customer' => $customer,
+            'branches' => $customer->branches()->orderBy('name')->get(),
+        ]);
+    }
+
+    public function storeBranch(Request $request, Customer $customer)
+    {
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'address' => ['nullable', 'string', 'max:255'],
+            'phone' => ['nullable', 'string', 'max:50'],
+        ]);
+
+        $customer->branches()->create($data);
+
+        return redirect()->route('superadmin.customers.branches', $customer)->with('success', 'Sede agregada correctamente.');
+    }
+
+    public function toggleBranchStatus(Request $request, Customer $customer, int $branchId)
+    {
+        $branch = $customer->branches()->findOrFail($branchId);
+        $activate = $request->boolean('status');
+
+        if (!$activate) {
+            $activeBranches = $customer->branches()->where('status', true)->count();
+            if ($branch->status && $activeBranches <= 1) {
+                if ($request->expectsJson()) {
+                    return response()->json(['message' => 'La clínica debe conservar al menos una sede activa.'], 422);
+                }
+
+                return redirect()->route('superadmin.customers.branches', $customer)
+                    ->with('error', 'La clínica debe conservar al menos una sede activa.');
+            }
+        }
+
+        $branch->update(['status' => $activate]);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'status' => (bool) $branch->status,
+            ]);
+        }
+
+        return redirect()->route('superadmin.customers.branches', $customer)
+            ->with('success', $activate ? 'Sede activada correctamente.' : 'Sede desactivada correctamente.');
+    }
+
+    public function destroyBranch(Customer $customer, int $branchId)
+    {
+        $branch = $customer->branches()->findOrFail($branchId);
+        if ($branch->status && $customer->branches()->where('status', true)->count() <= 1) {
+            return redirect()->route('superadmin.customers.branches', $customer)
+                ->with('error', 'La clínica debe conservar al menos una sede activa.');
+        }
+
+        $branch->delete();
+
+        return redirect()->route('superadmin.customers.branches', $customer)->with('success', 'Sede quitada. Las citas históricas se conservan.');
+    }
+
     public function index()
     {
         return view('superadmin.customer.index');
@@ -62,22 +128,31 @@ class CustomerController extends Controller
             ], 422);
         }
 
-        $customer = Customer::create([
-            'name'           => $request->name,
-            'rut'            => $request->rut,
-            'email'          => $request->email,
-            'phone'          => $request->phone,
-            'address'        => $request->address,
-            'holder'         => $request->holder,
-            'legal_name'     => $request->legal_name,
-            'domain'         => $domain, // Solo el subdominio
-            'status'         => $request->status,
+        $customer = DB::transaction(function () use ($request, $domain) {
+            $customer = Customer::create([
+                'name'           => $request->name,
+                'rut'            => $request->rut,
+                'email'          => $request->email,
+                'phone'          => $request->phone,
+                'address'        => $request->address,
+                'holder'         => $request->holder,
+                'legal_name'     => $request->legal_name,
+                'domain'         => $domain,
+                'status'         => $request->status,
+                'payment_status' => 1,
+                'paid_at'        => now(),
+                'expires_at'     => now()->addMonth(),
+            ]);
 
-            // SaaS defaults
-            'payment_status' => 1,
-            'paid_at'        => now(),
-            'expires_at'     => now()->addMonth(),
-        ]);
+            $customer->branches()->create([
+                'name' => 'Sede principal',
+                'address' => $request->address,
+                'phone' => $request->phone,
+                'status' => true,
+            ]);
+
+            return $customer;
+        });
 
         return response()->json([
             'success' => true,

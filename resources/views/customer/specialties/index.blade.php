@@ -17,11 +17,13 @@
 
                         <!-- BOTÓN -->
                         <div class="flex justify-end mb-4">
+                            @if ($canManageCentralConfiguration)
                             <button @click="create()" style="background-color: {{ themeColor(500) }}"
                                 class="hover:brightness-90 transition text-white font-bold py-2 px-4 rounded">
                                 <i class="fa-solid fa-circle-plus"></i>
                                 Nuevo
                             </button>
+                            @endif
                         </div>
 
                         <table id="specialties-table"
@@ -132,6 +134,7 @@
                     url: "https://cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json"
                 },
                 responsive: false,
+                order: [],
 
                 columns: [{
                         data: null,

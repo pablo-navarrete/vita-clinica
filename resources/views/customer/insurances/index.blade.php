@@ -19,6 +19,7 @@
 
                         <!-- BOTÓN -->
                         <div class="flex justify-end mb-4">
+                            @if ($canManageCentralConfiguration)
                             <button
                                 @click="create()"
                                 style="background-color: {{ themeColor(600) }}"
@@ -26,6 +27,7 @@
                                 <i class="fa-solid fa-circle-plus"></i>
                                 Nuevo
                             </button>
+                            @endif
                         </div>
 
                         <table id="insurances-table"
@@ -142,6 +144,7 @@
                         url: "https://cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json"
                     },
                     responsive: false,
+                    order: [],
 
                     columns: [
                     {

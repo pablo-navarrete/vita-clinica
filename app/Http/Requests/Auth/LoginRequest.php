@@ -3,10 +3,12 @@
 namespace App\Http\Requests\Auth;
 
 use App\Models\Customer;
+use App\Models\ClinicBranch;
 use App\Models\User;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -28,10 +30,12 @@ class LoginRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [
+        $rules = [
             'email' => ['required', 'string', 'email'],
             'password' => ['required', 'string'],
         ];
+
+        return $rules;
     }
 
     /**
@@ -95,6 +99,20 @@ if ((int) $customer->status !== 1) {
     ]);
 }
 
+$activeBranchesExist = ClinicBranch::query()
+    ->where('customer_id', $customer->id)
+    ->where('status', true)
+    ->exists();
+if ($this->filled('branch_id') && $activeBranchesExist && !ClinicBranch::query()
+    ->where('customer_id', $customer->id)
+    ->where('status', true)
+    ->whereKey((int) $this->input('branch_id'))
+    ->exists()) {
+    throw ValidationException::withMessages([
+        'branch_id' => 'Selecciona una sede desde la página de acceso de tu clínica antes de ingresar.',
+    ]);
+}
+
 $host = $this->getHost();
 $mainDomain = config('app.domain');
 
@@ -117,6 +135,20 @@ if ((int) $user->status !== 1) {
     throw ValidationException::withMessages([
         'email' => 'La cuenta profesional está inactiva y no puede iniciar sesión. Contacta al administrador de la clínica.',
     ]);
+}
+
+if ($activeBranchesExist && Hash::check($this->password, $user->password)) {
+    $hasActiveBranchAccess = $user->branches()
+        ->where('clinic_branches.customer_id', $customer->id)
+        ->where('clinic_branches.status', true)
+        ->wherePivot('status', true)
+        ->exists();
+
+    if (!$hasActiveBranchAccess) {
+        throw ValidationException::withMessages([
+            'email' => 'Tu usuario no tiene una sede activa asignada. Contacta al administrador de la clínica.',
+        ]);
+    }
 }
 
 // Validar login incluyendo customer_id

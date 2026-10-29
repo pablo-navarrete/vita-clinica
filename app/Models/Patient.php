@@ -8,8 +8,10 @@ use Illuminate\Database\Eloquent\Model;
 class Patient extends Model
 {
     use HasFactory;
+
        protected $fillable = [
         'customer_id',
+        'clinic_branch_id',
         'name',
         'rut',
         'birth_date',
@@ -36,6 +38,11 @@ class Patient extends Model
         return $this->belongsTo(Customer::class);
     }
 
+    public function clinicBranch()
+    {
+        return $this->belongsTo(ClinicBranch::class)->withTrashed();
+    }
+
 
     public function appointments()
     {
@@ -60,6 +67,11 @@ class Patient extends Model
     public function encounters()
     {
         return $this->hasMany(Encounter::class);
+    }
+
+    public function documents()
+    {
+        return $this->hasMany(PatientDocument::class)->latest();
     }
 
  
