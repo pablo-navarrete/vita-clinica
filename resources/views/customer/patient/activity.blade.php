@@ -13,13 +13,13 @@
 @endsection
 
 @section('content')
-    <div class="py-8">
+    <div class="pb-8">
         <div class="mx-auto max-w-7xl space-y-5 px-4 sm:px-6 lg:px-8">
             <section class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
                 <div class="flex flex-wrap items-center justify-between gap-3">
                     <div>
                         <h1 class="text-lg font-bold text-gray-800">{{ $patient->name }}</h1>
-                        <p class="mt-1 text-sm text-gray-500">RUT: {{ $patient->rut }}</p>
+                        <p class="mt-1 text-sm text-gray-500">{{ $patient->identification_label }}</p>
                     </div>
                     <span class="rounded-full px-3 py-1 text-xs font-semibold" style="background:{{ themeColor(100) }};color:{{ themeColor(700) }}">
                         {{ $auditLogs->total() }} cambios registrados
@@ -92,6 +92,8 @@
                                                 if ($value === null || $value === '') {
                                                     return 'Sin dato';
                                                 }
+
+                                                if ($field === 'rut') return app(\App\Services\Identification\DocumentIdentityPresenter::class)->label(['rut' => $value], true);
 
                                                 if (is_array($value)) {
                                                     return json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);

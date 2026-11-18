@@ -8,6 +8,7 @@
     <style>
         .clinic-site-footer { margin-top: 5rem; color: #d1d5db; background: linear-gradient(135deg, #111827 0%, #1f2937 100%); border-top: 4px solid {{ themeColor(600) }}; }
         .clinic-site-footer h2, .clinic-site-footer h3 { color: #fff; }
+        .clinic-site-footer .footer-brand-name { font-family: 'Figtree', sans-serif; font-size: 30px; font-weight: 700; letter-spacing: .16em; line-height: 1.2; text-transform: uppercase; overflow-wrap: anywhere; }
         .clinic-site-footer .footer-heading { margin-bottom: 1.4rem; font-size: .88rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
         .clinic-site-footer .footer-heading::after { display: block; width: 2.25rem; height: 2px; margin-top: .65rem; background: {{ themeColor(600) }}; content: ''; }
         .clinic-site-footer .footer-description { max-width: 32rem; color: #aeb8c5; line-height: 1.8; }
@@ -35,7 +36,7 @@
                             <img src="{{ asset('storage/' . $footerLogo->url) }}" alt="Logo de {{ $footerName }}" style="display:block; max-width:180px; max-height:64px; object-fit:contain">
                         @endif
                         @if (in_array($footerBrandDisplay, ['title', 'both'], true))
-                            <h2 class="mb-0 font-weight-bold">{{ $footerName }}</h2>
+                            <h2 class="mb-0 font-weight-bold footer-brand-name">{{ $footerName }}</h2>
                         @endif
                     </a>
                     @if ($websiteFooter?->description)
@@ -71,7 +72,7 @@
                     <h3 class="footer-heading">Enlaces</h3>
                     <nav aria-label="Enlaces del sitio">
                         @foreach ($publicMenus as $menu)
-                            <a class="footer-link" href="{{ $menu->url }}"><i class="fa fa-angle-right"></i><span>{{ $menu->name }}</span></a>
+                            <a class="footer-link" href="{{ $menu->url }}"><i class="fa fa-angle-right"></i><span>{{ $menu->websitePage?->title ?: $menu->name }}</span></a>
                         @endforeach
                     </nav>
                 </section>
@@ -79,7 +80,7 @@
                 <section id="servicios" class="col-lg-4 col-sm-6">
                     <h3 class="footer-heading">Servicios</h3>
                     @forelse ($publicSpecialties as $specialty)
-                        <div class="footer-specialty"><i class="fa-solid fa-circle-check"></i><span>{{ $specialty->name }}</span></div>
+                        <div class="footer-specialty"><span aria-hidden="true" style="color: {{ themeColor(400) }}">✓</span><span>{{ $specialty->name }}</span></div>
                     @empty
                         <p class="footer-description">Consulta directamente con la clínica para conocer sus servicios.</p>
                     @endforelse

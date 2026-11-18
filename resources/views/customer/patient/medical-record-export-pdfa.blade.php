@@ -27,7 +27,7 @@
 <table class="demographics">
     <tr>
         <td><div class="label">Nombre completo</div><div class="value">{{ $patient->name }}</div></td>
-        <td><div class="label">RUT</div><div class="value">{{ $patient->rut }}</div></td>
+        <td><div class="label">Identificaci?n</div><div class="value">{{ app(\App\Services\Identification\DocumentIdentityPresenter::class)->label(app(\App\Services\Identification\PatientIdentification::class)->snapshot($patient, auth()->user(), false)) }}</div></td>
     </tr>
     <tr>
         <td><div class="label">Fecha de nacimiento</div><div>{{ $patient->birth_date?->format('d/m/Y') ?? 'No registrada' }}</div></td>
@@ -82,6 +82,20 @@
         @if($encounter->chief_complaint)<p><strong>Motivo:</strong> {{ $encounter->chief_complaint }}</p>@endif
         @if($encounter->clinical_assessment)<p><strong>Evaluación clínica:</strong> {{ $encounter->clinical_assessment }}</p>@endif
         @if($encounter->treatment_plan)<p><strong>Plan:</strong> {{ $encounter->treatment_plan }}</p>@endif
+        @if($encounter->signature)
+            @include('customer.patient.record-workspace.pdf-signature', ['signature' => $encounter->signature])
+        @elseif((int) $encounter->status === 2)
+            <p class="muted">Atención histórica finalizada sin firma electrónica registrada.</p>
+        @endif
+        @foreach(app(\App\Services\Signatures\EncounterAddendumReader::class)->read($encounter) as $entry)
+            @php($snapshot = $entry['snapshot'])
+            <div class="item">
+                <p><strong>Adenda firmada independiente · {{ \App\Services\Signatures\EncounterAddendumSnapshotBuilder::TYPES[$snapshot['addendum_type']] }} · Secuencia {{ $snapshot['sequence'] }}</strong></p>
+                <p>Documento #{{ $entry['signature']->document_version_id }} · {{ $entry['signature']->identity['name'] }} · {{ $entry['signature']->signed_at->timezone('America/Santiago')->format('d/m/Y H:i:s') }} · FES VITA</p>
+                @include('customer.patient.record-workspace.addendum-content', ['snapshot' => $snapshot])
+                @include('customer.patient.record-workspace.pdf-signature', ['signature' => $entry['signature']])
+            </div>
+        @endforeach
         @if($encounter->observations->isNotEmpty())
             <p><strong>Observaciones adicionales:</strong></p>
             @foreach ($encounter->observations as $observation)
@@ -110,17 +124,6 @@
     </div>
 @empty
     <p class="muted">Sin documentos registrados.</p>
-@endforelse
-
-<h2>Movimientos de la ficha por sede</h2>
-@forelse ($patient->auditLogs as $auditLog)
-    <div class="item">
-        <strong>{{ $auditLog->section }}</strong> · {{ $auditLog->action }}
-        <p>Sede: {{ $auditLog->clinicBranch?->name ?? 'Sin sede registrada' }}</p>
-        <p class="muted">{{ $auditLog->created_at?->timezone('America/Santiago')->format('d/m/Y H:i') }} · {{ $auditLog->user?->name ?? 'Usuario eliminado' }}</p>
-    </div>
-@empty
-    <p class="muted">Sin movimientos registrados.</p>
 @endforelse
 
 <p class="muted" style="margin-top:18pt">Información clínica confidencial. Emitida por {{ $clinic->legal_name ?: $clinic->name }}.</p>

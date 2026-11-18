@@ -28,7 +28,7 @@ class VitiBookingConversationTest extends TestCase
             'muéstrame una fecha', 'necesito un turno', 'tienes hora para mañana', 'horas disponibles'] as $message) {
             $this->assertTrue($method->invoke($service, $message), $message);
         }
-        foreach (['5 19049484-5', 'confirmar', 'a las 10:00', 'ultima cita del paciente'] as $message) {
+        foreach (['5 12345678-5', 'confirmar', 'a las 10:00', 'ultima cita del paciente'] as $message) {
             $this->assertFalse($method->invoke($service, $message), $message);
         }
     }
@@ -37,11 +37,11 @@ class VitiBookingConversationTest extends TestCase
     {
         $method = new \ReflectionMethod(VitiBookingConversation::class, 'slotChoice');
         $service = new VitiBookingConversation();
-        foreach (['5', '5 19049484-5', '5 rut 19.049.484-5', 'opcion 5 con rut 19049484-5'] as $message) {
+        foreach (['5', '5 12345678-5', '5 rut 12.345.678-5', 'opcion 5 con rut 12345678-5'] as $message) {
             $this->assertSame(5, $method->invoke($service, $message));
         }
-        $this->assertNull($method->invoke($service, '19049484-5'));
-        $this->assertNull($method->invoke($service, '15:30 19049484-5'));
+        $this->assertNull($method->invoke($service, '12345678-5'));
+        $this->assertNull($method->invoke($service, '15:30 12345678-5'));
     }
 
     public function test_specialty_names_match_accents_and_whole_names(): void
@@ -68,6 +68,8 @@ class VitiBookingConversationTest extends TestCase
 
     public function test_booking_uses_real_availability_and_requires_confirmation_and_can_register_a_missing_patient(): void
     {
+        if (getenv('VITA_IDENTIFIER_STORAGE_APPROVED') !== 'yes' || !preg_match('/\Avita_identification_test_[a-z0-9_]+\z/', getenv('DB_DATABASE') ?: '')) $this->markTestSkipped('Isolated MySQL required.');
+        config(['patient_registration.enabled' => true, 'patient_registration.channels' => ['internal'=>true,'viti'=>true,'public_booking'=>true], 'identification' => \Tests\Support\IdentifierStorageKeys::config()+['application_key'=>config('app.key')]]);
         $fixture = null;
         foreach (User::whereNotNull('customer_id')->where('status', 1)->get() as $doctor) {
             foreach (ClinicBranchContext::availableBranches($doctor, (int) $doctor->customer_id) as $branch) {
@@ -89,8 +91,12 @@ class VitiBookingConversationTest extends TestCase
         $this->mock(ClinicAppointmentMessenger::class)->shouldReceive('send')->andReturn(['whatsapp_sent' => false]);
         DB::beginTransaction();
         try {
-            $patient = Patient::firstOrFail()->replicate();
-            $patient->fill(['customer_id' => $clinic->id, 'rut' => '91827364-5', 'name' => 'Viti booking fixture'])->save();
+            $existingNumber = 'EXIST'.\Illuminate\Support\Str::random(12);
+            $newNumber = 'NEW'.\Illuminate\Support\Str::random(12);
+            $patient = app(\App\Services\Patients\PatientRegistrationService::class)->register($doctor, [
+                'identification_country'=>'AR','identification_type'=>'passport','identification_number'=>$existingNumber,
+                'name'=>'Viti booking fixture','birth_date'=>'1990-01-01','gender'=>'Femenino','phone'=>'123','email'=>'viti@example.test','address'=>'Chile',
+            ]);
             $date = now('America/Santiago')->addWeeks(70)->next(Carbon::MONDAY)->startOfDay();
             ProfessionalSchedule::create(['customer_id' => $clinic->id, 'clinic_branch_id' => $branch->id,
                 'user_id' => $doctor->id, 'day_of_week' => $date->dayOfWeek, 'start_time' => '22:00:00', 'end_time' => '23:00:00']);
@@ -122,7 +128,7 @@ class VitiBookingConversationTest extends TestCase
             $this->assertStringContainsString('22:00', $reply);
             preg_match('/^(\d+)\. .*22:00/m', $reply, $slotNumber);
             $this->assertNotEmpty($slotNumber);
-            $reply = $ask($slotNumber[1] . ' 91.827.364-5');
+            $reply = $ask($slotNumber[1] . ' pasaporte AR ' . $existingNumber);
             if (str_contains($reply, 'especialidad por')) $reply = $ask('1');
             $this->assertStringContainsString('presencial', $reply);
             $this->assertStringContainsString('motivo', $ask('presencial'));
@@ -134,11 +140,11 @@ class VitiBookingConversationTest extends TestCase
             $this->assertSame($count + 1, Appointment::withoutGlobalScopes()->count());
             $ask('confirmar');
             $this->assertSame($count + 1, Appointment::withoutGlobalScopes()->count());
-            $reply = $ask('agendar ' . $date->toDateString() . ' a las 22:00 con rut 91827364-5');
+            $reply = $ask('agendar ' . $date->toDateString() . ' a las 22:00 con pasaporte AR ' . $existingNumber);
             $this->assertStringContainsString('no está disponible', $reply);
             $ask('cancelar');
             $patients = Patient::where('customer_id', $clinic->id)->count();
-            $reply = $ask('agendar ' . $date->toDateString() . ' a las 22:30 con rut 92827364-5');
+            $reply = $ask('agendar ' . $date->toDateString() . ' a las 22:30 con pasaporte AR ' . $newNumber);
             $this->assertStringContainsString('No existe un paciente', $reply);
             $this->assertStringContainsString('nombre completo', $ask('si'));
             $ask('Paciente de prueba Viti');
@@ -158,7 +164,7 @@ class VitiBookingConversationTest extends TestCase
                 $this->assertSame(0, (int) $appointment->fresh()->status);
                 $ask('no');
                 $this->assertSame(0, (int) $appointment->fresh()->status);
-                $this->assertStringContainsString($patient->name, $ask('cancelar cita del rut 91827364-5'));
+                $this->assertStringContainsString($patient->name, $ask('cancelar cita con pasaporte AR '.$existingNumber));
                 $this->assertStringContainsString('confirmar', $ask('1'));
                 $this->assertSame(0, (int) $appointment->fresh()->status);
                 $this->assertStringContainsString('Cita cancelada correctamente', $ask('confirmar cancelación'));

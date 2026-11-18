@@ -27,7 +27,6 @@ use App\Http\Controllers\customer\PreviousSurgerieController;
 use App\Http\Controllers\customer\ProfessionalController;
 use App\Http\Controllers\customer\ProfessionalScheduleController;
 use App\Http\Controllers\customer\RegularMedicationController;
-use App\Http\Controllers\customer\SpecialtyController;
 use App\Http\Controllers\customer\WebController;
 use App\Http\Controllers\customer\PublicBookingController;
 use App\Http\Controllers\customer\TelemedicineController;
@@ -68,10 +67,76 @@ use Illuminate\Support\Facades\Route;
 | vita-clinica.cl
 */
 
+Route::domain(config('app.domain'))->get('/vita', [\App\Http\Controllers\superadmin\VitaWebsiteController::class, 'index'])->name('vita.website');
+Route::domain(config('app.domain'))->post('/superadmin/assistant/ask',[\App\Http\Controllers\superadmin\VitaAssistantController::class,'ask'])
+    ->middleware(['auth:web','superadmin','throttle:30,1'])->name('superadmin.assistant.ask');
+Route::domain(config('app.domain'))->group(function(){
+    Route::get('/',[\App\Http\Controllers\PublicCustomerDirectoryController::class,'index'])->name('vita.directory.index');
+    Route::post('/directory-location',[\App\Http\Controllers\PublicCustomerDirectoryController::class,'location'])->middleware('throttle:12,1')->name('vita.directory.location');
+    Route::get('/clinicas',function(\Illuminate\Http\Request $request){
+        return redirect()->route('vita.directory.index',$request->only(['buscar','page','especialidad','cercanas']),301);
+    });
+    Route::get('/clinicas/{slug}',[\App\Http\Controllers\PublicCustomerDirectoryController::class,'show'])->name('vita.directory.show');
+    Route::get('/directory-sitemap.xml',[\App\Http\Controllers\PublicCustomerDirectoryController::class,'sitemap'])->name('vita.directory.sitemap');
+});
+Route::domain(config('app.domain'))->get('/pages/{slug}', [\App\Http\Controllers\superadmin\WebsiteMenuController::class, 'publicPage'])->name('vita.website.page');
+
 Route::domain(config('app.domain'))->middleware(['auth', 'superadmin'])->group(function () {
+    Route::get('/customer-directory',[\App\Http\Controllers\superadmin\CustomerDirectoryController::class,'index'])->name('superadmin.directory.index');
+    Route::put('/customer-directory/{id}',[\App\Http\Controllers\superadmin\CustomerDirectoryController::class,'update'])->whereNumber('id')->name('superadmin.directory.update');
+
+    Route::get('/website', [\App\Http\Controllers\superadmin\VitaWebsiteController::class, 'edit'])->name('superadmin.website.edit');
+    Route::put('/website', [\App\Http\Controllers\superadmin\VitaWebsiteController::class, 'update'])->name('superadmin.website.update');
+    Route::get('/website/preview', [\App\Http\Controllers\superadmin\VitaWebsiteController::class, 'preview'])->name('superadmin.website.preview');
+    Route::post('/website/menus', [\App\Http\Controllers\superadmin\WebsiteMenuController::class, 'store'])->name('superadmin.menus.store');
+    Route::put('/website/menus/brand', [\App\Http\Controllers\superadmin\WebsiteMenuController::class, 'updateBrand'])->name('superadmin.menus.brand.update');
+    Route::put('/website/menus/navigation-button', [\App\Http\Controllers\superadmin\WebsiteMenuController::class, 'navigationButton'])->name('superadmin.menus.navigation-button.update');
+    Route::patch('/website/menus/reorder', [\App\Http\Controllers\superadmin\WebsiteMenuController::class, 'reorder'])->name('superadmin.menus.reorder');
+    Route::get('/website/menus/{id}/edit', [\App\Http\Controllers\superadmin\WebsiteMenuController::class, 'edit'])->whereNumber('id')->name('superadmin.menus.edit');
+    Route::put('/website/menus/{id}', [\App\Http\Controllers\superadmin\WebsiteMenuController::class, 'update'])->whereNumber('id')->name('superadmin.menus.update');
+    Route::patch('/website/menus/{id}/toggle-status', [\App\Http\Controllers\superadmin\WebsiteMenuController::class, 'toggle'])->whereNumber('id')->name('superadmin.menus.toggle-status');
+    Route::delete('/website/menus/{id}', [\App\Http\Controllers\superadmin\WebsiteMenuController::class, 'destroy'])->whereNumber('id')->name('superadmin.menus.destroy');
+    Route::get('/website/pages/{id}/edit', [\App\Http\Controllers\superadmin\WebsiteMenuController::class, 'editPage'])->whereNumber('id')->name('superadmin.website-pages.edit');
+    Route::put('/website/pages/{id}', [\App\Http\Controllers\superadmin\WebsiteMenuController::class, 'updatePage'])->whereNumber('id')->name('superadmin.website-pages.update');
+    Route::post('/website/banners', [\App\Http\Controllers\superadmin\WebsiteBannerController::class, 'store'])->name('superadmin.banners.store');
+    Route::patch('/website/banners/reorder', [\App\Http\Controllers\superadmin\WebsiteBannerController::class, 'reorder'])->name('superadmin.banners.reorder');
+    Route::get('/website/banners/{id}/edit', [\App\Http\Controllers\superadmin\WebsiteBannerController::class, 'edit'])->whereNumber('id')->name('superadmin.banners.edit');
+    Route::put('/website/banners/{id}', [\App\Http\Controllers\superadmin\WebsiteBannerController::class, 'update'])->whereNumber('id')->name('superadmin.banners.update');
+    Route::patch('/website/banners/{id}/toggle-status', [\App\Http\Controllers\superadmin\WebsiteBannerController::class, 'toggle'])->whereNumber('id')->name('superadmin.banners.toggle-status');
+    Route::delete('/website/banners/{id}', [\App\Http\Controllers\superadmin\WebsiteBannerController::class, 'destroy'])->whereNumber('id')->name('superadmin.banners.destroy');
+    Route::get('/website/logos/data', [\App\Http\Controllers\superadmin\LogoController::class, 'data'])->name('superadmin.logos.data');
+    Route::post('/website/logos', [\App\Http\Controllers\superadmin\LogoController::class, 'store'])->name('superadmin.logos.store');
+    Route::post('/website/logos/{id}', [\App\Http\Controllers\superadmin\LogoController::class, 'update'])->name('superadmin.logos.update');
+    Route::patch('/website/logos/{id}/toggle-status', [\App\Http\Controllers\superadmin\LogoController::class, 'toggle'])->name('superadmin.logos.toggle');
+    Route::delete('/website/logos/{id}', [\App\Http\Controllers\superadmin\LogoController::class, 'destroy'])->name('superadmin.logos.destroy');
+    Route::get('/website/{section}', [\App\Http\Controllers\superadmin\VitaWebsiteController::class, 'editSection'])->whereIn('section', ['logo', 'menus', 'banners', 'footer', 'topbar', 'socials'])->name('superadmin.website.section');
+    Route::put('/website/{section}', [\App\Http\Controllers\superadmin\VitaWebsiteController::class, 'updateSection'])->whereIn('section', ['logo', 'menus', 'banners', 'footer', 'topbar', 'socials'])->name('superadmin.website.section.update');
 
     // dashboard superadmin
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard.index');
+    Route::prefix('billing')->name('superadmin.billing.')->group(function () {
+        Route::get('conditions',[\App\Http\Controllers\superadmin\Billing\SubscriptionPolicyController::class,'edit'])->name('conditions.edit');
+        Route::put('conditions',[\App\Http\Controllers\superadmin\Billing\SubscriptionPolicyController::class,'update'])->name('conditions.update');
+        Route::put('fee-defaults', [\App\Http\Controllers\superadmin\Billing\PaymentFeeController::class, 'saveDefaults'])->name('fees.defaults');
+        Route::get('fees',[\App\Http\Controllers\superadmin\Billing\PaymentFeeController::class,'index'])->name('fees.index');
+        Route::post('fees',[\App\Http\Controllers\superadmin\Billing\PaymentFeeController::class,'store'])->name('fees.store');
+        Route::post('fees/flow-sync',[\App\Http\Controllers\superadmin\Billing\PaymentFeeController::class,'sync'])->middleware('throttle:6,1')->name('fees.flow-sync');
+        Route::patch('fees/alerts/{alert}',[\App\Http\Controllers\superadmin\Billing\PaymentFeeController::class,'acknowledge'])->name('fees.acknowledge');
+        Route::get('subscriptions-data',[\App\Http\Controllers\superadmin\Billing\SubscriptionController::class,'data'])->name('subscriptions.data');
+        Route::resource('subscriptions',\App\Http\Controllers\superadmin\Billing\SubscriptionController::class)->only(['index','create','store','show']);
+        Route::post('subscriptions/{subscription}/payments',[\App\Http\Controllers\superadmin\Billing\SubscriptionController::class,'payment'])->name('subscriptions.payments.store');
+        Route::post('subscriptions/{subscription}/changes',[\App\Http\Controllers\superadmin\Billing\SubscriptionController::class,'change'])->name('subscriptions.changes.store');
+        Route::delete('subscriptions/{subscription}/pending-change',[\App\Http\Controllers\superadmin\Billing\SubscriptionController::class,'cancelChange'])->name('subscriptions.changes.cancel');
+        Route::post('subscriptions/{subscription}/cancel',[\App\Http\Controllers\superadmin\Billing\SubscriptionController::class,'cancel'])->name('subscriptions.cancel');
+        Route::get('plans-data', [\App\Http\Controllers\superadmin\Billing\PlanController::class, 'data'])->name('plans.data');
+        Route::resource('plans', \App\Http\Controllers\superadmin\Billing\PlanController::class);
+        Route::patch('plans/{plan}/status', [\App\Http\Controllers\superadmin\Billing\PlanController::class, 'status'])->name('plans.status');
+        Route::post('plans/{plan}/versions', [\App\Http\Controllers\superadmin\Billing\PlanVersionController::class, 'store'])->name('versions.store');
+        Route::get('versions/{version}/edit', [\App\Http\Controllers\superadmin\Billing\PlanVersionController::class, 'edit'])->name('versions.edit');
+        Route::get('versions/{version}', [\App\Http\Controllers\superadmin\Billing\PlanVersionController::class, 'show'])->name('versions.show');
+        Route::put('versions/{version}', [\App\Http\Controllers\superadmin\Billing\PlanVersionController::class, 'update'])->name('versions.update');
+        Route::post('versions/{version}/publish', [\App\Http\Controllers\superadmin\Billing\PlanVersionController::class, 'publish'])->name('versions.publish');
+    });
     Route::get('/dashboard/statistics', [DashboardController::class, 'statistics'])->name('superadmin.dashboard.statistics');
     Route::get('/profile', [SuperadminProfileController::class, 'index'])->name('superadmin.profile.index');
     Route::patch('/profile', [SuperadminProfileController::class, 'update'])->name('superadmin.profile.update');
@@ -82,10 +147,13 @@ Route::domain(config('app.domain'))->middleware(['auth', 'superadmin'])->group(f
     Route::get('/superadmin/customers', [CustomerController::class, 'index'])->name('superadmin.customer');
     Route::get('/customers/{customer}/branches', [CustomerController::class, 'branches'])->name('superadmin.customers.branches');
     Route::post('/customers/{customer}/branches', [CustomerController::class, 'storeBranch'])->name('superadmin.customers.branches.store');
+    Route::put('/customers/{customer}/branches/{branchId}', [CustomerController::class, 'updateBranch'])->whereNumber('branchId')->name('superadmin.customers.branches.update');
     Route::patch('/customers/{customer}/branches/{branchId}/status', [CustomerController::class, 'toggleBranchStatus'])->whereNumber('branchId')->name('superadmin.customers.branches.status');
     Route::delete('/customers/{customer}/branches/{branchId}', [CustomerController::class, 'destroyBranch'])->whereNumber('branchId')->name('superadmin.customers.branches.destroy');
 
     Route::post('/customers', [CustomerController::class, 'store']);
+    Route::get('/customers/{customer}/identification', [CustomerController::class, 'identification']);
+    Route::get('/customers/{customer}/administrators/{userId}/identification', [CustomerController::class, 'administratorIdentification'])->whereNumber('userId');
     Route::put('/customers/{customer}', [CustomerController::class, 'update']);
     Route::patch('/customers/{customer}/toggle-status', [CustomerController::class, 'toggleStatus']);
     Route::patch('/customers/{customer}/toggle-payment-status', [CustomerController::class, 'togglePaymentStatus']);
@@ -111,6 +179,14 @@ Route::domain('{customer}.' . config('app.domain'))->middleware('signed')->group
 Route::domain('{customer}.' . config('app.domain'))->middleware(['auth', 'role-permission'])->group(function () {
 
     Route::get('/dashboard', [CustomerDashboardController::class, 'index'])->name('customers.dashboard.index');
+    Route::get('/directory-profile',[\App\Http\Controllers\customer\CustomerDirectoryController::class,'edit'])->name('customers.directory.edit');
+    Route::get('/directory-reviews', [\App\Http\Controllers\customer\DirectoryReviewController::class, 'index'])->name('customers.directory.reviews');
+    Route::post('/directory-reviews/{review}/reply', [\App\Http\Controllers\customer\DirectoryReviewController::class, 'reply'])->whereNumber('review')->middleware('throttle:10,1')->name('customers.directory.reviews.reply');
+    Route::put('/directory-profile',[\App\Http\Controllers\customer\CustomerDirectoryController::class,'update'])->name('customers.directory.update');
+    Route::get('/my-subscription',[\App\Http\Controllers\customer\ClinicSubscriptionController::class,'index'])->name('customers.subscription.index');
+    Route::get('/subscription-conditions',[\App\Http\Controllers\customer\ClinicSubscriptionController::class,'conditions'])->name('customers.subscription.conditions');
+    Route::post('/my-subscription/{action}',[\App\Http\Controllers\customer\ClinicSubscriptionController::class,'action'])
+        ->whereIn('action',['pay','card','automatic','manual','cancel','refresh'])->middleware('throttle:12,1')->name('customers.subscription.action');
     Route::post('/branch-context', [ClinicBranchContextController::class, 'update'])->name('customers.branch-context.update');
     Route::post('/presence', [ChatController::class, 'presence'])->middleware('throttle:30,1')->name('customers.presence');
     Route::post('/assistant/ask', [VitaAssistantController::class, 'ask'])->middleware('throttle:30,1')->name('customers.assistant.ask');
@@ -130,6 +206,7 @@ Route::domain('{customer}.' . config('app.domain'))->middleware(['auth', 'role-p
         Route::get('/users', [ProfessionalController::class, 'index'])->name('customers.users.index');
         Route::get('/users-data', [ProfessionalController::class, 'getProfessional'])->name('customers.users.data');
         Route::post('/users', [ProfessionalController::class, 'store'])->name('customers.users.store');
+        Route::get('/users/{id}/identification', [ProfessionalController::class, 'identification'])->whereNumber('id');
         Route::get('/users/{id}/roles', [ProfessionalController::class, 'getUserRoles'])->whereNumber('id')->name('customers.users.roles.show');
         Route::patch('/users/{id}/roles', [ProfessionalController::class, 'updateRoles'])->whereNumber('id')->name('customers.users.roles.update');
         Route::get('/users/{id}/specialties', [ProfessionalController::class, 'getUserSpecialties'])->whereNumber('id')->name('customers.users.specialties.show');
@@ -158,6 +235,7 @@ Route::domain('{customer}.' . config('app.domain'))->middleware(['auth', 'role-p
         Route::delete('/logo/{id}', [LogoController::class, 'destroy']);
 
         Route::get('/menus', [MenuController::class, 'index'])->name('customers.menus.index');
+        Route::put('/menus/brand', [MenuController::class, 'updateBrand'])->name('customers.menus.brand.update');
         Route::put('/menus/navigation-button', [MenuController::class, 'updateNavigationButton'])->name('customers.menus.navigation-button.update');
         Route::put('/menus/public-booking', [MenuController::class, 'updatePublicBooking'])->name('customers.menus.public-booking.update');
         Route::get('/website-footer', [WebsiteFooterController::class, 'edit'])->name('customers.website-footer.edit');
@@ -205,12 +283,6 @@ Route::domain('{customer}.' . config('app.domain'))->middleware(['auth', 'role-p
         Route::patch('/insurances/{id}/toggle-status', [InsuranceController::class, 'toggleStatus']);
         Route::delete('/insurances/{id}', [InsuranceController::class, 'destroy']);
 
-        Route::get('/specialties', [SpecialtyController::class, 'index'])->name('customers.specialties.index');
-        Route::get('/specialties-data', [SpecialtyController::class, 'getSpecialties']);
-        Route::post('/specialties', [SpecialtyController::class, 'store']);
-        Route::put('/specialties/{id}', [SpecialtyController::class, 'update']);
-        Route::patch('/specialties/{id}/toggle-status', [SpecialtyController::class, 'toggleStatus']);
-        Route::delete('/specialties/{id}', [SpecialtyController::class, 'destroy']);
     });
    
 
@@ -218,13 +290,19 @@ Route::domain('{customer}.' . config('app.domain'))->middleware(['auth', 'role-p
     //patience
     Route::get('/patient', [PatientController::class, 'index'])->name('customers.patient.index');
     Route::get('/patient-data', [PatientController::class, 'getPatient']);
+    Route::post('/patient-data/search', [PatientController::class, 'getPatient']);
     Route::get('/patients/{id}/appointments/data', [PatientController::class, 'appointmentsData'])->name('customers.patients.appointments.data');
     Route::get('/patients/{id}/appointments', [PatientController::class, 'appointments'])->name('customers.patients.appointments.index');
     Route::post('/patient', [PatientController::class, 'store']);
+    Route::post('/patient/mi-salud-profile', [PatientController::class, 'portalProfile'])->middleware('throttle:20,1');
+    Route::get('/patient/{id}/identification', [PatientController::class, 'identification'])->whereNumber('id');
     Route::put('/patient/{id}', [PatientController::class, 'update']);
     Route::delete('/patient/{id}', [PatientController::class, 'destroy']);
 
     //ficha clinica 
+    Route::get('/patients/{id}/mi-salud-access',[\App\Http\Controllers\customer\PortalClinicalAccessController::class,'index'])->whereNumber('id')->name('patients.portal-access.index');
+    Route::post('/patients/{id}/mi-salud-access',[\App\Http\Controllers\customer\PortalClinicalAccessController::class,'store'])->whereNumber('id')->middleware('throttle:5,1')->name('patients.portal-access.store');
+    Route::delete('/patients/{id}/mi-salud-access/{grant}',[\App\Http\Controllers\customer\PortalClinicalAccessController::class,'revoke'])->whereNumber('id')->whereUuid('grant')->middleware('throttle:5,1')->name('patients.portal-access.revoke');
     Route::get('/patients/{id}/medical-record', [MedicalRecordController::class, 'show'])->name('patients.medical-record.show');
     Route::get('/patients/{id}/medical-record/export/pdfa', [MedicalRecordController::class, 'exportPdfA'])->name('patients.medical-record.export.pdfa');
     Route::get('/patients/{id}/medical-record/export/fhir-r4', [MedicalRecordController::class, 'exportFhirR4'])->name('patients.medical-record.export.fhir-r4');
@@ -236,6 +314,10 @@ Route::domain('{customer}.' . config('app.domain'))->middleware(['auth', 'role-p
     Route::post('/patients/{id}/telemedicine', [TelemedicineController::class, 'createWithoutAppointment'])->whereNumber('id')->name('patients.telemedicine.create');
     Route::get('/patients/{id}/telemedicine/{sessionId}/status', [TelemedicineController::class, 'directStatus'])->whereNumber(['id', 'sessionId'])->name('patients.telemedicine.status');
     Route::patch('/patients/{id}/encounters/{encounter}/finish', [EncounterController::class, 'finish'])->name('patients.encounters.finish');
+    Route::post('/patients/{id}/encounters/{encounter}/signature-preview', [\App\Http\Controllers\customer\EncounterSigningController::class, 'prepare'])->middleware('throttle:30,1')->name('patients.encounters.signature-preview');
+    Route::get('/patients/{id}/encounters/{encounter}/addenda/create', [\App\Http\Controllers\customer\EncounterAddendumController::class, 'create'])->whereNumber('id')->whereNumber('encounter')->name('patients.encounters.addenda.create');
+    Route::post('/patients/{id}/encounters/{encounter}/addenda/preview', [\App\Http\Controllers\customer\EncounterAddendumController::class, 'prepare'])->middleware('throttle:30,1')->name('patients.encounters.addenda.preview');
+    Route::post('/patients/{id}/encounters/{encounter}/addenda', [\App\Http\Controllers\customer\EncounterAddendumController::class, 'store'])->name('patients.encounters.addenda.store');
     Route::patch('/patients/{id}/encounters/{encounter}/cancel', [EncounterController::class, 'cancel'])->name('patients.encounters.cancel');
     Route::post('/patients/{id}/encounters/{encounter}/observations', [EncounterController::class, 'addObservation'])->whereNumber('id')->whereNumber('encounter')->name('patients.encounters.observations.store');
 
@@ -258,6 +340,7 @@ Route::domain('{customer}.' . config('app.domain'))->middleware(['auth', 'role-p
     Route::get('/professional/{professional}/schedule', [ProfessionalScheduleController::class, 'getSchedule']);
     Route::delete('/professional/schedule/{id}', [ProfessionalScheduleController::class, 'destroy']);
     Route::get('/my-schedules/data', [ProfessionalScheduleController::class, 'myScheduleData'])->name('customers.my-schedules.data');
+    Route::get('/my-schedules', [ProfessionalScheduleController::class, 'indexMine'])->name('customers.my-schedules.index');
     Route::get('/my-schedules/{schedule}/affected-appointments', [ProfessionalScheduleController::class, 'affectedAppointments'])->name('customers.my-schedules.affected-appointments');
     Route::get('/my-schedules/{schedule}/affected-appointments/data', [ProfessionalScheduleController::class, 'affectedAppointmentsData'])->name('customers.my-schedules.affected-appointments.data');
     Route::get('/customer/schedules/{schedule}/affected-appointments', [ProfessionalScheduleController::class, 'affectedAppointments'])->name('customer.schedules.affected-appointments');
@@ -275,6 +358,7 @@ Route::domain('{customer}.' . config('app.domain'))->middleware(['auth', 'role-p
     Route::post('/telemedicine/{sessionId}/token', [TelemedicineController::class, 'staffToken'])->name('customers.telemedicine.token');
     Route::post('/telemedicine/{sessionId}/end', [TelemedicineController::class, 'end'])->name('customers.telemedicine.end');
     Route::get('/notifications', [AppointmentNotificationController::class, 'index'])->name('customers.notifications.index');
+        Route::get('/notifications/summary', [AppointmentNotificationController::class, 'summary'])->name('customers.notifications.summary');
     Route::patch('/notifications/read-all', [AppointmentNotificationController::class, 'markAllRead'])->name('customers.notifications.read-all');
     Route::get('/notifications/{notification}/open', [AppointmentNotificationController::class, 'open'])->name('customers.notifications.open');
     Route::patch('/notifications/{notification}/read', [AppointmentNotificationController::class, 'markRead'])->name('customers.notifications.read');
@@ -306,7 +390,10 @@ Route::domain('{customer}.' . config('app.domain'))->middleware(['auth', 'role-p
     //profile
     Route::get('/my-encounters', [\App\Http\Controllers\customer\MyEncounterController::class, 'index'])->name('customers.encounters.mine');
     Route::get('/profile', [ProfileController::class, 'index'])->name('customers.profile.index');
+    Route::get('/profile/electronic-signature', [\App\Http\Controllers\customer\ProfessionalSignatureController::class, 'index'])->name('customers.signature.index');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('customers.profile.update');
+    Route::post('/profile/electronic-signature', [\App\Http\Controllers\customer\ProfessionalSignatureController::class, 'update'])->middleware('throttle:20,1')->name('customers.signature.update');
+    Route::get('/profile/electronic-signature/images/{uuid}', [\App\Http\Controllers\customer\ProfessionalSignatureController::class, 'image'])->whereUuid('uuid')->name('customers.signature.image');
 
 });
 
@@ -314,7 +401,7 @@ Route::domain('{customer}.' . config('app.domain'))->middleware(['auth', 'role-p
 Route::domain('{customer}.' . config('app.domain'))
     ->group(function () {
 
-        Route::get('/', [WebController::class, 'index']);
+        Route::get('/', [WebController::class, 'index'])->name('customer.website.home');
         Route::post('/public-assistant/ask', [VitaAssistantController::class, 'askPublic'])
             ->middleware('throttle:30,1')
             ->name('customer.public-assistant.ask');
@@ -324,6 +411,14 @@ Route::domain('{customer}.' . config('app.domain'))
         Route::post('/citas/{appointmentId}/confirmar', [PublicBookingController::class, 'confirm'])
             ->middleware('signed')
             ->name('customer.appointment.confirm');
+        Route::get('/agendar/verificar/{operation}', [PublicBookingController::class, 'verifyRegistrationPage'])
+            ->whereUuid('operation')->middleware('throttle:20,1')->name('customer.public-booking.verify');
+        Route::post('/agendar/verificar/{operation}', [PublicBookingController::class, 'verifyRegistration'])
+            ->whereUuid('operation')->middleware('throttle:10,1')->name('customer.public-booking.verify.submit');
+        Route::post('/agendar/mi-salud', [PublicBookingController::class, 'portalStart'])->middleware('throttle:10,1')->name('customer.public-booking.portal.start');
+        Route::get('/agendar/mi-salud/{intent}/volver', [PublicBookingController::class, 'portalReturn'])->whereUuid('intent')->name('customer.public-booking.portal.return');
+        Route::post('/agendar/mi-salud/{intent}/volver', [PublicBookingController::class, 'portalRedeem'])->whereUuid('intent')->middleware('throttle:10,1')->name('customer.public-booking.portal.redeem');
+        Route::get('/agendar/mi-salud/{intent}/cancelar', [PublicBookingController::class, 'portalCancel'])->whereUuid('intent')->name('customer.public-booking.portal.cancel');
         Route::get('/agendar', [PublicBookingController::class, 'index'])->name('customer.public-booking.index');
         Route::get('/blog', [WebsiteBlogController::class, 'publicIndex'])->name('customer.website-blog.public.index');
         Route::get('/blog/{slug}', [WebsiteBlogController::class, 'publicShow'])->name('customer.website-blog.public.show');

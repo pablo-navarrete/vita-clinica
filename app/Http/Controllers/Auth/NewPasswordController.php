@@ -38,8 +38,9 @@ class NewPasswordController extends Controller
         // Here we will attempt to reset the user's password. If it is successful we
         // will update the password on an actual user model and persist it to the
         // database. Otherwise we will parse the error and return the response.
+        $clinic = app()->bound('customer') ? app('customer') : null;
         $status = Password::reset(
-            $request->only('email', 'password', 'password_confirmation', 'token'),
+            array_merge($request->only('email', 'password', 'password_confirmation', 'token'), ['customer_id' => $clinic?->id]),
             function ($user) use ($request) {
                 $user->forceFill([
                     'password' => Hash::make($request->password),
@@ -54,8 +55,8 @@ class NewPasswordController extends Controller
         // the application's home authenticated view. If there is an error we can
         // redirect them back to where they came from with their error message.
         return $status == Password::PASSWORD_RESET
-                    ? redirect()->route('login')->with('status', __($status))
+                    ? redirect()->route('login')->with('status', 'Tu contraseña se restableció correctamente. Ya puedes iniciar sesión.')
                     : back()->withInput($request->only('email'))
-                            ->withErrors(['email' => __($status)]);
+                            ->withErrors(['email' => 'El enlace no es válido o ha caducado. Solicita uno nuevo desde «Olvidé mi contraseña».']);
     }
 }

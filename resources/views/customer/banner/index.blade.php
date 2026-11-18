@@ -52,7 +52,7 @@
                 </div>
                 <div class="md:col-span-4">
                     <label for="button_destination" class="mb-1 block text-sm font-medium text-gray-700">¿A dónde llevará el botón?</label>
-                    <select id="button_destination" name="button_destination" class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                    <select id="button_destination" name="button_destination" class="vita-banner-select w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                         <option value="" @selected(old('button_destination', '') === '')>Sin botón</option>
                         <optgroup label="Páginas publicadas">
                             <option value="/" @selected(old('button_destination') === '/')>Inicio</option>
@@ -100,9 +100,12 @@
                     <p class="mt-1 text-xs text-gray-500">Imagen de hasta 10 MB. Usa una imagen horizontal para la portada.</p>
                     @error('image') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
                 </div>
+                @include('components.banner-alignment-fields', ['alignmentFieldClass' => 'md:col-span-12'])
+                @include('components.banner-content-field', ['imageOnly' => old('image_only', false), 'fieldClass' => 'md:col-span-4'])
+                @include('components.banner-overlay-field', ['darkOverlay' => old('dark_overlay', true), 'fieldClass' => 'md:col-span-4'])
                 <div class="md:col-span-4">
                     <label for="status" class="mb-1 block text-sm font-medium text-gray-700">Estado</label>
-                    <select id="status" name="status" class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                    <select id="status" name="status" class="vita-banner-select w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                         <option value="1" @selected(old('status', '1') === '1')>Activo</option>
                         <option value="0" @selected(old('status') === '0')>Inactivo</option>
                     </select>

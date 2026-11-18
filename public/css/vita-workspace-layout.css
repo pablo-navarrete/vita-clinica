@@ -1,0 +1,15 @@
+/* Clinic layout is the visual reference. Shared by clinic administration and Mi Salud. */
+.vita-workspace-shell{display:flex;flex:1;width:100%;height:100dvh;min-height:0;min-width:0;overflow:hidden;background:#eff6ff}
+.vita-workspace-column{display:flex;flex:1;flex-direction:column;height:100dvh;min-height:0;min-width:0;overflow:hidden}
+.vita-workspace-navigation{position:sticky;top:0;z-index:30;flex-shrink:0}
+.vita-workspace-body{position:relative;display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden}
+.vita-workspace-scroll{overflow-y:auto;overflow-x:hidden}
+:is(.vita-layout-topbar-inner,.portal-topbar){padding-left:16px;padding-right:16px}
+.portal-topbar{height:64px;flex-shrink:0;box-shadow:0 1px 2px 0 rgb(0 0 0 / .05)}
+.vita-layout-footer{margin-top:auto;flex-shrink:0;border-top:1px solid #e5e7eb;box-shadow:0 1px 3px #0000001a;padding:0;display:block;background:#dbeafe}
+.vita-layout-footer-inner{display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:16px 24px;font-size:14px;line-height:20px;color:#6b7280}
+.vita-layout-footer-inner p{margin:0}.vita-layout-footer-inner p+p{margin-top:8px}
+.vita-layout-footer-inner :is(strong,span){font-weight:600;color:#2563eb;display:inline}
+@media(min-width:640px){:is(.vita-layout-topbar-inner,.portal-topbar){padding-left:24px;padding-right:24px}}
+@media(min-width:768px){.vita-layout-footer-inner{flex-direction:row}.vita-layout-footer-inner p+p{margin-top:0}}
+@media(min-width:1024px){:is(.vita-layout-topbar-inner,.portal-topbar){padding-left:32px;padding-right:32px}}

@@ -1,0 +1,21 @@
+{
+    "database": "vita_clinica",
+    "mysql": "8.0.30",
+    "collation": "utf8mb4_0900_ai_ci",
+    "target": "2026_11_06_000400_create_mi_salud_accounts",
+    "preflight_passed": true,
+    "backup_directory": "C:\/laragon\/backups\/vita-mi-salud-stage1\/20261106_181402_2d820a",
+    "backup_sha256": "886f75551dbc73dc90e301f3a2e3993766da0740083ec87037cf956d7ae67ace",
+    "restored_and_verified": true,
+    "restore_database": "vita_identification_restore_mi_salud_20261106_181402_6cbcf7",
+    "migration_applied": true,
+    "existing_tables_and_data_unchanged": true,
+    "schema_matches_restored_validation": true,
+    "new_enforced_checks": 2,
+    "restrict_foreign_keys": 3,
+    "new_triggers": [
+        "portal_audit_delete",
+        "portal_audit_update"
+    ],
+    "env_unchanged": true
+}

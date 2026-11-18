@@ -77,7 +77,12 @@ class ClinicActivityLogger
         }
 
         $customerId = self::customerId($model, class_basename($model));
-        if (!$customerId || !app()->bound('customer') || $customerId !== (int) app('customer')->id) {
+        // Central administrators may correct a clinic administrator's identity outside
+        // the tenant route. Preserve its audit in the owner's clinic, never in another.
+        $centralIdentityEdit = $model instanceof \App\Models\User && $event === 'updated'
+            && ($model->wasChanged('name') || $model->wasChanged('rut'))
+            && auth()->user() && ClinicBranchContext::isSuperAdministrator(auth()->user());
+        if (!$customerId || (! $centralIdentityEdit && (!app()->bound('customer') || $customerId !== (int) app('customer')->id))) {
             return;
         }
 

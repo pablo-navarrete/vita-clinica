@@ -15,13 +15,13 @@
         ]);
     @endphp
 
-    <div class="py-8">
+    <div class="pb-8">
         <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
             <div class="overflow-hidden rounded-lg bg-white shadow-sm">
                 <div class="flex flex-col gap-3 border-b p-6 sm:flex-row sm:items-center sm:justify-between"
                     style="background-color: {{ themeColor(100) }}">
                     <div>
-                        <p class="font-semibold text-gray-900">{{ $patient->name }} · RUT: {{ $patient->rut }}</p>
+                        <p class="font-semibold text-gray-900">{{ $patient->name }} · {{ $patient->identification_label }}</p>
                         <p class="mt-1 text-sm text-gray-600">
                             {{ $scope === 'future' ? 'Citas futuras agendadas' : 'Historial completo de citas' }}
                         </p>
@@ -61,7 +61,7 @@
                 style="background-color: {{ themeColor(100) }}">
                 <div>
                     <h2 class="text-lg font-bold">Detalle de cita</h2>
-                    <p class="mt-1 text-sm text-gray-700">{{ $patient->name }} · RUT: {{ $patient->rut }}</p>
+                    <p class="mt-1 text-sm text-gray-700">{{ $patient->name }} · {{ $patient->identification_label }}</p>
                 </div>
                 <span id="appointment-detail-specialty"
                     class="shrink-0 rounded-full bg-white px-3 py-1 text-sm font-semibold"

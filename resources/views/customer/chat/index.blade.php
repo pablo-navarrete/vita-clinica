@@ -273,7 +273,7 @@
                     <p id="chat-error" class="mt-1 hidden text-xs text-red-600"></p>
                 </form>
                 @else
-                    <div class="border-t bg-gray-50 px-4 py-3 text-center text-sm text-gray-600">Saliste del grupo. Puedes revisar el historial, pero no enviar mensajes.</div>
+                    <div class="border-t bg-gray-50 px-4 py-3 text-center text-sm text-gray-600">Solo lectura: puedes revisar el historial, pero no enviar mensajes.</div>
                 @endif
             @else
                 <div class="grid flex-1 place-items-center p-8 text-center text-gray-500"><div><i class="fa-regular fa-comments mb-4 text-5xl text-gray-300"></i><h3 class="font-semibold text-gray-700">Tu chat de equipo</h3><p class="mt-1 max-w-sm text-sm">Selecciona una conversación o crea una nueva para hablar con administración y el equipo.</p></div></div>
@@ -576,11 +576,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     const option = document.createElement('button');
                     option.type = 'button';
                     option.className = 'block w-full border-b px-3 py-2 text-left text-sm hover:bg-gray-50';
-                    option.textContent = `${patient.name} · ${patient.rut}`;
+                    option.textContent = `${patient.name} · ${patient.identification_label}`;
                     option.addEventListener('click', () => {
                         patientId.value = patient.id;
                         patientSearch.value = patient.name;
-                        patientSelected.textContent = `Conversación vinculada a ${patient.name} (${patient.rut}). Solo los participantes de este chat podrán verla.`;
+                        patientSelected.textContent = `Conversación vinculada a ${patient.name} (${patient.identification_label}). Solo los participantes de este chat podrán verla.`;
                         patientSelected.classList.remove('hidden');
                         patientResults.classList.add('hidden');
                     });
@@ -765,7 +765,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const initials = participant.name.split(/\s+/).filter(Boolean).slice(0, 2).map(part => part.charAt(0).toLocaleUpperCase()).join('');
             const isSelf = Number(participant.id) === Number(@json(auth()->id()));
             const isLeft = Boolean(participant.left_at);
-            const canRemove = (conversation.can_manage && !isSelf) || (isSelf && !isLeft);
+            const canRemove = (conversation.can_manage && !isSelf) || (conversation.can_send && isSelf && !isLeft);
             const removeButton = canRemove ? `<button type="button" class="chat-remove-participant ml-auto shrink-0 rounded-lg px-2 py-1 text-xs font-medium text-red-600 transition hover:bg-red-50" data-url="${escapeHtml(removeTemplate.replace('__PARTICIPANT__', encodeURIComponent(participant.id)))}" data-participant-name="${escapeHtml(participant.name)}" data-is-self="${isSelf ? '1' : '0'}">${isSelf ? (conversation.type === 'group' ? 'Salir del grupo' : 'Salir del chat') : 'Quitar'}</button>` : '';
             const adminLabel = conversation.type === 'group' && participant.is_admin ? '<span class="mt-0.5 block text-xs font-semibold text-indigo-600">Administrador</span>' : '';
             const leftLabel = isLeft ? '<span class="block text-xs text-gray-500">Salió · solo lectura</span>' : '';
@@ -784,7 +784,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const messageUrl = workspace.dataset.messagesUrlTemplate.replace('__ID__', encodeURIComponent(conversation.id));
         const sendUrl = @json(route('customers.chat.send', ['customer' => request()->route('customer'), 'conversation' => '__ID__'])).replace('__ID__', encodeURIComponent(conversation.id));
         const emojiButtons = '';
-        return `${header}<div id="chat-messages" data-url="${escapeHtml(messageUrl)}" data-channel="chat.${Number(@json(app('customer')->id))}.${Number(conversation.id)}" data-user-id="${Number(@json(auth()->id()))}" data-can-send="${conversation.can_send ? '1' : '0'}" data-has-more-older="${conversation.has_more_older ? 1 : 0}" data-has-more-newer="${conversation.has_more_newer ? 1 : 0}" class="min-h-0 flex-1 space-y-3 overflow-y-auto bg-gray-50 p-4 sm:p-6">${renderedMessages}</div>${conversation.can_send ? `<form id="chat-send-form" data-url="${escapeHtml(sendUrl)}" class="border-t bg-white p-3 sm:p-4"><input type="hidden" name="_token" value="${escapeHtml(csrf)}"><input type="hidden" name="reply_to_id" id="chat-reply-to-id"><div id="chat-reply-preview" class="mb-2 hidden items-center justify-between rounded-lg border-l-4 bg-gray-50 px-3 py-2" style="border-color:${@json(themeColor(600))}"><div class="min-w-0"><span class="block text-xs font-semibold text-gray-700">Respondiendo a <span id="chat-reply-user"></span></span><span id="chat-reply-body" class="block truncate text-xs text-gray-500"></span></div><button type="button" id="chat-reply-cancel" class="ml-3 text-gray-500" aria-label="Cancelar respuesta"><i class="fa-solid fa-xmark"></i></button></div><div id="chat-emoji-picker" class="mb-2 hidden grid max-h-52 grid-cols-8 gap-1 overflow-y-auto rounded-xl border border-gray-200 bg-white p-2 shadow-lg sm:grid-cols-10">${emojiButtons}</div><div class="flex items-end gap-2"><button type="button" id="chat-emoji-toggle" class="grid h-11 w-11 shrink-0 place-items-center rounded-xl border text-xl hover:bg-gray-50" aria-label="Insertar emoji">&#128522;</button><textarea name="message" rows="2" maxlength="5000" required class="min-h-[48px] flex-1 resize-y rounded-xl border-gray-300 text-sm" placeholder="Escribe un mensaje..." aria-label="Mensaje"></textarea><button type="submit" class="grid h-11 w-11 shrink-0 place-items-center rounded-xl text-white" style="background:${@json(themeColor(600))}" aria-label="Enviar mensaje"><i class="fa-solid fa-paper-plane"></i></button></div><p id="chat-error" class="mt-1 hidden text-xs text-red-600"></p></form>` : `<div class="border-t bg-gray-50 px-4 py-3 text-center text-sm text-gray-600">Saliste del grupo. Puedes revisar el historial, pero no enviar mensajes.</div>`}`;
+        return `${header}<div id="chat-messages" data-url="${escapeHtml(messageUrl)}" data-channel="chat.${Number(@json(app('customer')->id))}.${Number(conversation.id)}" data-user-id="${Number(@json(auth()->id()))}" data-can-send="${conversation.can_send ? '1' : '0'}" data-has-more-older="${conversation.has_more_older ? 1 : 0}" data-has-more-newer="${conversation.has_more_newer ? 1 : 0}" class="min-h-0 flex-1 space-y-3 overflow-y-auto bg-gray-50 p-4 sm:p-6">${renderedMessages}</div>${conversation.can_send ? `<form id="chat-send-form" data-url="${escapeHtml(sendUrl)}" class="border-t bg-white p-3 sm:p-4"><input type="hidden" name="_token" value="${escapeHtml(csrf)}"><input type="hidden" name="reply_to_id" id="chat-reply-to-id"><div id="chat-reply-preview" class="mb-2 hidden items-center justify-between rounded-lg border-l-4 bg-gray-50 px-3 py-2" style="border-color:${@json(themeColor(600))}"><div class="min-w-0"><span class="block text-xs font-semibold text-gray-700">Respondiendo a <span id="chat-reply-user"></span></span><span id="chat-reply-body" class="block truncate text-xs text-gray-500"></span></div><button type="button" id="chat-reply-cancel" class="ml-3 text-gray-500" aria-label="Cancelar respuesta"><i class="fa-solid fa-xmark"></i></button></div><div id="chat-emoji-picker" class="mb-2 hidden grid max-h-52 grid-cols-8 gap-1 overflow-y-auto rounded-xl border border-gray-200 bg-white p-2 shadow-lg sm:grid-cols-10">${emojiButtons}</div><div class="flex items-end gap-2"><button type="button" id="chat-emoji-toggle" class="grid h-11 w-11 shrink-0 place-items-center rounded-xl border text-xl hover:bg-gray-50" aria-label="Insertar emoji">&#128522;</button><textarea name="message" rows="2" maxlength="5000" required class="min-h-[48px] flex-1 resize-y rounded-xl border-gray-300 text-sm" placeholder="Escribe un mensaje..." aria-label="Mensaje"></textarea><button type="submit" class="grid h-11 w-11 shrink-0 place-items-center rounded-xl text-white" style="background:${@json(themeColor(600))}" aria-label="Enviar mensaje"><i class="fa-solid fa-paper-plane"></i></button></div><p id="chat-error" class="mt-1 hidden text-xs text-red-600"></p></form>` : `<div class="border-t bg-gray-50 px-4 py-3 text-center text-sm text-gray-600">Solo lectura: puedes revisar el historial, pero no enviar mensajes.</div>`}`;
     };
     const subscribeConversation = channel => {
         if (!window.Echo || !channel || channel === activeEchoChannel) return;
@@ -1218,9 +1218,40 @@ document.addEventListener('DOMContentLoaded', () => {
         currentMessageList().scrollTop = currentMessageList().scrollHeight;
         subscribeConversation(currentMessageList().dataset.channel);
     }
+    let realtimeSyncTimer;
+    window.addEventListener('vita:chat-sync', () => {
+        clearTimeout(realtimeSyncTimer);
+        realtimeSyncTimer = setTimeout(async () => {
+            if (document.hidden) return;
+            try {
+                const response = await fetch(location.href, {headers:{'X-Requested-With':'XMLHttpRequest'}});
+                if (response.ok) {
+                    const page = new DOMParser().parseFromString(await response.text(), 'text/html');
+                    const nextList = page.getElementById('chat-conversation-list');
+                    const currentList = document.getElementById('chat-conversation-list');
+                    if (nextList && currentList) currentList.innerHTML = nextList.innerHTML;
+                }
+                const list = currentMessageList();
+                if (!list || loadingConversation) return;
+                const responseMessages = await fetch(`${list.dataset.url}?after=0`, {headers:{Accept:'application/json'}});
+                if (!responseMessages.ok || list !== currentMessageList()) return;
+                for (const message of (await responseMessages.json()).data || []) {
+                    const existing = list.querySelector(`[data-message-id="${message.id}"]`);
+                    if (!existing) appendMessage(message, list);
+                    else {
+                        const template = document.createElement('template'); template.innerHTML = messageMarkup(message).trim();
+                        const replacement = template.content.firstElementChild;
+                        replacement?.querySelectorAll('.chat-reaction-picker').forEach(picker => renderEmojiSections(picker, 'chat-react-option'));
+                        renderChatEmojis(replacement);
+                        if (replacement) existing.replaceWith(replacement);
+                    }
+                }
+            } catch (_) {}
+        }, 250);
+    });
     setInterval(async () => {
         const list = currentMessageList();
-        if (!list || document.hidden || window.Echo?.connector?.pusher?.connection?.state === 'connected') return;
+        if (!list || document.hidden || window.parent.VitaUserRealtime?.ready) return;
         const latestId = Math.max(0, ...Array.from(list.querySelectorAll('[data-message-id]')).map(node => Number(node.dataset.messageId) || 0));
         try {
             const response = await fetch(`${list.dataset.url}?after=${latestId}`, { headers: { 'Accept': 'application/json' } });

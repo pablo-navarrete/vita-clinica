@@ -17,6 +17,14 @@ Broadcast::channel('App.Models.User.{id}', function ($user, $id) {
     return (int) $user->id === (int) $id;
 });
 
+Broadcast::channel('clinic-user.{customerId}.{userId}', function ($user, $customerId, $userId) {
+    $customer = app()->bound('customer') ? app('customer') : null;
+    return $customer && (int) $customer->id === (int) $customerId
+        && (int) $user->id === (int) $userId
+        && (((int) $user->customer_id === (int) $customerId && (int) $user->status === 1)
+            || ($user->customer_id === null && $user->roles()->where('name', 'Super Administrador')->exists()));
+});
+
 Broadcast::channel('chat.{customerId}.{conversationId}', function ($user, $customerId, $conversationId) {
     if (! app()->bound('customer') || (int) app('customer')->id !== (int) $customerId) {
         return false;

@@ -1,52 +1,23 @@
 @extends('layouts.menu-customer')
 
+@push('styles')
+    <style>
+        .profile-personal-fields:disabled input {
+            background-color: #f3f4f6;
+            border-color: #e5e7eb;
+            color: #4b5563;
+            cursor: not-allowed;
+            opacity: 1;
+        }
+    </style>
+@endpush
+
 @section('header')
     <h2 class="font-semibold text-xl text-gray-800 leading-tight">Mi Perfil</h2>
 @endsection
 
-@push('scripts')
-    <script>
-        function MyScheduleManager() {
-            return {
-                url: '/my-schedules/data?branch={{ $activeBranch?->id }}',
-                loading: false,
-                schedules: [],
-                error: '',
-                days: {
-                    0: 'Domingo',
-                    1: 'Lunes',
-                    2: 'Martes',
-                    3: 'Miércoles',
-                    4: 'Jueves',
-                    5: 'Viernes',
-                    6: 'Sábado'
-                },
-                async load() {
-                    this.loading = true;
-                    this.error = '';
-                    try {
-                        const response = await fetch(this.url, {
-                            cache: 'no-store',
-                            headers: { 'Accept': 'application/json' }
-                        });
-                        const data = await response.json();
-                        if (!response.ok) throw new Error(data.message || 'No se pudieron cargar tus horarios.');
-                        this.schedules = data;
-                    } catch (error) {
-                        this.error = error.message;
-                    } finally {
-                        this.loading = false;
-                    }
-                },
-                formatTime(time) {
-                    return time ? time.substring(0, 5) : '--:--';
-                }
-            };
-        }    </script>
-@endpush
-
 @section('content')
-    <div class="py-8">
+    <div class="pb-8">
         <div class="max-w-8xl mx-auto px-4 sm:px-6 lg:px-8">
             @if ($errors->any())
                 <div role="alert" class="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
@@ -59,13 +30,9 @@
                 </div>
             @endif
 
-            @if (session('success'))
-                <div role="status" class="mb-6 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
-                    {{ session('success') }}
-                </div>
-            @endif
+            
 
-            <form action="{{ route('customers.profile.update', ['customer' => request()->route('customer')]) }}" method="POST">
+            <form x-data="{ form: @js($identificationForm), isEdit: true, errors: {} }" action="{{ route('customers.profile.update', ['customer' => request()->route('customer')]) }}" method="POST">
                 @csrf
                 @method('PATCH')
 
@@ -74,10 +41,16 @@
                         <h3 class="font-semibold text-gray-800">
                             <i class="fa-solid fa-user mr-2"></i>Datos personales
                         </h3>
-                        <p class="mt-1 text-sm text-gray-600">Actualiza la información de contacto de tu cuenta.</p>
+                        <p class="mt-1 text-sm text-gray-600">{{ $isClinicAdministrator ? 'Actualiza la información de contacto de tu cuenta.' : 'Solo el administrador de tu sede puede modificar tus datos personales.' }}</p>
                     </div>
 
-                    <div class="grid grid-cols-1 gap-5 p-6 md:grid-cols-2">
+                    @unless($isClinicAdministrator)
+                        <div class="mx-6 mt-5 flex items-start gap-3 rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
+                            <i class="fa-solid fa-lock mt-0.5" aria-hidden="true"></i>
+                            <p>No puedes modificar tus datos personales. Solo el administrador de tu sede puede actualizarlos.</p>
+                        </div>
+                    @endunless
+                    <fieldset @disabled(!$isClinicAdministrator) class="profile-personal-fields grid grid-cols-1 gap-5 p-6 md:grid-cols-2">
                         <div>
                             <label for="name" class="mb-1 block text-sm font-medium text-gray-700">Nombre completo</label>
                             <input id="name" name="name" type="text" value="{{ old('name', $user->name) }}" required maxlength="255" autocomplete="name"
@@ -99,27 +72,21 @@
                             @error('phone')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
                         </div>
 
-                        <div>
-                            <label for="rut" class="mb-1 block text-sm font-medium text-gray-700">RUT</label>
-                            @if ($isClinicAdministrator)
-                                <input id="rut" name="rut" type="text" value="{{ old('rut', $user->rut) }}" required maxlength="255"
-                                       class="w-full rounded-lg border-gray-300 focus:border-transparent focus:ring-2">
-                                @error('rut')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
-                            @else
-                                <input id="rut" type="text" value="{{ $user->rut }}" disabled
-                                       class="w-full rounded-lg border-gray-200 bg-gray-100 text-gray-600">
-                                <p class="mt-1 text-xs text-gray-500">Para cambiar el RUT, contacta al administrador.</p>
-                            @endif
-                        </div>
-                    </div>
+                        @include('components.identification-fields', ['kind'=>'user'])
+                    </fieldset>
                 </section>
 
                 <section class="mb-6 overflow-hidden rounded-xl bg-white shadow-sm">
                     <div class="border-b px-6 py-4" style="background-color: {{ themeColor(100) }}; border-color: {{ themeColor(200) }}">
+                        <div class="flex flex-wrap items-center justify-between gap-3">
                         <h3 class="font-semibold text-gray-800">
                             <i class="fa-solid fa-user-shield mr-2"></i>Roles asignados
                         </h3>
-                        <p class="mt-1 text-sm text-gray-600">Tus roles están organizados según las sedes donde los tienes asignados.</p>
+                        @if($canManageOwnAssignments)
+                            <button type="button" data-open-assignment="roles" class="shrink-0 rounded-lg px-3 py-2 text-sm font-semibold text-white" style="background-color: {{ themeColor(600) }}"><i class="fa-solid fa-pen mr-2" aria-hidden="true"></i>Administrar roles</button>
+                        @endif
+                        </div>
+                        <p class="mt-1 text-sm text-gray-600">{{ $isClinicAdministrator ? 'Tus roles están organizados según las sedes donde los tienes asignados.' : 'Roles asignados en tu sede actual.' }}</p>
                     </div>
                     <div class="space-y-4 p-6">
                         @forelse ($roleGroups as $group)
@@ -145,59 +112,41 @@
                     </div>
                 </section>
 
-                @if ($isDoctor || $isClinicAdministrator)
-                <section class="mb-6 overflow-hidden rounded-xl bg-white shadow-sm"
-                         x-data="MyScheduleManager()"
-                         x-init="load()">
-                    <div class="border-b px-6 py-4" style="background-color: {{ themeColor(100) }}; border-color: {{ themeColor(200) }}">
-                        <h3 class="font-semibold text-gray-800">
-                            <i class="fa-regular fa-calendar-days mr-2"></i>Mis horarios de atención
-                        </h3>
-                        <p class="mt-1 text-sm text-gray-600">Sede: <strong>{{ $activeBranch?->name ?? 'Sin sede activa' }}</strong>. Estos horarios son asignados y modificados por el administrador de la clínica.</p>
-                    </div>
-
-                    <div class="p-6">
-                        <div x-show="error" x-cloak role="alert" class="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" x-text="error"></div>
-
-                        <div x-show="loading" class="flex justify-center py-8 text-gray-500">
-                            <i class="fa-solid fa-spinner fa-spin mr-2 mt-1"></i>Cargando tus horarios…
-                        </div>
-
-                        <div x-show="!loading && schedules.length === 0" x-cloak class="mt-5 rounded-lg border border-dashed border-gray-300 bg-gray-50 p-6 text-center text-sm text-gray-500">
-                            Aún no tienes horarios registrados.
-                        </div>
-
-                        <div x-show="!loading && schedules.length > 0" x-cloak class="mt-5 space-y-3">
-                            <template x-for="schedule in schedules" :key="schedule.id">
-                                <div class="flex flex-col gap-3 rounded-lg border border-gray-200 p-4 sm:flex-row sm:items-center sm:justify-between">
-                                    <div class="flex items-center gap-3">
-                                        <span class="flex h-10 w-10 items-center justify-center rounded-full" style="background-color: {{ themeColor(100) }}; color: {{ themeColor(700) }}">
-                                            <i class="fa-regular fa-calendar-days"></i>
-                                        </span>
-                                        <div>
-                                            <p class="font-semibold text-gray-800" x-text="days[schedule.day_of_week]"></p>
-                                            <p class="text-sm text-gray-600"><span x-text="formatTime(schedule.start_time)"></span> – <span x-text="formatTime(schedule.end_time)"></span></p>
-                                            <p x-show="schedule.future_appointments_count > 0" class="mt-1 text-xs text-amber-700">
-                                                Tiene <span x-text="schedule.future_appointments_count"></span> cita(s) futura(s).
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                </div>
-                            </template>
-                        </div>
-                    </div>
-                </section>
-                @endif
-
-                @if ($isDoctor)
+@if ($isDoctor || $isClinicAdministrator)
                 <section class="mb-6 overflow-hidden rounded-xl bg-white shadow-sm">
                     <div class="border-b px-6 py-4" style="background-color: {{ themeColor(100) }}; border-color: {{ themeColor(200) }}">
+                        <div class="flex flex-wrap items-center justify-between gap-3">
                         <h3 class="font-semibold text-gray-800">
                             <i class="fa-solid fa-stethoscope mr-2"></i>Información profesional
                         </h3>
+                        @if($canManageOwnAssignments)
+                            <button type="button" data-open-assignment="specialties" class="shrink-0 rounded-lg px-3 py-2 text-sm font-semibold text-white" style="background-color: {{ themeColor(600) }}"><i class="fa-solid fa-pen mr-2" aria-hidden="true"></i>Administrar especialidades</button>
+                        @endif
+                        </div>
                     </div>
 
+                    @if($isClinicAdministrator)
+                    <div class="space-y-4 p-6" data-specialties-by-branch>
+                        @forelse($specialtyGroups as $group)
+                            <div class="rounded-lg border border-gray-200 p-4" data-specialty-branch="{{ $group['branch']->id }}">
+                                <div class="mb-3 flex items-center gap-2">
+                                    <i class="fa-solid fa-location-dot text-gray-500" aria-hidden="true"></i>
+                                    <h4 class="font-semibold text-gray-800">{{ $group['branch']->name }}</h4>
+                                    @if(!$group['branch']->status)<span class="text-xs text-gray-500">(Inactiva)</span>@endif
+                                </div>
+                                <div class="flex flex-wrap gap-2">
+                                    @forelse($group['specialties'] as $specialty)
+                                        <span class="inline-flex items-center rounded-full px-3 py-1 text-sm" style="background-color: {{ themeColor(100) }}; color: {{ themeColor(700) }}">{{ $specialty->name }}</span>
+                                    @empty
+                                        <span class="text-sm text-gray-500">Sin especialidades asignadas en esta sede.</span>
+                                    @endforelse
+                                </div>
+                            </div>
+                        @empty
+                            <span class="text-sm text-gray-500">No tienes sedes asignadas.</span>
+                        @endforelse
+                    </div>
+                    @else
                     <div class="p-6">
                         <label class="mb-2 block text-sm font-medium text-gray-700">Especialidades en {{ $activeBranch?->name ?? 'la sede actual' }}</label>
                         <div class="rounded-lg border border-gray-200 bg-gray-50 p-4">
@@ -209,12 +158,15 @@
                             @empty
                                 <p class="text-sm text-gray-500">No tienes especialidades asignadas.</p>
                             @endforelse
+                            @unless($isClinicAdministrator)
                             <p class="mt-2 text-xs text-gray-500">
                                 <i class="fa-solid fa-lock mr-1"></i>
                                 Para agregar o modificar especialidades, contacta al administrador.
                             </p>
+                            @endunless
                         </div>
                     </div>
+                    @endif
                 </section>
                 @endif
 
@@ -292,6 +244,9 @@
                     </button>
                 </div>
             </form>
+            @if($canManageOwnAssignments)
+                @include('customer.user.partials.profile-assignments')
+            @endif
         </div>
     </div>
 @endsection

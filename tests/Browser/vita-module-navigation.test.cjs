@@ -4,7 +4,7 @@ const vm = require('node:vm');
 const { readFileSync } = require('node:fs');
 
 function modules() {
-    const created = [], messages = [], nodes = {};
+    const created = [], messages = [], nodes = {}, timers = new Map(), microtasks = [];
     const element = () => ({ dataset:{},style:{},listeners:{},contentWindow:{ location:{href:'about:blank'},dispatchEvent() {},postMessage() {} },
         contentDocument:{body:{dataset:{vitaContent:'true'}},title:'Module'},
         getBoundingClientRect() { return {left:256,top:64,width:944,height:736}; },
@@ -13,12 +13,14 @@ function modules() {
     nodes['vita-content-current'].dataset.initialUrl = 'https://clinic.test/patients?_vita_content=1';
     nodes['vita-module-loading'] = element();
     nodes['vita-module-slot'] = {...element(),append(frame) { created.push(frame); }};
+    let timerId = 0;
     const context = {URL,Event,location:{origin:'https://clinic.test',href:'https://clinic.test/patients'},confirm:() => true,
+        setTimeout: fn => { timers.set(++timerId, fn); return timerId; }, clearTimeout: id => timers.delete(id), queueMicrotask: fn => microtasks.push(fn),
         document:{getElementById:id => nodes[id],createElement:element,addEventListener() {},querySelectorAll:() => []},
         VitaNavigation:{send:data => messages.push(data),requestState() {}}};
     context.window = context;
     vm.runInNewContext(readFileSync('public/js/vita-module-navigation.js','utf8'),context);
-    return {context,nodes,created,messages,api:context.VitaModules};
+    return {context,nodes,created,messages,timers,microtasks,api:context.VitaModules};
 }
 test('the previous content stays visible until the replacement document has loaded',() => {
     const app = modules(), previous = app.nodes['vita-content-current'];
@@ -151,4 +153,54 @@ test('ready content is displayed before images and other load-event resources fi
     assert.equal(app.nodes['vita-module-loading'].hidden,true);
     frame.listeners.load();
     assert.equal(frame.removed,undefined);
+});
+
+test('an AJAX handler cancelling native submission removes the pending preload and restores its form', () => {
+    const app = modules(), attrs = { action:'/patients/7' };
+    const form = { getAttribute:name => attrs[name] ?? null, setAttribute:(name,value) => attrs[name] = value,
+        removeAttribute:name => delete attrs[name], querySelector:() => null,
+        ownerDocument:{baseURI:'https://clinic.test/patients',createElement:() => ({})},append() {} };
+    const event = {defaultPrevented:false};
+    app.api.submit(form,null,event);
+    event.defaultPrevented = true;
+    app.microtasks.forEach(fn => fn());
+    assert.equal(app.created[0].removed,true);
+    assert.equal(app.nodes['vita-module-loading'].hidden,true);
+    assert.equal(attrs.target,undefined);
+    assert.equal(attrs.action,'/patients/7');
+    assert.equal(app.timers.size,0);
+});
+
+test('an unresponsive frame stops spinning and cannot replace content when it finishes late', () => {
+    const app = modules(), previous = app.nodes['vita-content-current'];
+    app.api.navigate('/slow-module');
+    const stalled = app.created[0];
+    [...app.timers.values()][0]();
+    assert.equal(stalled.removed,true);
+    assert.equal(previous.removed,undefined);
+    assert.equal(app.nodes['vita-module-loading'].dataset.error,'true');
+    app.api.navigate('/patients');
+    stalled.contentWindow.location.href = stalled.src; stalled.listeners.load();
+    assert.equal(previous.removed,undefined);
+    const next = app.created[1]; next.contentWindow.location.href = next.src; next.listeners.load();
+    assert.equal(previous.removed,true);
+    assert.equal(app.nodes['vita-module-loading'].hidden,true);
+    assert.equal(app.timers.size,0);
+});
+
+test('a network error clears the pending frame and offers recovery without hiding the current module', () => {
+    const app = modules();
+    app.api.navigate('/offline'); app.created[0].listeners.error();
+    assert.equal(app.created[0].removed,true);
+    assert.equal(app.nodes['vita-content-current'].removed,undefined);
+    assert.equal(app.nodes['vita-module-loading'].dataset.error,'true');
+    assert.equal(app.timers.size,0);
+});
+
+test('an external form destination never starts a content preloader', () => {
+    const app = modules();
+    const form = {getAttribute:() => 'https://external.test/submit',ownerDocument:{baseURI:'https://clinic.test/'}};
+    assert.equal(app.api.submit(form),false);
+    assert.equal(app.created.length,0);
+    assert.equal(app.timers.size,0);
 });

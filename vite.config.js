@@ -8,6 +8,7 @@ export default defineConfig({
                 'resources/css/app.css',
                 'resources/js/app.js',
                 'resources/js/vita-assistant/public.js',
+                'resources/js/vita-phone.js',
             ],
             refresh: true,
         }),

@@ -158,7 +158,7 @@ class WebsiteBannerController extends Controller
     private function validatedData(Request $request, bool $imageRequired): array
     {
         $data = $request->validate([
-            'title' => ['required', 'string', 'max:120'],
+            'title' => ['required_unless:image_only,1', 'nullable', 'string', 'max:120'],
             'subtitle' => ['nullable', 'string', 'max:160'],
             'description' => ['nullable', 'string', 'max:2000'],
             'button_text' => ['nullable', 'string', 'max:60'],
@@ -167,8 +167,13 @@ class WebsiteBannerController extends Controller
             'image' => [$imageRequired ? 'required' : 'nullable', 'image', 'max:10240'],
             'image_alt' => ['nullable', 'string', 'max:160'],
             'status' => ['required', 'boolean'],
+            'dark_overlay' => ['sometimes', 'required', 'boolean'],
+            'image_only' => ['sometimes', 'required', 'boolean'],
+            'text_alignment' => ['sometimes', 'required', 'in:left,center,right'],
+            'button_alignment' => ['sometimes', 'required', 'in:left,center,right'],
         ]);
 
+        $data['title'] = ($data['title'] ?? null) ?: 'Banner sin texto';
         $destination = trim((string) ($data['button_destination'] ?? ''));
         if ($destination === '__custom__') {
             $destination = trim((string) ($data['button_url_custom'] ?? ''));

@@ -73,12 +73,16 @@ class CheckRolePermission
 
     private function permissionFor(Request $request): ?string
     {
+        // Own schedules are readable without granting schedule administration.
+        if ($request->isMethod('GET') && ($request->is('my-schedules') || $request->is('my-schedules/data'))) return null;
         $path = trim($request->path(), '/');
         $method = strtoupper($request->method());
 
+        if ($path === 'patient-data/search' && $method === 'POST') return 'patients.view';
         if ($path === 'professionals/by-specialty') return 'appointments.view';
         if ($path === 'dashboard') return 'dashboard.view';
         if ($path === 'my-encounters') return 'medical_records.view';
+        if (preg_match('#^patients/\d+/mi-salud-access(?:/|$)#',$path)) return $method === 'GET' ? 'medical_records.view' : 'medical_records.manage';
         if (preg_match('#^patients/\d+/telemedicine(/|$)#', $path)) return 'medical_records.manage';
         if (str_starts_with($path, 'assistant/')) return 'dashboard.view';
         if ($path === 'activity-history' || str_starts_with($path, 'patients/') && str_ends_with($path, '/medical-record/activity')) return 'audit.view';

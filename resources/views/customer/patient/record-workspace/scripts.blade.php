@@ -115,7 +115,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (event.target.matches('#encounter-assessment, #encounter-treatment-plan')) dirty = true;
     });
     window.addEventListener('beforeunload', event => {
-        if (!dirty || leaving) return;
+        if (!window.vitaHasUnsavedChanges()) return;
         event.preventDefault();
         event.returnValue = '';
     });

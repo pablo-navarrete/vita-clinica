@@ -23,6 +23,8 @@ export function mountAssistant(openInitially = false) {
     const panel = root.querySelector('[data-assistant-panel]');
     const form = root.querySelector('form');
     const input = root.querySelector('textarea');
+    const phoneField = root.querySelector('[data-assistant-phone-field]');
+    const phoneInput = root.querySelector('[data-assistant-phone]');
     const messages = root.querySelector('[data-messages]');
     const sendButton = root.querySelector('[data-send]');
     const micButton = root.querySelector('[data-mic]');
@@ -200,6 +202,7 @@ export function mountAssistant(openInitially = false) {
         },
         onTranscript: text => {
             input.value = `${input.value}${input.value ? ' ' : ''}${text}`;
+            if (phoneInput && !phoneInput.disabled) phoneInput.value = input.value;
             input.focus();
         },
         onError: text => announce(text),
@@ -324,6 +327,7 @@ export function mountAssistant(openInitially = false) {
         return {
             reply: String(payload.reply ?? payload.message ?? 'No recibí una respuesta.'),
             actions: Array.isArray(payload.actions) ? payload.actions : [],
+            inputType: payload.input_type === 'tel' ? 'tel' : 'text',
         };
     }
 
@@ -348,6 +352,14 @@ export function mountAssistant(openInitially = false) {
         }
         typing.remove();
         addMessage(result.reply, 'assistant', 'Viti', result.actions);
+        if (phoneField && phoneInput) {
+            const wantsPhone = result.inputType === 'tel';
+            phoneField.hidden = !wantsPhone;
+            phoneInput.disabled = !wantsPhone;
+            phoneInput.value = '';
+            input.hidden = wantsPhone;
+            window.VitaPhone?.refresh();
+        }
         busy = false;
         sendButton.disabled = false;
         if (voiceEnabled) voice.speak(result.reply);
@@ -358,7 +370,7 @@ export function mountAssistant(openInitially = false) {
         window.setTimeout(() => {
             if (robot.state === 'happy') robot.setState('idle');
         }, 1600);
-        input.focus();
+        if (phoneInput && !phoneInput.disabled) phoneInput.focus(); else input.focus();
     }
 
     toggle.addEventListener('click', event => {
@@ -384,8 +396,12 @@ export function mountAssistant(openInitially = false) {
     root.querySelector('[data-close]').addEventListener('click', () => setOpen(false));
     form.addEventListener('submit', event => {
         event.preventDefault();
-        sendMessage(input.value);
+        if (phoneInput && !phoneInput.disabled) {
+            if (window.VitaPhone && !window.VitaPhone.validate(phoneInput)) return;
+            sendMessage(window.VitaPhone?.getNumber(phoneInput) || phoneInput.value);
+        } else sendMessage(input.value);
     });
+    root.querySelector('[data-assistant-phone-cancel]')?.addEventListener('click', () => sendMessage('cancelar'));
     input.addEventListener('keydown', event => {
         if (event.key === 'Enter' && !event.shiftKey) {
             event.preventDefault();

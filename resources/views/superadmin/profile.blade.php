@@ -1,29 +1,12 @@
-@if (session('success'))
-    @push('scripts')
-        <script>
-            Swal.fire({
-                toast: true,
-                position: 'top-end',
-                icon: 'success',
-                title: @json(session('success')),
-                showConfirmButton: false,
-                timer: 2200,
-                timerProgressBar: true
-            });
-        </script>
-    @endpush
-@endif
+
 
 <x-app-layout>
     <x-slot name="header">
-        <div>
-            <h2 class="text-xl font-semibold leading-tight text-gray-800">Mi perfil</h2>
-            <p class="mt-1 text-sm text-gray-500">Administra los datos de tu cuenta de superadministrador.</p>
-        </div>
+        <h2 class="font-semibold text-xl text-gray-800 leading-tight">Mi Perfil</h2>
     </x-slot>
 
-    <div class="py-10">
-        <div class="mx-auto max-w-4xl space-y-6 px-4 sm:px-6 lg:px-8">
+    <div class="py-8">
+        <div class="mx-auto w-full space-y-6 px-4 sm:px-6 lg:px-8" style="width: calc(100% - 3rem);">
             @if ($errors->any())
                 <div role="alert" class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
                     <p class="font-semibold">No se pudieron guardar los cambios:</p>
@@ -39,8 +22,10 @@
                 @csrf
                 @method('PATCH')
 
+                @include('components.identification-fields', ['kind'=>'user'])
+
                 <section class="overflow-hidden rounded-xl bg-white shadow-sm">
-                    <div class="border-b border-gray-200 bg-gray-50 px-6 py-4">
+                    <div class="border-b px-6 py-4" style="background-color: {{ themeColor(100) }}; border-color: {{ themeColor(200) }}">
                         <h3 class="font-semibold text-gray-800"><i class="fa-solid fa-user mr-2 text-indigo-600"></i>Datos personales</h3>
                         <p class="mt-1 text-sm text-gray-500">Información de tu cuenta de Vita Clínica.</p>
                     </div>
@@ -70,7 +55,7 @@
                 </section>
 
                 <section class="overflow-hidden rounded-xl bg-white shadow-sm">
-                    <div class="border-b border-gray-200 bg-gray-50 px-6 py-4">
+                    <div class="border-b px-6 py-4" style="background-color: {{ themeColor(100) }}; border-color: {{ themeColor(200) }}">
                         <h3 class="font-semibold text-gray-800"><i class="fa-solid fa-lock mr-2 text-indigo-600"></i>Cambiar contraseña</h3>
                         <p class="mt-1 text-sm text-gray-500">Deja estos campos vacíos si no deseas cambiarla.</p>
                     </div>

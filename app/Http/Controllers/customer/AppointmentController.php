@@ -27,6 +27,8 @@ class AppointmentController extends Controller
         $doctor = $this->loggedInDoctor($customerId);
         $branchId = $this->activeBranchId((int) $customerId);
         $canCreateAppointments = $branchId && ClinicBranchContext::hasPermissionInBranch(auth()->user(), (int) $customerId, (int) $branchId, 'appointments.create');
+        $canCreatePatientFromAgenda=$canCreateAppointments && ClinicBranchContext::hasPermissionInBranch(auth()->user(),(int)$customerId,(int)$branchId,'patients.create');
+        $insurances=$canCreatePatientFromAgenda?\App\Models\Insurance::where('customer_id',$customerId)->where('status',true)->get():collect();
         $appointmentBranches = $branchId ? ClinicBranchContext::availableBranches(auth()->user(), (int) $customerId) : collect();
         $canChooseAppointmentBranch = $branchId
             && $appointmentBranches->count() > 1
@@ -88,7 +90,7 @@ class AppointmentController extends Controller
             && filled(config('services.livekit.api_key'))
             && filled(config('services.livekit.api_secret'));
 
-        return view('customer.Appointment.index', compact('professionals', 'patients', 'specialties', 'isDoctor', 'currentProfessionalId', 'currentProfessionalName', 'telemedicineConfigured', 'calendarWorkingHours', 'appointmentBranches', 'canChooseAppointmentBranch', 'branchId', 'calendarBranches', 'canFilterAppointmentsAcrossBranches', 'canCreateAppointments'));
+        return view('customer.Appointment.index', compact('professionals', 'patients', 'specialties', 'isDoctor', 'currentProfessionalId', 'currentProfessionalName', 'telemedicineConfigured', 'calendarWorkingHours', 'appointmentBranches', 'canChooseAppointmentBranch', 'branchId', 'calendarBranches', 'canFilterAppointmentsAcrossBranches', 'canCreateAppointments','canCreatePatientFromAgenda','insurances'));
     }
 
     public function calendarProfessionals(Request $request)
@@ -218,8 +220,7 @@ class AppointmentController extends Controller
 
                     $search = $request->search;
 
-                    $query->where('name', 'like', "%{$search}%")
-                        ->orWhere('rut', 'like', "%{$search}%");
+                    app(\App\Services\Identification\PatientIdentification::class)->filterRequest($query, $request, $search);
                 }
             })
 
@@ -268,7 +269,7 @@ class AppointmentController extends Controller
                     'patientId' => $appointment->patient_id,
                     'professionalId' => $appointment->professional_id,
                     'specialtyId' => $appointment->specialty_id,
-                    'rut' => $appointment->patient->rut,
+                    'rut' => $appointment->patient->identification_label,
                     'reason' => $appointment->reason,
                     'notes' => $appointment->notes,
                     'modality' => $appointment->modality ?? 'in_person',
@@ -935,7 +936,7 @@ class AppointmentController extends Controller
         $previousProfessionalId = (int) $appointment->professional_id;
         $previousAppointmentDetails = [
             'patient_name' => $previousPatient->name,
-            'patient_rut' => $previousPatient->rut,
+            'patient_rut' => $previousPatient->identification_label,
             'starts_at' => Carbon::parse($appointment->start_at)->format('Y-m-d H:i:s'),
             'specialty' => $appointment->specialty?->name,
             'reason' => $appointment->reason,
@@ -1000,8 +1001,11 @@ class AppointmentController extends Controller
     //cancelar cita
     public function cancel(Request $request)
     {
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($request) {
         $id = $request->route('id');
         $customerId = app('customer')->id;
+        $linkedEncounter = Encounter::where('customer_id', $customerId)->where('appointment_id', $id)->lockForUpdate()->first();
+        abort_if($linkedEncounter?->signatures()->exists(), 409, 'La cita pertenece a una atención firmada y no puede cancelarse.');
         $branchId = $this->appointmentBranchId($request, (int) $customerId, 'appointments.cancel');
         $doctor = $this->loggedInDoctor($customerId);
         if ($doctor && ClinicBranchContext::canAdministerAllBranches($request->user(), (int) $customerId)
@@ -1033,6 +1037,7 @@ class AppointmentController extends Controller
             'success' => true,
             'message' => 'Cita cancelada correctamente.'
         ]);
+        });
     }
 
     private function hasDoctorRole($user): bool
@@ -1134,7 +1139,7 @@ class AppointmentController extends Controller
             'title' => $title,
             'message' => $message,
             'patient_name' => $appointment->patient?->name,
-            'patient_rut' => $appointment->patient?->rut,
+            'patient_rut' => $appointment->patient?->identification_label,
             'specialty' => $appointment->specialty?->name,
             'starts_at' => Carbon::parse($appointment->start_at)->format('Y-m-d H:i:s'),
             'ends_at' => Carbon::parse($appointment->end_at)->format('Y-m-d H:i:s'),
@@ -1162,10 +1167,13 @@ class AppointmentController extends Controller
 
     private function professionalBelongsToCustomer($professionalId, $customerId): bool
     {
+        $branchId = (int) session('active_branch_customer_id') === (int) $customerId ? (int) session('active_branch_id') : 0;
         return User::where('customer_id', $customerId)
             ->where('status', 1)
             ->whereKey($professionalId)
-            ->whereHas('roles', fn ($query) => $query->where('roles.name', 'Doctor'))
+            ->whereHas('branchRoles', fn ($query) => $query->where('roles.name', 'Doctor')
+                ->where('roles.customer_id', $customerId)->where('clinic_branch_user_role.customer_id', $customerId)
+                ->where('clinic_branch_user_role.clinic_branch_id', $branchId))
             ->exists();
     }
 }

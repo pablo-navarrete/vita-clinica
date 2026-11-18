@@ -1,0 +1,38 @@
+/* Shared workspace theme for SuperAdmin, clinic administration and Mi Salud. */
+@font-face{font-family:"Vita Workspace Titles";font-style:normal;font-weight:700;font-display:swap;src:url('../fonts/figtree/figtree-6.woff2') format('woff2')}
+.vita-workspace-shell .vita-workspace-title{font-family:"Vita Workspace Titles",Figtree,sans-serif;font-size:20px;font-weight:700;font-style:normal;line-height:25px;letter-spacing:normal;text-transform:uppercase;white-space:normal;overflow-wrap:anywhere;text-align:center;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+.vita-workspace-shell{font-family:Figtree,ui-sans-serif,system-ui,sans-serif;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+.vita-workspace-shell :is(.vita-layout-topbar-inner,.portal-topbar){padding-left:16px;padding-right:16px}
+.vita-workspace-shell :is(.portal-topbar,.vita-layout-topbar-inner>div){height:64px}
+.vita-workspace-shell .portal-topbar-context{gap:12px}
+.vita-workspace-shell .portal-context-pill{display:none}
+.vita-workspace-shell .portal-mobile-menu{width:40px;height:40px;border:0;border-radius:8px;color:#4b5563}
+.vita-workspace-shell .portal-mobile-menu:hover{background:#f3f4f6}
+.vita-workspace-shell .portal-mobile-menu svg{height:18px;width:18px}
+.vita-workspace-shell .portal-website-link svg{width:16px;height:16px}
+.vita-workspace-shell .portal-account-menu{margin-left:4px}
+.vita-workspace-shell :is(.portal-account-dropdown,.vita-clinic-account-menu>.relative>.absolute){width:224px;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;background:white;outline:0;box-shadow:0 10px 15px -3px #0000001a,0 4px 6px -4px #0000001a}
+.vita-workspace-shell .portal-account-heading{padding:12px 16px;background:var(--canvas,#eff6ff);border-bottom:1px solid #f3f4f6;color:#1f2937}
+.vita-workspace-shell .portal-account-heading p{margin-top:0}
+.vita-workspace-shell .portal-account-heading strong{color:#1f2937}
+.vita-workspace-shell .portal-account-dropdown a{padding:10px 16px;gap:12px;color:#374151}
+.vita-workspace-shell .portal-account-dropdown a svg{width:16px;height:16px;color:#6b7280}
+.vita-workspace-shell .portal-account-dropdown a:hover{background:#f9fafb}
+.vita-workspace-shell .portal-account-dropdown button{padding:10px 16px}
+.vita-workspace-shell .portal-account-dropdown form{border-top:0}
+.vita-workspace-shell .vita-clinic-account-menu .absolute>div{border-radius:12px}
+.vita-workspace-shell .vita-clinic-account-menu .absolute>div>a:first-child{padding:12px 16px;border-bottom:1px solid #f3f4f6;color:#1f2937}
+.vita-workspace-shell .vita-clinic-account-menu .absolute>div>a:first-child p+p{margin-top:0}
+.vita-workspace-shell .vita-clinic-account-menu hr{display:none}
+.vita-workspace-shell .vita-clinic-account-menu .absolute>div>a[href],.vita-workspace-shell .vita-clinic-account-menu form button{padding:10px 16px}
+.vita-workspace-shell .vita-clinic-account-menu form{border-top:0}
+.vita-workspace-shell :is(#superadmin-sidebar,#clinic-sidebar,#portal-sidebar){width:256px;flex-shrink:0}
+.vita-workspace-shell :is(#superadmin-sidebar,#clinic-sidebar,#portal-sidebar) nav a{font-weight:400;font-size:16px;line-height:24px}
+.vita-workspace-shell :is(#superadmin-sidebar,#clinic-sidebar,#portal-sidebar) nav a>span{
+ font-family:Figtree,ui-sans-serif,system-ui,sans-serif;
+ font-size:16px;font-weight:400;line-height:24px;letter-spacing:normal;
+ font-style:normal;text-shadow:none;-webkit-text-stroke:0;
+ -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;
+}
+@media(min-width:640px){.vita-workspace-shell :is(.vita-layout-topbar-inner,.portal-topbar){padding-left:24px;padding-right:24px}}
+@media(min-width:768px){.vita-workspace-shell :is(#superadmin-sidebar,#clinic-sidebar,#portal-sidebar)[data-compact=true]{width:80px}}

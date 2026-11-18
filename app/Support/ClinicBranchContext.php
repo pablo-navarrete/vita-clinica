@@ -57,7 +57,8 @@ class ClinicBranchContext
 
         $headquartersId = (int) ClinicBranch::query()->where('customer_id', $customerId)->orderBy('id')->value('id');
         return $headquartersId > 0
-            && self::isHeadquartersActive($customerId)
+            && (self::isHeadquartersActive($customerId)
+                || ((int) $user->customer_id === $customerId && $user->is_customer_administrator))
             && self::hasExplicitPermissionInBranch($user, $customerId, $headquartersId, 'branches.admin_all');
     }
 
@@ -99,6 +100,15 @@ class ClinicBranchContext
 
         return $roles->whereHas('permissions', fn ($permissions) => $permissions
             ->where('permissions.slug', $permission))->exists();
+    }
+
+    public static function canManageSchedulesInBranch(User $user, int $customerId, int $branchId): bool
+    {
+        if (self::isSuperAdministrator($user)) return true;
+        return (int) $user->customer_id === $customerId
+            && ($user->hasClinicRole('Administrador', $customerId, $branchId)
+                || $user->hasClinicRole('Administrador de sede', $customerId, $branchId))
+            && self::hasPermissionInBranch($user, $customerId, $branchId, 'schedules.manage');
     }
 
     public static function isGeneralAdministrator(User $user, int $customerId): bool

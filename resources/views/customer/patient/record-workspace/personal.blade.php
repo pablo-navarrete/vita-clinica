@@ -30,7 +30,7 @@
 
                                 <p class="font-semibold">
 
-                                    {{ $medicalRecord->patient->rut }}
+                                    {{ app(\App\Services\Identification\PatientIdentification::class)->clinicalNumber($medicalRecord->patient) }}
 
                                 </p>
 
@@ -71,7 +71,7 @@
 
                                 <p class="font-semibold">
 
-                                    {{ $medicalRecord->patient->phone ?? '-' }}
+                                    <span data-phone-display>{{ $medicalRecord->patient->phone ?? '-' }}</span>
 
                                 </p>
 

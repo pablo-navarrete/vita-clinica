@@ -1,0 +1,20 @@
+/* Shared background for patient, clinic and SuperAdmin access screens. */
+.vita-login{--vita-auth-soft:var(--soft,#eff6ff);--vita-auth-tint:var(--tint,#dbeafe);--vita-auth-line:var(--line,#bfdbfe);--vita-auth-curve:color-mix(in srgb,var(--accent,#1d4ed8) 25%,transparent)}
+:is(.portal-login,.vita-login) .vita-auth-background {
+    position:relative;
+    isolation:isolate;
+    overflow:hidden;
+    background:linear-gradient(145deg,var(--vita-auth-soft,#eff6ff) 0%,var(--vita-auth-tint,#dbeafe) 65%,var(--vita-auth-line,#bfdbfe) 100%);
+}
+:is(.portal-login,.vita-login) .vita-auth-background>.login-welcome,
+:is(.portal-login,.vita-login) .vita-auth-background>.login-access{background:transparent}
+:is(.portal-login,.vita-login) .vita-auth-background>.login-welcome::before,
+:is(.portal-login,.vita-login) .vita-auth-background>.login-welcome::after{display:none}
+:is(.portal-login,.vita-login) .vita-auth-background::before{content:'';position:absolute;z-index:-1;width:620px;height:620px;right:-340px;top:-330px;border:1px solid var(--vita-auth-line,#bfdbfe);border-radius:46% 54% 65% 35%;transform:rotate(-25deg);opacity:.45;box-shadow:0 0 0 55px #ffffff40,0 0 0 115px #ffffff2e;pointer-events:none}
+:is(.portal-login,.vita-login) .vita-auth-background::after{content:'';position:absolute;z-index:-1;width:600px;height:340px;left:-240px;bottom:-250px;border:1px solid var(--vita-auth-line,#bfdbfe);border-radius:50%;transform:rotate(25deg);opacity:.4;box-shadow:0 0 0 65px #ffffff47;pointer-events:none}
+.vita-auth-curves{position:absolute;inset:0;z-index:-1;overflow:hidden;pointer-events:none}
+.vita-auth-curves span{position:absolute;display:block;border:1px solid var(--vita-auth-curve,#8eb6ed45);border-radius:50%}
+.vita-auth-curves span:nth-child(1){width:940px;height:680px;left:-710px;top:-420px;transform:rotate(-20deg)}
+.vita-auth-curves span:nth-child(2){width:1120px;height:920px;left:-1010px;top:20%;transform:rotate(18deg);border-color:#ffffff85}
+.vita-auth-curves span:nth-child(3){width:1000px;height:460px;left:-450px;bottom:-390px;transform:rotate(12deg);border-color:var(--vita-auth-curve,#86ade13b)}
+@media(max-width:640px){.vita-auth-curves span:nth-child(1){left:-790px}.vita-auth-curves span:nth-child(2){left:-1050px}}

@@ -1,0 +1,333 @@
+<x-app-layout>
+
+<x-slot name="header">
+    <h2 class="text-xl font-semibold leading-tight text-gray-800">Menú del sitio web</h2>
+</x-slot>
+
+<div class="p-6">
+
+@if($errors->any())<div class="mb-5 rounded-md bg-red-50 p-4 text-red-700">{{ $errors->first() }}</div>@endif
+    <div class="mx-auto max-w-7xl space-y-6 sm:px-6 lg:px-8">
+        
+        <section class="rounded-lg bg-white p-6 shadow-sm">
+            <h3 class="mb-1 text-lg font-semibold text-gray-800">Logo y nombre en el menú público</h3>
+            <p class="mb-5 text-sm text-gray-500">Elige cómo se presenta VITA en el encabezado de su sitio web.</p>
+            <form method="POST" action="{{ route('superadmin.menus.brand.update') }}" class="flex flex-wrap items-end gap-4">
+                @csrf @method('PUT')
+                <div class="w-full sm:max-w-md">
+                    <label for="menu-brand-display" class="mb-1 block text-sm font-medium text-gray-700">Mostrar en el menú</label>
+                    <select id="menu-brand-display" name="brand_display" class="w-full rounded-md border-gray-300 shadow-sm">
+                        <option value="both" @selected(old('brand_display', $headerBrandDisplay) === 'both')>Logo y nombre</option>
+                        <option value="logo" @selected(old('brand_display', $headerBrandDisplay) === 'logo')>Solo logo</option>
+                        <option value="title" @selected(old('brand_display', $headerBrandDisplay) === 'title')>Solo nombre</option>
+                    </select>
+                    @error('brand_display')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+                </div>
+                <button type="submit" class="rounded-md px-4 py-2 font-semibold text-white hover:brightness-90" style="background-color: {{ themeColor(600) }}">Guardar presentación</button>
+            </form>
+            <p class="mt-3 text-xs text-gray-500">El logo se configura en Logo, ubicación Header. Si no hay un logo activo, se mostrará el nombre de VITA.</p>
+        </section>
+
+        <section class="rounded-lg bg-white p-6 shadow-sm">
+            <h3 class="mb-1 text-lg font-semibold text-gray-800">Crear página en blanco</h3>
+            <p class="mb-5 text-sm text-gray-500">La página se agregará al menú público y luego podrás construirla con secciones, textos e imágenes.</p>
+
+            <form method="POST" action="{{ route('superadmin.menus.store') }}"
+                class="grid grid-cols-1 items-end gap-4 md:grid-cols-12">
+                @csrf
+                <div class="md:col-span-10">
+                    <label for="name" class="mb-1 block text-sm font-medium text-gray-700">Nombre de la página y del enlace</label>
+                    <input id="name" name="name" value="{{ old('name') }}" required maxlength="80"
+                        class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                        placeholder="Ej. Quiénes somos">
+                    @error('name') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
+                </div>
+                <div class="md:col-span-2">
+                    <label for="status" class="mb-1 block text-sm font-medium text-gray-700">Estado</label>
+                    <select id="status" name="status" class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                        <option value="1" @selected(old('status', '1') === '1')>Activo</option>
+                        <option value="0" @selected(old('status') === '0')>Inactivo</option>
+                    </select>
+                </div>
+                <div class="md:col-span-12">
+                    <button id="create-menu-button" type="submit" class="rounded-md px-4 py-2 font-semibold text-white hover:brightness-90"
+                        style="background-color: {{ themeColor(600) }}">
+                        <i class="fa-solid fa-plus mr-1"></i> Crear página
+                    </button>
+                </div>
+            </form>
+        </section>
+
+        <section class="rounded-lg bg-white p-6 shadow-sm">
+            <h3 class="mb-1 text-lg font-semibold text-gray-800">Boton junto al menu publico</h3>
+            <p class="mb-5 text-sm text-gray-500">Configura un enlace destacado independiente del bloque de agendamiento.</p>
+            <form method="POST" action="{{ route('superadmin.menus.navigation-button.update') }}" class="grid grid-cols-1 items-end gap-4 md:grid-cols-12">
+                @csrf
+                @method('PUT')
+                <div class="md:col-span-3"><label for="navigation-button-enabled" class="mb-1 block text-sm font-medium text-gray-700">Mostrar boton</label><select id="navigation-button-enabled" name="enabled" class="w-full rounded-md border-gray-300 shadow-sm"><option value="1" @selected((string) old('enabled', $navigationButton->enabled ? '1' : '0') === '1')>Si, mostrar</option><option value="0" @selected((string) old('enabled', $navigationButton->enabled ? '1' : '0') === '0')>No mostrar</option></select>@error('enabled') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror</div>
+                <div class="md:col-span-4"><label for="navigation-button-label" class="mb-1 block text-sm font-medium text-gray-700">Texto del boton</label><input id="navigation-button-label" name="label" required maxlength="60" value="{{ old('label', $navigationButton->label) }}" class="w-full rounded-md border-gray-300 shadow-sm" placeholder="Ej. Contactar">@error('label') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror</div>
+                <div class="md:col-span-5"><label for="navigation-button-destination" class="mb-1 block text-sm font-medium text-gray-700">Al hacer clic, abrir</label><select id="navigation-button-destination" name="destination" class="w-full rounded-md border-gray-300 shadow-sm"><option value="contact" @selected(old('destination', $navigationButton->destination) === 'contact')>Seccion de contacto</option><option value="whatsapp" @selected(old('destination', $navigationButton->destination) === 'whatsapp')>WhatsApp</option><option value="page" @selected(old('destination', $navigationButton->destination) === 'page')>Una pagina del sitio</option><option value="custom" @selected(old('destination', $navigationButton->destination) === 'custom')>Enlace personalizado</option></select>@error('destination') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror</div>
+                <div id="navigation-button-page-field" class="md:col-span-6"><label for="navigation-button-menu" class="mb-1 block text-sm font-medium text-gray-700">Pagina publica</label><select id="navigation-button-menu" name="menu_id" class="w-full rounded-md border-gray-300 shadow-sm"><option value="">Selecciona una pagina</option>@foreach ($menus->where('status', true) as $publicMenu)<option value="{{ $publicMenu->id }}" @selected((string) old('menu_id', $navigationButton->menu_id) === (string) $publicMenu->id)>{{ $publicMenu->name }}</option>@endforeach</select>@error('menu_id') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror</div>
+                <div id="navigation-button-whatsapp-field" class="md:col-span-6"><label for="navigation-button-whatsapp" class="mb-1 block text-sm font-medium text-gray-700">WhatsApp con codigo de pais</label><input id="navigation-button-whatsapp" name="whatsapp_phone" type="tel" maxlength="40" value="{{ old('whatsapp_phone', $navigationButton->whatsapp_phone) }}" class="w-full rounded-md border-gray-300 shadow-sm" placeholder="56987654321">@error('whatsapp_phone') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror</div>
+                <div id="navigation-button-custom-field" class="md:col-span-12"><label for="navigation-button-url" class="mb-1 block text-sm font-medium text-gray-700">Enlace personalizado</label><input id="navigation-button-url" name="custom_url" maxlength="500" value="{{ old('custom_url', $navigationButton->custom_url) }}" class="w-full rounded-md border-gray-300 shadow-sm" placeholder="https://... , /reservas o mailto:correo@clinica.cl">@error('custom_url') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror</div>
+                <div class="md:col-span-12"><button type="submit" class="rounded-md px-4 py-2 font-semibold text-white hover:brightness-90" style="background-color: {{ themeColor(600) }}"><i class="fa-solid fa-floppy-disk mr-1"></i> Guardar boton</button></div>
+            </form>
+        </section>
+
+        <section class="overflow-hidden rounded-lg bg-white p-6 shadow-sm">
+            <div class="mb-4 flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-gray-800">Páginas del menú</h3>
+                <span class="text-sm text-gray-500">{{ $menus->count() }} elemento(s)</span>
+            </div>
+
+            @if ($menus->isEmpty())
+                <div class="rounded-lg border border-dashed border-gray-300 p-8 text-center text-gray-500">
+                    Aún no hay páginas. Crea una para comenzar a armar el sitio público.
+                </div>
+            @else
+                <div class="overflow-x-auto">
+                    <table id="menus-table" class="min-w-full divide-y divide-gray-200"
+                        data-reorder-url="{{ route('superadmin.menus.reorder') }}"
+                        data-toggle-status-url="{{ route('superadmin.menus.toggle-status', ['id' => '__ID__']) }}">
+                        <thead style="background-color: {{ themeColor(100) }}">
+                            <tr>
+                                <th class="px-3 py-3 text-center text-xs font-semibold uppercase text-gray-600">Mover</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-600">Orden</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-600">Nombre</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-600">Página</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-600">Estado</th>
+                                <th class="px-4 py-3 text-right text-xs font-semibold uppercase text-gray-600">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="menu-sortable-list" class="divide-y divide-gray-100 bg-white">
+                            @foreach ($menus as $menu)
+                                <tr data-id="{{ $menu->id }}" @if ($menu->websitePage?->slug === 'inicio') data-home="1" @endif>
+                                    <td class="whitespace-nowrap px-3 py-3 text-center">
+                                        @if ($menu->websitePage?->slug === 'inicio')
+                                            <span class="text-gray-400" title="Inicio siempre permanece en la posición 1" aria-label="Posición fija"><i class="fa-solid fa-lock"></i></span>
+                                        @else
+                                            <button type="button" class="reorder-handle cursor-move text-gray-400 hover:text-gray-700"
+                                                title="Arrastra para cambiar el orden" aria-label="Arrastrar para cambiar el orden">
+                                                <i class="fa-solid fa-grip-vertical"></i>
+                                            </button>
+                                        @endif
+                                    </td>
+                                    <td class="whitespace-nowrap px-4 py-3 text-sm text-gray-600">{{ $menu->position }}</td>
+                                    <td class="whitespace-nowrap px-4 py-3 text-sm font-medium text-gray-900">{{ $menu->name }}</td>
+                                    <td class="max-w-sm truncate px-4 py-3 text-sm text-gray-600">
+                                        @if ($menu->websitePage?->slug === 'inicio')
+                                            <span class="mr-2 rounded-full bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-800">Página principal</span>/
+                                        @else
+                                            {{ $menu->websitePage ? '/pages/' . $menu->websitePage->slug : $menu->url }}
+                                        @endif
+                                    </td>
+                                    <td class="whitespace-nowrap px-4 py-3">
+                                        @if ($menu->websitePage?->slug === 'inicio')
+                                            <span class="rounded px-2 py-1 text-xs text-white bg-green-500">Activo</span>
+                                        @else
+                                            <button type="button" class="toggle-menu-status rounded px-2 py-1 text-xs text-white {{ $menu->status ? 'bg-green-500' : 'bg-red-500' }}"
+                                                data-id="{{ $menu->id }}" data-status="{{ $menu->status ? 1 : 0 }}">
+                                                {{ $menu->status ? 'Activo' : 'Inactivo' }}
+                                            </button>
+                                        @endif
+                                    </td>
+                                    <td class="whitespace-nowrap px-4 py-3 text-right">
+                                        <div class="inline-flex items-center gap-2">
+                                            @if ($menu->websitePage)
+                                                <a href="{{ route('superadmin.website-pages.edit', ['id' => $menu->websitePage->id]) }}"
+                                                    class="rounded-md bg-amber-100 px-3 py-1.5 text-sm font-medium text-amber-800 hover:bg-amber-200">Editar página</a>
+                                                @unless ($menu->websitePage->slug === 'inicio')
+                                                    <a href="{{ route('superadmin.menus.edit', ['id' => $menu->id]) }}"
+                                                        class="rounded-md bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-200">Editar menú</a>
+                                                @endunless
+                                            @else
+                                                <a href="{{ route('superadmin.menus.edit', ['id' => $menu->id]) }}"
+                                                    class="rounded-md bg-amber-100 px-3 py-1.5 text-sm font-medium text-amber-800 hover:bg-amber-200">Editar enlace</a>
+                                            @endif
+                                            @unless ($menu->websitePage?->slug === 'inicio')
+                                                <form method="POST" action="{{ route('superadmin.menus.destroy', ['id' => $menu->id]) }}"
+                                                    data-swal-confirm="¿Eliminar esta página del menú?">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="rounded-md bg-red-100 px-3 py-1.5 text-sm font-medium text-red-700 hover:bg-red-200">Eliminar</button>
+                                                </form>
+                                            @endunless
+                                        </div>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @endif
+        </section>
+    </div>
+</div>
+
+@push('styles')
+    <link rel="stylesheet" href="https://cdn.datatables.net/rowreorder/1.4.1/css/rowReorder.dataTables.min.css">
+    <style>
+        #menus-table.dataTable {
+            border-collapse: separate !important;
+            border-spacing: 0;
+            border-radius: 0.75rem;
+            overflow: hidden;
+        }
+        #menus-table.dataTable thead th:first-child { border-top-left-radius: 0.75rem; }
+        #menus-table.dataTable thead th:last-child { border-top-right-radius: 0.75rem; }
+        #menus-table tbody tr.dt-rowReorder-moving { background-color: #f3f4f6; }
+        #menus-table .reorder-handle { touch-action: none; }
+    </style>
+@endpush
+
+@push('scripts')
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const destination = document.getElementById('navigation-button-destination');
+            if (!destination) return;
+            const fields = {
+                page: document.getElementById('navigation-button-page-field'),
+                whatsapp: document.getElementById('navigation-button-whatsapp-field'),
+                custom: document.getElementById('navigation-button-custom-field'),
+            };
+            const updateFields = () => Object.entries(fields).forEach(([key, element]) => element.hidden = destination.value !== key);
+            destination.addEventListener('change', updateFields);
+            updateFields();
+        });
+    </script>
+@endpush
+
+@push('scripts')
+    <script src="https://cdn.datatables.net/rowreorder/1.4.1/js/dataTables.rowReorder.min.js"></script>
+    <script>
+        $(function () {
+            const tableElement = document.getElementById('menus-table');
+            if (!tableElement) return;
+
+            const table = $('#menus-table').DataTable({
+                paging: false,
+                info: false,
+                order: [[1, 'asc']],
+                rowReorder: { dataSrc: 1, selector: '.reorder-handle' },
+                columnDefs: [
+                    { targets: [0, 5], orderable: false, searchable: false },
+                    { targets: 0, className: 'text-center' }
+                ],
+                language: { url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json' }
+            });
+
+            const csrf = document.querySelector('meta[name="csrf-token"]')?.content;
+            const showMessage = (icon, title) => {
+                if (typeof Toast !== 'undefined') return Toast.fire({ icon, title });
+                if (window.Swal) return Swal.fire({ toast: true, position: 'top-end', icon, title, timer: 3000, showConfirmButton: false });
+                window.alert(title);
+            };
+
+            $('#menus-table').on('click', '.toggle-menu-status', async function () {
+                const button = this;
+                const url = tableElement.dataset.toggleStatusUrl.replace('__ID__', button.dataset.id);
+                button.disabled = true;
+                try {
+                    const response = await fetch(url, {
+                        method: 'PATCH',
+                        headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' }
+                    });
+                    const result = await response.json();
+                    if (!response.ok) throw new Error(result.message || 'No se pudo actualizar el estado.');
+
+                    const active = result.status;
+                    button.dataset.status = active ? '1' : '0';
+                    button.textContent = active ? 'Activo' : 'Inactivo';
+                    button.classList.toggle('bg-green-500', active);
+                    button.classList.toggle('bg-red-500', !active);
+                    showMessage('success', result.message);
+                } catch (error) {
+                    showMessage('error', error.message || 'No se pudo actualizar el estado.');
+                } finally {
+                    button.disabled = false;
+                }
+            });
+
+            table.on('row-reorder', async function (event, diff) {
+                if (!diff.length) return;
+
+                // RowReorder entrega la posición nueva de cada fila movida.
+                // Usamos esos valores antes de redibujar, porque el orden inicial
+                // de DataTables todavía puede conservar el orden anterior.
+                const changedPositions = new Map(diff.map(change => [
+                    Number(change.node.dataset.id),
+                    Number(change.newData)
+                ]));
+                const orderedRows = [];
+
+                table.rows({ search: 'none' }).every(function () {
+                    const node = this.node();
+                    const id = Number(node.dataset.id);
+                    const position = changedPositions.has(id)
+                        ? changedPositions.get(id)
+                        : Number(this.data()[1]);
+                    orderedRows.push({ id, position });
+                });
+
+                orderedRows.sort((a, b) => a.position - b.position || a.id - b.id);
+                const orderedIds = orderedRows.map(row => row.id);
+                const homeId = Number(tableElement.querySelector('tbody tr[data-home="1"]')?.dataset.id || 0);
+                if (homeId) {
+                    const homeIndex = orderedIds.indexOf(homeId);
+                    if (homeIndex > -1) {
+                        orderedIds.splice(homeIndex, 1);
+                        orderedIds.unshift(homeId);
+                    }
+                }
+
+                // Normalizar los valores para que siempre queden 1, 2, 3...
+                orderedIds.forEach((id, index) => {
+                    const row = table.row((rowIndex, rowData, node) => Number(node.dataset.id) === id);
+                    const rowData = row.data();
+                    rowData[1] = index + 1;
+                    row.data(rowData);
+                });
+                table.draw(false);
+
+                try {
+                    const response = await fetch(tableElement.dataset.reorderUrl, {
+                        method: 'PATCH',
+                        headers: {
+                            'X-CSRF-TOKEN': csrf,
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ items: orderedIds })
+                    });
+                    const result = await response.json();
+                    if (!response.ok) throw new Error(result.message || 'No se pudo guardar el orden.');
+                    showMessage('success', result.message);
+                } catch (error) {
+                    showMessage('error', error.message || 'No se pudo guardar el orden.');
+                    window.location.reload();
+                }
+            });
+        });
+
+        document.addEventListener('submit', async (event) => {
+            const form = event.target.closest('form[data-swal-confirm]');
+            if (!form) return;
+
+            event.preventDefault();
+            const result = await Swal.fire({
+                title: '¿Eliminar página?',
+                text: form.dataset.swalConfirm,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Sí, eliminar',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#dc2626'
+            });
+
+            if (result.isConfirmed) HTMLFormElement.prototype.submit.call(form);
+        });
+    </script>
+@endpush
+
+
+</x-app-layout>

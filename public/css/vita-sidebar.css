@@ -1,0 +1,25 @@
+/* Shared SuperAdmin, clinic and Mi Salud navigation geometry. Font Awesome Free 6.5.0,
+   fonts licensed under SIL OFL 1.1: https://fontawesome.com/license/free */
+@font-face{font-family:"Vita Menu Icons";font-style:normal;font-weight:900;font-display:block;src:url('../fonts/fontawesome/fa-solid-900.woff2') format('woff2')}
+.vita-menu-icon{font-family:"Vita Menu Icons"!important;font-style:normal;font-weight:900!important;font-variant:normal;line-height:1;text-rendering:auto;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;display:inline-block}
+.vita-menu-icon.fa-chart-line::before{content:"\f201"}.vita-menu-icon.fa-user::before{content:"\f007"}.vita-menu-icon.fa-chevron-left::before{content:"\f053"}
+.vita-menu-icon.fa-file-medical::before{content:"\f477"}
+.vita-menu-icon.fa-calendar-plus::before{content:"\f271"}
+:is(#superadmin-sidebar,#clinic-sidebar,#portal-sidebar) nav{box-sizing:border-box;min-height:0;padding:16px;scrollbar-gutter:stable;scrollbar-width:thin}
+:is(#superadmin-sidebar,#clinic-sidebar,#portal-sidebar) nav::-webkit-scrollbar{width:8px}
+:is(#superadmin-sidebar,#clinic-sidebar,#portal-sidebar) nav::-webkit-scrollbar-track{background:inherit}
+:is(#superadmin-sidebar,#clinic-sidebar,#portal-sidebar) nav::-webkit-scrollbar-thumb{border:2px solid transparent;background-clip:padding-box;border-radius:9999px}
+.portal-preview-icon .vita-menu-icon{font-size:16px}
+:is(#superadmin-sidebar-preview,#clinic-sidebar-preview,.portal-sidebar-preview) :is(.clinic-preview-icon,.portal-preview-icon)>i{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;margin:0;line-height:1;font-size:16px;text-align:center}
+:is(#superadmin-sidebar,#clinic-sidebar,#portal-sidebar) nav a{display:flex;align-items:center;gap:12px;padding:12px 16px;min-height:48px;border-radius:8px;font-size:16px;line-height:24px;font-weight:400;box-sizing:border-box}
+:is(#superadmin-sidebar,#clinic-sidebar,#portal-sidebar) nav a>:is(.vita-menu-icon,i){display:inline-flex;align-items:center;justify-content:center;width:20px;height:24px;flex:0 0 20px;font-size:16px;line-height:1;text-align:center}
+:is(#superadmin-sidebar,#clinic-sidebar,#portal-sidebar) nav i.fa-solid{font-family:"Vita Menu Icons"!important;font-weight:900;font-style:normal;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+:is(#superadmin-sidebar,#clinic-sidebar,#portal-sidebar) :is(.clinic-compact-toggle,.portal-sidebar-collapse)>.vita-menu-icon{font-size:10px;transition:transform 150ms ease}
+@media(min-width:768px){
+ :is(#superadmin-sidebar,#clinic-sidebar,#portal-sidebar)[data-compact=true]{width:80px;flex-basis:auto}
+ :is(#superadmin-sidebar,#clinic-sidebar,#portal-sidebar)[data-compact=true] nav{padding:12px 8px;scrollbar-gutter:stable both-edges}
+ :is(#superadmin-sidebar,#clinic-sidebar,#portal-sidebar)[data-compact=true] nav a{justify-content:center;gap:0;width:auto;height:36px;min-height:36px;margin-inline:0;padding:6px 12px}
+ :is(#superadmin-sidebar,#clinic-sidebar,#portal-sidebar)[data-compact=true] nav a>:is(.vita-menu-icon,i){text-align:center}
+ :is(#superadmin-sidebar,#clinic-sidebar,#portal-sidebar)[data-compact=true] :is(.clinic-compact-toggle,.portal-sidebar-collapse)>.vita-menu-icon{transform:rotate(180deg)}
+}
+@media(prefers-reduced-motion:reduce){.vita-menu-icon{transition:none!important}}

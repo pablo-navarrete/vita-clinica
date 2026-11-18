@@ -1,0 +1,49 @@
+/* Shared header for clinic, SuperAdmin and Mi Salud access screens. */
+:is(.vita-login, .portal-login) :is(.login-topbar, .portal-header) {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    padding: 16px clamp(24px, 4vw, 64px);
+    background: #fff;
+    border-bottom: 1px solid #edf0f2;
+    box-shadow: none;
+}
+:is(.vita-login, .portal-login) :is(.login-topbar .login-identity, .portal-header .brand) {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-width: 0;
+    margin: 0;
+    text-decoration: none;
+}
+:is(.vita-login, .portal-login) :is(.login-topbar .login-identity-name, .portal-header .portal-brand-title) {
+    font-family: Figtree, system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 18px;
+    font-weight: 600;
+    font-style: normal;
+    font-stretch: normal;
+    line-height: 1.25;
+    letter-spacing: -.025em;
+    color: #18232e;
+    overflow-wrap: anywhere;
+}
+:is(.vita-login, .portal-login) :is(.login-topbar .login-identity img, .portal-header .portal-brand-logo) {
+    display: block;
+    width: auto;
+    height: 40px;
+    max-width: 90px;
+    object-fit: contain;
+}
+:is(.vita-login, .portal-login) :is(.login-topbar nav a, .portal-header nav a) {
+    font-family: Figtree, system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+}
+@media (max-width: 540px) {
+    :is(.vita-login, .portal-login) :is(.login-topbar, .portal-header) {
+        flex-wrap: wrap;
+        gap: 12px;
+        padding: 16px 24px;
+    }
+}

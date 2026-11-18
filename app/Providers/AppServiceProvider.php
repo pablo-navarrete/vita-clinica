@@ -42,6 +42,13 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        \Illuminate\Support\Facades\Validator::extend('international_phone',
+            fn ($attribute, $value) => app(\App\Services\PhoneNumbers::class)->normalize($value) !== null,
+            \App\Services\PhoneNumbers::MESSAGE);
+        \Illuminate\Support\Facades\Validator::resolver(fn ($translator, $data, $rules, $messages, $attributes) =>
+            new \App\Validation\PhoneAwareValidator($translator, $data, $rules, $messages, $attributes));
+        Patient::observe(\App\Observers\PortalLinkSubjectObserver::class);
+        \App\Models\PortalAccount::observe(\App\Observers\PortalLinkSubjectObserver::class);
         $observer = ClinicActivityObserver::class;
         foreach ([
             Patient::class, User::class, Appointment::class, Encounter::class,
@@ -59,7 +66,12 @@ class AppServiceProvider extends ServiceProvider
 
             $customer = app()->bound('customer') ? app('customer') : null;
             if (!$customer) {
-                $view->with('logosByLocation', []);
+                if (!request()->attributes->has('vita_logos_by_location')) {
+                    request()->attributes->set('vita_logos_by_location', \App\Models\VitaWebsiteSetting::logosByLocation());
+                }
+                $logosByLocation = request()->attributes->get('vita_logos_by_location');
+                app()->instance('logos_by_location', $logosByLocation);
+                $view->with('logosByLocation', $logosByLocation);
                 return;
             }
 

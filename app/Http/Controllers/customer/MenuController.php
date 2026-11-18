@@ -39,6 +39,18 @@ class MenuController extends Controller
         return view('customer.menu.index', compact('menus', 'navigationButton'));
     }
 
+    public function updateBrand(Request $request): RedirectResponse
+    {
+        $data = $request->validate(['brand_display' => ['required', 'in:both,logo,title']]);
+        WebsiteNavigationButton::firstOrCreate(
+            ['customer_id' => (int) app('customer')->id],
+            ['enabled' => false, 'public_booking_enabled' => false, 'label' => 'Contactar', 'destination' => 'contact']
+        )->update($data);
+
+        return redirect()->route('customers.menus.index', ['customer' => request()->route('customer')])
+            ->with('success', 'Presentación de la clínica actualizada.');
+    }
+
     public function updateNavigationButton(Request $request): RedirectResponse
     {
         $customerId = (int) app('customer')->id;
@@ -67,7 +79,7 @@ class MenuController extends Controller
         if ($data['destination'] === 'whatsapp') {
             $phone = preg_replace('/[^0-9]/', '', (string) ($data['whatsapp_phone'] ?? ''));
             if (strlen($phone) < 8 || strlen($phone) > 15) {
-                throw ValidationException::withMessages(['whatsapp_phone' => 'Ingresa el número con código de país, solo dígitos (por ejemplo: 56912345678).']);
+                throw ValidationException::withMessages(['whatsapp_phone' => 'Ingresa el número con código de país, solo dígitos (por ejemplo: 56987654321).']);
             }
             $data['whatsapp_phone'] = $phone;
         }

@@ -1,0 +1,29 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\{DB, Schema};
+
+return new class extends Migration {
+    public function up(): void
+    {
+        Schema::create('website_maintenances', function (Blueprint $table) {
+            $table->engine = 'InnoDB';
+            $table->charset = 'utf8mb4';
+            $table->collation = 'utf8mb4_unicode_ci';
+            $table->bigIncrements('id');
+            $table->unsignedBigInteger('customer_id');
+            $table->boolean('enabled')->default('0');
+            $table->string('message', 500)->nullable();
+            $table->timestamp('created_at')->nullable();
+            $table->timestamp('updated_at')->nullable();
+            $table->unique(['customer_id'], 'website_maintenances_customer_id_unique');
+            $table->foreign(['customer_id'], 'website_maintenances_customer_id_foreign')->references(['id'])->on('customers')->onUpdate('no action')->onDelete('cascade');
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('website_maintenances');
+    }
+};

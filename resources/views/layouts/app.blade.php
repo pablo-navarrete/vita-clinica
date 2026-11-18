@@ -29,7 +29,7 @@
         @vite(['resources/css/app.css', 'resources/js/app.js'])
 
         <style>
-            :root { --date-field-accent: #2563eb; }
+            :root { --date-field-accent: #2563eb; --vita-field-focus: {{ themeColor(500) }}; --vita-field-ring: {{ themeColor(100) }}; }
             .flatpickr-calendar { width: 326px !important; border: 1px solid #e2e8f0 !important; border-radius: 16px !important; box-shadow: 0 18px 45px rgba(15, 23, 42, .18) !important; padding: 10px 12px !important; font-family: inherit !important; overflow: visible; }
             .flatpickr-months { padding: 4px 4px 8px; }
             .flatpickr-current-month { font-size: 1rem !important; font-weight: 700; }
@@ -174,27 +174,64 @@
         display: none !important;
     }
         </style>
-    </head>
+        <link rel="stylesheet" href="{{ asset('css/vita-sidebar.css').'?v='.filemtime(public_path('css/vita-sidebar.css')) }}">
+        <link rel="stylesheet" href="{{ asset('css/vita-workspace-layout.css').'?v='.filemtime(public_path('css/vita-workspace-layout.css')) }}">
+        <link rel="stylesheet" href="{{ asset('css/vita-workspace-theme.css').'?v='.filemtime(public_path('css/vita-workspace-theme.css')) }}">
+        @stack('styles')
+    @include('components.phone-assets')
+        <link rel="stylesheet" href="{{ asset('css/clinic-field-focus.css').'?v='.filemtime(public_path('css/clinic-field-focus.css')) }}">
+@include('components.favicon')
+</head>
 
-    <body class="font-sans antialiased">
+    @php($vitaContentOnly = request()->boolean('_vita_content'))
+    <body data-vita-content="{{ $vitaContentOnly ? 'true' : 'false' }}" class="vita-superadmin font-sans antialiased">
 
-        <div x-data="{ sidebarOpen: false }" class="flex min-h-screen bg-gray-100">
-            @include('layouts.sidebar-superadmin')
+        <div x-data="{ sidebarOpen: false }" class="vita-workspace-shell flex h-screen min-h-0 overflow-hidden" style="background-color: {{ themeColor(50) }}">
+            @unless($vitaContentOnly)
+                @include('layouts.sidebar-superadmin')
+            @endunless
 
-            <div class="flex min-h-screen min-w-0 flex-1 flex-col">
-                @include('layouts.navigation')
+            <div class="flex h-screen min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+                @unless($vitaContentOnly)
+                    @include('layouts.navigation')
+                @endunless
 
-                @if (isset($header))
-                    <header class="bg-white shadow-sm">
-                        <div class="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
-                            {{ $header }}
-                        </div>
-                    </header>
-                @endif
-
-                <main class="flex-1">
-                    {{ $slot }}
+                @if($vitaContentOnly)
+                <main class="min-h-0 flex-1 overflow-y-auto">
+                    <div class="flex min-h-full flex-col" style="display:flex;flex-direction:column;min-height:100%;">
+                    @if (isset($header))
+                        <header class="shadow" style="background-color: {{ themeColor(50) }}">
+                            <div class="px-6 py-6">
+                                {{ $header }}
+                            </div>
+                        </header>
+                    @endif
+                    <div class="flex-1" style="flex:1 0 auto;">{{ $slot }}</div>
+                    @include('layouts.footer-customer')
+                    </div>
                 </main>
+                @else
+                    <div id="vita-module-slot" aria-label="Contenido del módulo" style="position:relative;flex:1;min-height:0;overflow:hidden">
+                        <iframe id="vita-content-current" name="vita-content-initial" title="Contenido del módulo" data-initial-url="{{ request()->fullUrlWithQuery(['_vita_content' => 1]) }}" style="border:0;width:100%;height:100%;display:block"></iframe>
+                        <div id="vita-module-loading" hidden role="status" aria-live="polite">
+                            <span class="superadmin-module-spinner" aria-hidden="true"></span>
+                            <span id="vita-module-loading-label" class="sr-only"></span>
+                            <button id="vita-module-loading-dismiss" type="button" onclick="this.closest('#vita-module-loading').hidden = true">Volver al contenido</button>
+                        </div>
+                    </div>
+                    <style>
+                        #vita-module-loading{position:absolute;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;gap:16px;pointer-events:auto;background:transparent}
+                        #vita-module-loading[hidden]{display:none}
+                        .superadmin-module-spinner{width:40px;height:40px;border:3px solid {{ themeColor(100) }};border-top-color:{{ themeColor(600) }};border-radius:50%;animation:superadmin-module-spin .7s linear infinite}
+                        #vita-module-loading-dismiss{display:none;border:1px solid #cbd5e1;border-radius:8px;padding:8px 12px;background:white;font-size:13px}
+                        #vita-module-loading[data-error="true"]{flex-direction:column;background:#ffffffeb}
+                        #vita-module-loading[data-error="true"] .superadmin-module-spinner{display:none}
+                        #vita-module-loading[data-error="true"] #vita-module-loading-label{position:static;width:auto;height:auto;clip:auto;white-space:normal;font-size:14px;color:#475569}
+                        #vita-module-loading[data-error="true"] #vita-module-loading-dismiss{display:block}
+                        @keyframes superadmin-module-spin{to{transform:rotate(360deg)}}
+                        @media(prefers-reduced-motion:reduce){.superadmin-module-spinner{animation-duration:1.5s}}
+                    </style>
+                @endif
             </div>
         </div>
 
@@ -252,8 +289,17 @@
         </script>
 
         <!-- STACK -->
-        @stack('scripts')
-        @include('components.vita-assistant')
+        @if($vitaContentOnly)
+            @stack('scripts')
+            @include('components.flash-toasts')
+        @else
+            @include('components.vita-assistant')
+        @endif
+        <script src="{{ asset('js/vita-navigation-bridge.js') }}?v={{ filemtime(public_path('js/vita-navigation-bridge.js')) }}"></script>
+        @unless($vitaContentOnly)
+            <script src="{{ asset('js/vita-superadmin-navigation.js') }}?v={{ filemtime(public_path('js/vita-superadmin-navigation.js')) }}"></script>
+            <script src="{{ asset('js/vita-module-navigation.js') }}?v={{ filemtime(public_path('js/vita-module-navigation.js')) }}"></script>
+        @endunless
 
     </body>
 </html>

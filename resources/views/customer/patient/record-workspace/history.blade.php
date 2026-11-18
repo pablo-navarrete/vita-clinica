@@ -48,10 +48,19 @@
                         <div class="space-y-4">
                             @forelse ($encounters as $encounter)
                                 @php
+                                    app(\App\Services\Signatures\SignedEncounterProjection::class)->apply($encounter);
                                     $encounterDate = $encounter->started_at ?? $encounter->created_at;
                                     $encounterStatus = (int) $encounter->status;
                                 @endphp
                                 <article id="history-encounter-{{ $encounter->id }}" class="overflow-hidden rounded-xl border">
+                                    @if ($encounter->signature)
+                                        <div class="border-b bg-green-50 px-5 py-3 text-sm text-green-800">
+                                            <i class="fa-solid fa-file-signature mr-1" aria-hidden="true"></i>Firmada · Firma Electrónica Simple (VITA)
+                                            <span class="block">{{ $encounter->signature->identity['name'] }} · {{ $encounter->signature->signed_at->timezone('America/Santiago')->format('d/m/Y H:i:s') }}</span>
+                                        </div>
+                                    @elseif ($encounterStatus === 2)
+                                        <p class="border-b px-5 py-2 text-xs text-gray-500">Atención histórica sin firma electrónica registrada.</p>
+                                    @endif
                                     <div class="flex flex-col gap-3 border-b p-5 sm:flex-row sm:items-start sm:justify-between"
                                         style="background-color: {{ themeColor(50) }}">
                                         <div>
@@ -112,13 +121,16 @@
                                             <p class="font-medium">{{ $encounter->ended_at?->format('d/m/Y H:i') ?? 'No registrado' }}</p>
                                         </div>
                                     </div>
+                                    @if ($encounter->signature)
+                                        @include('customer.patient.record-workspace.history-addenda')
+                                    @else
                                     <div x-data="{ addingObservation: false }" class="border-t bg-white px-5 py-4">
                                         <div class="flex flex-wrap items-start justify-between gap-3">
                                             <div>
                                                 <h4 class="font-semibold text-gray-800">Observaciones adicionales</h4>
                                                 <p class="mt-1 text-xs text-gray-500">Se agregan al registro sin modificar la atención cerrada.</p>
                                             </div>
-                                            @if ($canCreateEncounter && (int) ($encounter->professional_id ?? $encounter->appointment?->professional_id) === (int) auth()->id() && $encounterStatus === 2)
+                                            @if (!$encounter->signature && $canCreateEncounter && (int) ($encounter->professional_id ?? $encounter->appointment?->professional_id) === (int) auth()->id() && $encounterStatus === 2)
                                                 <button type="button" @click="addingObservation = !addingObservation" style="background-color: {{ themeColor(600) }}" class="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-white hover:brightness-90">
                                                     <i class="fa-solid" :class="addingObservation ? 'fa-xmark' : 'fa-plus'"></i>
                                                     <span x-text="addingObservation ? 'Cancelar' : 'Agregar observación'"></span>
@@ -139,7 +151,7 @@
                                                 <p class="text-sm text-gray-500">Todavía no hay observaciones adicionales.</p>
                                             @endforelse
                                         </div>
-                                        @if ($canCreateEncounter && (int) ($encounter->professional_id ?? $encounter->appointment?->professional_id) === (int) auth()->id() && $encounterStatus === 2)
+                                        @if (!$encounter->signature && $canCreateEncounter && (int) ($encounter->professional_id ?? $encounter->appointment?->professional_id) === (int) auth()->id() && $encounterStatus === 2)
                                             <form x-show="addingObservation" x-cloak action="{{ route('patients.encounters.observations.store', ['customer' => request()->route('customer'), 'id' => $patient->id, 'encounter' => $encounter->id]) }}" method="POST" class="mt-4 border-t border-gray-100 pt-4">
                                                 @csrf
                                                 <label for="encounter-observation-{{ $encounter->id }}" class="mb-1 block text-sm font-medium text-gray-700">Agregar observación</label>
@@ -150,6 +162,7 @@
                                             </form>
                                         @endif
                                     </div>
+                                    @endif
                                 </article>
                             @empty
                                 <p class="rounded-lg bg-gray-50 px-5 py-8 text-center text-sm text-gray-500">

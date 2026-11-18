@@ -3,15 +3,14 @@
 namespace App\Http\Controllers\customer;
 
 use App\Http\Controllers\Controller;
-use App\Models\Role;
-use App\Models\Specialty;
-use App\Models\User;
-use App\Models\ClinicBranch;
 use App\Models\Appointment;
+use App\Models\ClinicBranch;
 use App\Models\Encounter;
+use App\Models\Role;
+use App\Models\User;
 use App\Support\ClinicActivityLogger;
-use Illuminate\Http\Request;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
@@ -21,14 +20,19 @@ use Yajra\DataTables\Facades\DataTables;
 
 class ProfessionalController extends Controller
 {
+    public function identification(Request $request)
+    {
+        $user = $this->clinicUsersQuery((int) app('customer')->id)->findOrFail($request->route('id'));
+
+        return response()->json(app(\App\Services\Identification\IdentificationForms::class)->form($user, $request->user()))->header('Cache-Control', 'no-store');
+    }
+
     /**
      * Display a listing of the resource.
      */
     public function index()
     {
-        $specialties = Specialty::where('customer_id', app('customer')->id)
-            ->where('status', 1)
-            ->get();
+        $specialties = app(\App\Services\SpecialtyCatalog::class)->options();
         $customerId = (int) app('customer')->id;
         app(RolePermissionController::class)->ensureClinicRoles($customerId);
         $isSiteAdministrator = $this->actorIsSiteAdministrator($customerId);
@@ -48,11 +52,11 @@ class ProfessionalController extends Controller
         if ($isHeadquarters) {
             $branches = \App\Support\ClinicBranchContext::centralAdministrationBranches(auth()->user(), $customerId);
         }
-        $showScheduleManagement = $effectiveBranchId !== null;
+        $showScheduleManagement = $effectiveBranchId !== null
+            && \App\Support\ClinicBranchContext::canManageSchedulesInBranch(auth()->user(), $customerId, (int) $effectiveBranchId);
+
         return view('customer.professional.index', compact('specialties', 'roles', 'branches', 'isSiteAdministrator', 'activeBranch', 'showScheduleManagement', 'isHeadquarters', 'activeBranchId', 'effectiveBranchId'));
     }
-
-
 
     // datatable profesional
     public function getProfessional()
@@ -78,8 +82,8 @@ class ProfessionalController extends Controller
             ? $allActiveBranches->pluck('id')->map(fn ($id) => (int) $id)->all()
             : $allActiveBranches->whereIn('id', $tableBranchIds)->pluck('id')->map(fn ($id) => (int) $id)->all();
         $query = $this->clinicUsersQuery($customerId)
-            ->when(!$isHeadquarters, function ($query) use ($customerId, $branchId) {
-                if (!$branchId) {
+            ->when(! $isHeadquarters, function ($query) use ($customerId, $branchId) {
+                if (! $branchId) {
                     return $query->whereRaw('1 = 0');
                 }
 
@@ -89,18 +93,19 @@ class ProfessionalController extends Controller
                     ->whereKey($branchId));
             })
             ->with(['branchRoles' => fn ($q) => $q->where('roles.customer_id', $customerId)
-                    ->wherePivot('customer_id', $customerId)
-                    ->wherePivotIn('clinic_branch_id', $tableBranchIds ?: [0]),
+                ->wherePivot('customer_id', $customerId)
+                ->wherePivotIn('clinic_branch_id', $tableBranchIds ?: [0]),
                 'specialties' => function ($query) use ($customerId, $tableBranchIds) {
                     $query->where('specialties.customer_id', $customerId)
                         ->wherePivot('customer_id', $customerId)
                         ->wherePivotIn('clinic_branch_id', $tableBranchIds ?: [0]);
                 },
                 'branches' => fn ($query) => $query->where('clinic_branches.customer_id', $customerId)->where('clinic_branches.status', true)
-                    ->when(!$isHeadquarters, fn ($branches) => $branches->whereKey($branchId ?? 0))])
+                    ->when(! $isHeadquarters, fn ($branches) => $branches->whereKey($branchId ?? 0))])
             ->withCount('appointments');
 
         return DataTables::of($query)
+            ->removeColumn('rut')
 
             ->addColumn('user_id', fn ($user) => (int) $user->getKey())
 
@@ -108,30 +113,31 @@ class ProfessionalController extends Controller
 
                 return $user->specialties
                     ->filter(fn ($specialty) => (int) $specialty->pivot->clinic_branch_id === (int) ($branchId ?? 0))
+                    ->unique(fn ($specialty) => app(\App\Services\SpecialtyCatalog::class)->selection($specialty))
                     ->map(function ($specialty) {
 
                         return '<span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-700 mr-1">
-                        ' . e($specialty->name) . '
+                        '.e(app(\App\Services\SpecialtyCatalog::class)->name($specialty->catalog_id) ?? $specialty->name).'
                     </span>';
                     })
                     ->implode(' ');
             })
             ->addColumn('branch_specialties', fn ($user) => $user->specialties
                 ->filter(fn ($specialty) => (int) $specialty->pivot->clinic_branch_id === (int) ($branchId ?? 0))
-                ->map(fn ($specialty) => ['id' => (int) $specialty->id, 'name' => $specialty->name])->values()->all())
+                ->map(fn ($specialty) => ['id' => app(\App\Services\SpecialtyCatalog::class)->selection($specialty), 'name' => app(\App\Services\SpecialtyCatalog::class)->name($specialty->catalog_id) ?? $specialty->name])->unique('id')->values()->all())
             ->addColumn('specialties_by_branch', function ($user) use ($tableBranchNames) {
                 return $user->specialties
                     ->groupBy(fn ($specialty) => (int) $specialty->pivot->clinic_branch_id)
                     ->map(fn ($specialties, $id) => [
                         'branch_id' => (int) $id,
                         'branch_name' => $tableBranchNames->get($id, 'Sede'),
-                        'specialties' => $specialties->map(fn ($specialty) => ['id' => (int) $specialty->id, 'name' => $specialty->name])->values()->all(),
+                        'specialties' => $specialties->map(fn ($specialty) => ['id' => app(\App\Services\SpecialtyCatalog::class)->selection($specialty), 'name' => app(\App\Services\SpecialtyCatalog::class)->name($specialty->catalog_id) ?? $specialty->name])->unique('id')->values()->all(),
                     ])->values()->all();
             })
 
             ->addColumn('roles_html', fn ($user) => $user->branchRoles
                 ->filter(fn ($role) => (int) $role->pivot->clinic_branch_id === (int) ($branchId ?? 0))
-                ->map(fn ($role) => '<span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-green-100 text-green-700 mr-1">' . e($role->name) . '</span>')
+                ->map(fn ($role) => '<span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-green-100 text-green-700 mr-1">'.e($role->name).'</span>')
                 ->implode(' '))
             ->addColumn('roles', fn ($user) => $user->branchRoles
                 ->filter(fn ($role) => (int) $role->pivot->clinic_branch_id === (int) ($branchId ?? 0))
@@ -147,6 +153,7 @@ class ProfessionalController extends Controller
             })
             ->addColumn('branch_ids', function ($user) use ($allActiveBranchIds) {
                 $isGeneralAdministrator = $user->branchRoles->contains(fn ($role) => mb_strtolower(trim($role->name)) === 'administrador');
+
                 return $isGeneralAdministrator
                     ? array_values($allActiveBranchIds)
                     : $user->branches->pluck('id')->map(fn ($id) => (int) $id)->values()->all();
@@ -158,7 +165,7 @@ class ProfessionalController extends Controller
                 }
 
                 return $user->branches
-                    ->map(fn ($branch) => '<span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-yellow-100 text-yellow-800 mr-1">' . e($branch->name) . '</span>')
+                    ->map(fn ($branch) => '<span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-yellow-100 text-yellow-800 mr-1">'.e($branch->name).'</span>')
                     ->implode(' ') ?: '<span class="text-gray-500">Sin sedes</span>';
             })
             ->addColumn('branches_data', fn ($user) => $user->branches
@@ -166,6 +173,7 @@ class ProfessionalController extends Controller
                 ->values()->all())
             ->addColumn('branch_status', function ($user) use ($branchId) {
                 $branch = $user->branches->firstWhere('id', (int) ($branchId ?? 0));
+
                 return $branch ? (int) $branch->pivot->status : 0;
             })
             ->rawColumns(['specialties_html', 'roles_html', 'branches_html'])
@@ -176,11 +184,11 @@ class ProfessionalController extends Controller
     // crear professional
     public function store(Request $request)
     {
-
-
+        $ids = app(\App\Services\Identification\IdentificationForms::class);
+        $document = $ids->parse($request, false, null, true);
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
-            'rut' => 'required|string|max:255',
+            'rut' => 'nullable|string|max:255',
             'phone' => 'required|string|max:255',
             'email' => [
                 'required',
@@ -196,7 +204,7 @@ class ProfessionalController extends Controller
             'branch_ids' => ['nullable', 'array'],
             'branch_ids.*' => ['required', 'integer', $this->assignableBranchRule((int) app('customer')->id)],
             'specialties' => 'nullable|array',
-            'specialties.*' => ['integer', Rule::exists('specialties', 'id')->where('customer_id', app('customer')->id)],
+            'specialties.*' => ['integer'],
             'specialty_branch_id' => ['nullable', 'integer', $this->assignableBranchRule((int) app('customer')->id)],
         ], [
             'name.required' => 'El nombre es obligatorio.',
@@ -214,22 +222,22 @@ class ProfessionalController extends Controller
             $isGeneralAdmin = Role::query()->where('customer_id', app('customer')->id)
                 ->whereIn('id', $request->input('role_ids', []))
                 ->whereRaw('LOWER(TRIM(name)) = ?', ['administrador'])->exists();
-            if ($isGeneralAdmin && !$this->actorIsGeneralAdministrator((int) app('customer')->id)) {
+            if ($isGeneralAdmin && ! $this->actorIsGeneralAdministrator((int) app('customer')->id)) {
                 $validator->errors()->add('role_ids', 'Solo el Administrador general puede asignar ese rol.');
             }
-            if ($hasBranches && !$isGeneralAdmin && empty($request->input('branch_ids', []))) {
+            if ($hasBranches && ! $isGeneralAdmin && empty($request->input('branch_ids', []))) {
                 $validator->errors()->add('branch_ids', 'Asigna al usuario al menos una sede para permitirle iniciar sesión.');
             }
             $doctorSelected = Role::query()->where('customer_id', app('customer')->id)->where('name', 'Doctor')
                 ->whereIn('id', $request->input('role_ids', []))->exists();
-            if ($doctorSelected) {
+            if ($doctorSelected || $request->filled('specialties')) {
                 if (empty($request->input('specialties', []))) {
                     $validator->errors()->add('specialties', 'Selecciona al menos una especialidad para el rol Doctor.');
                 }
                 $effectiveBranchIds = $isGeneralAdmin
                     ? ClinicBranch::query()->where('customer_id', app('customer')->id)->where('status', true)->pluck('id')->map(fn ($id) => (int) $id)->all()
                     : array_map('intval', $request->input('branch_ids', []));
-                if (!in_array((int) $request->input('specialty_branch_id'), $effectiveBranchIds, true)) {
+                if (! in_array((int) $request->input('specialty_branch_id'), $effectiveBranchIds, true)) {
                     $validator->errors()->add('specialty_branch_id', 'Elige una sede asignada al usuario para esta especialidad.');
                 }
             }
@@ -237,20 +245,21 @@ class ProfessionalController extends Controller
 
         if ($validator->fails()) {
             return response()->json([
-                'errors' => $validator->errors()
+                'errors' => $validator->errors(),
             ], 422);
         }
 
-        $user = DB::transaction(function () use ($request) {
+        $user = DB::transaction(function () use ($request, $document, $ids) {
+            DB::table('customers')->where('id', app('customer')->id)->lockForUpdate()->first();
 
             $user = User::create([
                 'customer_id' => app('customer')->id,
-                'name'        => $request->name,
-                'email'       => $request->email,
-                'password'    => $request->password,
-                'status'      => $request->status,
-                'rut'         => $request->rut,
-                'phone'       => $request->phone
+                'name' => $request->name,
+                'email' => $request->email,
+                'password' => $request->password,
+                'status' => $request->status,
+                'rut' => $ids->legacyValue($document),
+                'phone' => $request->phone,
             ]);
 
             $allBranchIds = ClinicBranch::query()->where('customer_id', app('customer')->id)->where('status', true)->pluck('id')->all();
@@ -263,10 +272,11 @@ class ProfessionalController extends Controller
                 $this->syncBranchRoles($user, (int) app('customer')->id, (int) $branchId, $roleIds);
             }
             $user->syncClinicRoleMirror((int) app('customer')->id);
-            $hasDoctorRole = Role::query()->where('customer_id', app('customer')->id)->whereIn('id', $roleIds)->where('name', 'Doctor')->exists();
-            if ($hasDoctorRole && $request->filled('specialty_branch_id')) {
+            if ($request->filled('specialty_branch_id')) {
                 $this->syncUserSpecialties($user, (int) app('customer')->id, (int) $request->input('specialty_branch_id'), $request->input('specialties', []));
             }
+            $ids->save($user, $request->user(), $document, $request, '', true);
+
             return $user;
         });
 
@@ -278,7 +288,7 @@ class ProfessionalController extends Controller
                 'updated',
                 'usuario',
                 $user->name,
-                'Asignó especialidades al profesional «' . $user->name . '».',
+                'Asignó especialidades al profesional «'.$user->name.'».',
                 $createdSpecialties,
                 User::class,
                 $user->id
@@ -287,7 +297,7 @@ class ProfessionalController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $user
+            'data' => $user,
         ]);
     }
 
@@ -296,7 +306,7 @@ class ProfessionalController extends Controller
     public function updateBranches(Request $request, $id)
     {
         $id = filter_var($request->route('id'), FILTER_VALIDATE_INT);
-        if (!$id || $id < 1) {
+        if (! $id || $id < 1) {
             return response()->json(['message' => 'El identificador del usuario no es válido.'], 422);
         }
 
@@ -307,14 +317,14 @@ class ProfessionalController extends Controller
             ->value('id');
         $effectiveBranchId = $this->activeBranchId($customerId)
             ?? \App\Support\ClinicBranchContext::defaultBranch(auth()->user(), $customerId)?->id;
-        if (!$effectiveBranchId
-            || !\App\Support\ClinicBranchContext::canAdministerAllBranches(auth()->user(), $customerId)
-            || !\App\Support\ClinicBranchContext::hasPermissionInBranch(auth()->user(), $customerId, (int) $effectiveBranchId, 'professionals.manage')) {
+        if (! $effectiveBranchId
+            || ! \App\Support\ClinicBranchContext::canAdministerAllBranches(auth()->user(), $customerId)
+            || ! \App\Support\ClinicBranchContext::hasPermissionInBranch(auth()->user(), $customerId, (int) $effectiveBranchId, 'professionals.manage')) {
             return response()->json(['message' => 'Solo se pueden modificar las sedes desde la sede principal.'], 403);
         }
 
         $user = $this->clinicUsersQuery($customerId)->find($id);
-        if (!$user) {
+        if (! $user) {
             return response()->json(['message' => 'No se encontró el usuario en esta clínica.'], 404);
         }
 
@@ -348,7 +358,7 @@ class ProfessionalController extends Controller
             }
 
             $hasActiveAssignment = array_intersect($branchIds, $activeBranchIds) !== [];
-            if ($activeBranchIds && !$hasActiveAssignment) {
+            if ($activeBranchIds && ! $hasActiveAssignment) {
                 return response()->json([
                     'errors' => ['branch_ids' => ['Asigna al usuario al menos una sede activa para permitirle iniciar sesión.']],
                 ], 422);
@@ -365,7 +375,9 @@ class ProfessionalController extends Controller
             ->whereNotIn('clinic_branch_id', $branchIds ?: [0])->delete();
         foreach (array_diff($branchIds, $existingBranchIds) as $newBranchId) {
             $seedRoles = $roleIdsByBranch[$this->activeBranchId($customerId)] ?? reset($roleIdsByBranch) ?: [];
-            if ($seedRoles) $this->syncBranchRoles($user, $customerId, (int) $newBranchId, $seedRoles);
+            if ($seedRoles) {
+                $this->syncBranchRoles($user, $customerId, (int) $newBranchId, $seedRoles);
+            }
         }
         $user->syncClinicRoleMirror($customerId);
 
@@ -384,10 +396,12 @@ class ProfessionalController extends Controller
         $user = $this->clinicUsersQuery((int) app('customer')->id)
             ->where('id', $id)
             ->firstOrFail();
+        $ids = app(\App\Services\Identification\IdentificationForms::class);
+        $document = $ids->parse($request, false, $user->rut, false);
 
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
-            'rut' => 'required|string|max:255',
+            'rut' => 'nullable|string|max:255',
             'phone' => 'required|string|max:255',
 
             'email' => [
@@ -406,7 +420,7 @@ class ProfessionalController extends Controller
             'status' => 'required|in:0,1',
             'password' => 'nullable|string|min:8',
             'specialties' => 'nullable|array',
-            'specialties.*' => ['integer', Rule::exists('specialties', 'id')->where('customer_id', app('customer')->id)],
+            'specialties.*' => ['integer'],
         ], [
             'name.required' => 'El nombre es obligatorio.',
             'phone.required' => 'El celular es obligatorio.',
@@ -421,7 +435,7 @@ class ProfessionalController extends Controller
 
         if ($validator->fails()) {
             return response()->json([
-                'errors' => $validator->errors()
+                'errors' => $validator->errors(),
             ], 422);
         }
 
@@ -431,15 +445,17 @@ class ProfessionalController extends Controller
             ->orderBy('specialties.name')
             ->pluck('specialties.name')->all() : [];
 
-        DB::transaction(function () use ($request, $user, $customerId, $branchId) {
+        DB::transaction(function () use ($request, $user, $customerId, $branchId, $document, $ids) {
+            DB::table('customers')->where('id', $customerId)->lockForUpdate()->first();
+            $user->refresh();
 
             // Actualizar datos del profesional
             $data = [
-                'name'   => $request->name,
-                'email'  => $request->email,
+                'name' => $request->name,
+                'email' => $request->email,
                 'status' => $request->status,
-                'rut'    => $request->rut,
-                'phone'  => $request->phone,
+                ...($document ? ['rut' => $ids->legacyValue($document, $user->rut)] : []),
+                'phone' => $request->phone,
             ];
 
             if ($request->filled('password')) {
@@ -447,9 +463,9 @@ class ProfessionalController extends Controller
             }
 
             $user->update($data);
+            $ids->save($user, $request->user(), $document, $request);
             if ($branchId) {
-                $hasDoctorRole = $user->clinicRolesForBranch($customerId, (int) $branchId)->whereRaw('LOWER(TRIM(roles.name)) = ?', ['doctor'])->exists();
-                if ($hasDoctorRole && $request->exists('specialties')) {
+                if ($request->exists('specialties')) {
                     $this->syncUserSpecialties($user, $customerId, (int) $branchId, $request->input('specialties', []));
                 }
             }
@@ -465,8 +481,8 @@ class ProfessionalController extends Controller
                 'updated',
                 'usuario',
                 $user->name,
-                'Actualizó las especialidades del profesional «' . $user->name . '».',
-                ['Antes: ' . ($previousSpecialties ? implode(', ', $previousSpecialties) : 'ninguna'), 'Ahora: ' . ($currentSpecialties ? implode(', ', $currentSpecialties) : 'ninguna')],
+                'Actualizó las especialidades del profesional «'.$user->name.'».',
+                ['Antes: '.($previousSpecialties ? implode(', ', $previousSpecialties) : 'ninguna'), 'Ahora: '.($currentSpecialties ? implode(', ', $currentSpecialties) : 'ninguna')],
                 User::class,
                 $user->id
             );
@@ -474,11 +490,11 @@ class ProfessionalController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => array_merge($user->toArray(), ['specialties' => $branchId ? $user->specialtiesForBranch($customerId, (int) $branchId)->get(['specialties.id', 'specialties.name']) : []])
+            'data' => array_merge($user->toArray(), ['specialties' => $branchId ? $user->specialtiesForBranch($customerId, (int) $branchId)->get(['specialties.id', 'specialties.name', 'specialties.catalog_id']) : []]),
         ]);
     }
 
-    //cambiar estado
+    // cambiar estado
     public function toggleStatus(Request $request)
     {
         $id = $request->route('id');
@@ -554,12 +570,12 @@ class ProfessionalController extends Controller
         // el ID del usuario debe leerse del segmento {id}, no del argumento posicional.
         $id = $request->route('id');
         $id = filter_var($id, FILTER_VALIDATE_INT);
-        if (!$id || $id < 1) {
+        if (! $id || $id < 1) {
             return response()->json(['message' => 'El identificador del usuario no es válido. Recarga la tabla e inténtalo nuevamente.'], 422);
         }
         $customerId = (int) app('customer')->id;
         $user = $this->clinicUsersQuery($customerId)->find($id);
-        if (!$user) {
+        if (! $user) {
             return response()->json(['message' => 'No se encontró el usuario en esta clínica. Recarga la tabla e inténtalo nuevamente.'], 404);
         }
         $data = $request->validate([
@@ -574,10 +590,10 @@ class ProfessionalController extends Controller
         $effectiveBranchId = $this->activeBranchId($customerId)
             ?? \App\Support\ClinicBranchContext::defaultBranch($request->user(), $customerId)?->id;
         $isHeadquarters = \App\Support\ClinicBranchContext::canAdministerAllBranches($request->user(), $customerId);
-        if (!$isHeadquarters) {
+        if (! $isHeadquarters) {
             $allowedBranchIds = $effectiveBranchId ? [(int) $effectiveBranchId] : [];
         }
-        if (!$branchId || !in_array((int) $branchId, $allowedBranchIds, true) || !$user->branches()->whereKey($branchId)->exists()) {
+        if (! $branchId || ! in_array((int) $branchId, $allowedBranchIds, true) || ! $user->branches()->whereKey($branchId)->exists()) {
             return response()->json(['message' => 'Selecciona una sede asignada al usuario y disponible para tu cuenta.'], 422);
         }
         abort_unless($this->canManageRolesInBranch($request->user(), $customerId, (int) $branchId), 403, 'No tienes permiso para administrar roles en esta sede.');
@@ -586,32 +602,30 @@ class ProfessionalController extends Controller
             ->whereRaw('LOWER(TRIM(name)) = ?', ['administrador'])->exists();
         $actor = $request->user();
         $isSuperAdmin = $actor->roles()->whereNull('roles.customer_id')->where('roles.name', 'Super Administrador')->exists();
-        if ($assignsGeneralAdministrator && !$isSuperAdmin && !$actor->hasClinicRole('Administrador', $customerId, (int) $branchId)) {
+        if ($assignsGeneralAdministrator && ! $isSuperAdmin && ! $actor->hasClinicRole('Administrador', $customerId, (int) $branchId)) {
             return response()->json(['message' => 'Solo el Administrador general puede asignar ese rol.'], 403);
         }
-        $roleIds = array_map('intval', array_unique($data['role_ids']));
-        $generalAdminRoleId = Role::query()->where('customer_id', $customerId)
-            ->whereRaw('LOWER(TRIM(name)) = ?', ['administrador'])->value('id');
-        $assignsGeneralAdministrator = $generalAdminRoleId && in_array((int) $generalAdminRoleId, $roleIds, true);
-        $targetBranchIds = $assignsGeneralAdministrator
-            ? $user->branches()->where('clinic_branches.status', true)->pluck('clinic_branches.id')->map(fn ($id) => (int) $id)->all()
-            : [(int) $branchId];
-        foreach ($targetBranchIds as $targetBranchId) {
-            $branchRoleIds = $targetBranchId === (int) $branchId || !$assignsGeneralAdministrator
-                ? $roleIds
-                : array_values(array_unique(array_merge(
-                    $user->clinicRolesForBranch($customerId, $targetBranchId)->pluck('roles.id')->map(fn ($id) => (int) $id)->all(),
-                    [(int) $generalAdminRoleId]
-                )));
-            $this->syncBranchRoles($user, $customerId, $targetBranchId, $branchRoleIds);
-            $keepsDoctorRole = Role::query()->where('customer_id', $customerId)->whereIn('id', $branchRoleIds)
-                ->whereRaw('LOWER(TRIM(name)) = ?', ['doctor'])->exists();
-            if (!$keepsDoctorRole) {
-                DB::table('specialty_user')->where('customer_id', $customerId)->where('user_id', $user->id)
-                    ->where('clinic_branch_id', $targetBranchId)->delete();
+        DB::transaction(function () use ($data, $customerId, $user, $branchId) {
+            DB::table('customers')->where('id', $customerId)->lockForUpdate()->first();
+            $roleIds = array_map('intval', array_unique($data['role_ids']));
+            $generalAdminRoleId = Role::query()->where('customer_id', $customerId)
+                ->whereRaw('LOWER(TRIM(name)) = ?', ['administrador'])->value('id');
+            $assignsGeneralAdministrator = $generalAdminRoleId && in_array((int) $generalAdminRoleId, $roleIds, true);
+            $targetBranchIds = $assignsGeneralAdministrator
+                ? $user->branches()->where('clinic_branches.status', true)->pluck('clinic_branches.id')->map(fn ($id) => (int) $id)->all()
+                : [(int) $branchId];
+            foreach ($targetBranchIds as $targetBranchId) {
+                $branchRoleIds = $targetBranchId === (int) $branchId || ! $assignsGeneralAdministrator
+                    ? $roleIds
+                    : array_values(array_unique(array_merge(
+                        $user->clinicRolesForBranch($customerId, $targetBranchId)->pluck('roles.id')->map(fn ($id) => (int) $id)->all(),
+                        [(int) $generalAdminRoleId]
+                    )));
+                $this->syncBranchRoles($user, $customerId, $targetBranchId, $branchRoleIds);
             }
-        }
-        $user->syncClinicRoleMirror($customerId);
+            $user->syncClinicRoleMirror($customerId);
+
+        });
 
         return response()->json(['success' => true, 'branch_id' => (int) $branchId, 'roles' => $user->clinicRolesForBranch($customerId, (int) $branchId)->get(['roles.id', 'roles.name'])]);
     }
@@ -635,8 +649,7 @@ class ProfessionalController extends Controller
             ->whereIn('clinic_branches.id', $allowedBranchIds)
             ->whereIn('clinic_branches.id', $user->branches()->select('clinic_branches.id'))
             ->orderBy('clinic_branches.name')->get(['clinic_branches.id', 'clinic_branches.name']);
-        $manageableBranches = $visibleBranches->filter(fn ($branch) =>
-            $this->canManageRolesInBranch($request->user(), $customerId, (int) $branch->id)
+        $manageableBranches = $visibleBranches->filter(fn ($branch) => $this->canManageRolesInBranch($request->user(), $customerId, (int) $branch->id)
         )->values();
         $manageableBranchIds = $manageableBranches->pluck('id')->map(fn ($id) => (int) $id)->all();
         $assignedRoles = $user->branchRoles()
@@ -669,7 +682,7 @@ class ProfessionalController extends Controller
         $effectiveBranchId = $this->activeBranchId($customerId)
             ?? \App\Support\ClinicBranchContext::defaultBranch($request->user(), $customerId)?->id;
         $isHeadquarters = \App\Support\ClinicBranchContext::canAdministerAllBranches($request->user(), $customerId);
-        if (!$isHeadquarters) {
+        if (! $isHeadquarters) {
             $allowedBranchIds = $effectiveBranchId ? [(int) $effectiveBranchId] : [];
         }
         abort_unless($branchId && in_array($branchId, $allowedBranchIds, true) && $user->branches()->whereKey($branchId)->exists(), 403);
@@ -678,18 +691,18 @@ class ProfessionalController extends Controller
         $visibleBranches = ClinicBranch::query()->where('customer_id', $customerId)->whereIn('id', $allowedBranchIds)
             ->whereIn('id', $user->branches()->select('clinic_branches.id'))->orderBy('name')->get(['id', 'name']);
         $manageableBranches = $visibleBranches->filter(fn ($branch) => $this->canManageRolesInBranch($request->user(), $customerId, (int) $branch->id))->values();
-        $canAssign = $user->clinicRolesForBranch($customerId, $branchId)->whereRaw('LOWER(TRIM(roles.name)) = ?', ['doctor'])->exists();
+        $canAssign = true; // Assignment does not grant clinical roles or permissions.
         $groups = $manageableBranches->map(fn ($branch) => [
             'branch_id' => (int) $branch->id,
             'branch_name' => $branch->name,
-            'can_assign' => $user->clinicRolesForBranch($customerId, (int) $branch->id)->whereRaw('LOWER(TRIM(roles.name)) = ?', ['doctor'])->exists(),
+            'can_assign' => true,
             'specialties' => $user->specialtiesForBranch($customerId, (int) $branch->id)->orderBy('specialties.name')
-                ->get(['specialties.id', 'specialties.name'])->map(fn ($specialty) => ['id' => (int) $specialty->id, 'name' => $specialty->name])->values()->all(),
+                ->get(['specialties.id', 'specialties.name', 'specialties.catalog_id'])->map(fn ($specialty) => ['id' => app(\App\Services\SpecialtyCatalog::class)->selection($specialty), 'name' => app(\App\Services\SpecialtyCatalog::class)->name($specialty->catalog_id) ?? $specialty->name])->unique('id')->values()->all(),
         ])->all();
 
         return response()->json([
-            'specialties' => Specialty::query()->where('customer_id', $customerId)->where('status', true)->orderBy('name')->get(['id', 'name']),
-            'assigned' => $user->specialtiesForBranch($customerId, $branchId)->pluck('specialties.id')->map(fn ($id) => (int) $id)->values(),
+            'specialties' => app(\App\Services\SpecialtyCatalog::class)->options($user, $customerId, $branchId),
+            'assigned' => $user->specialtiesForBranch($customerId, $branchId)->get()->map(fn ($s) => app(\App\Services\SpecialtyCatalog::class)->selection($s))->unique()->values(),
             'can_assign' => $canAssign,
             'groups' => $groups,
         ]);
@@ -703,7 +716,7 @@ class ProfessionalController extends Controller
         $data = $request->validate([
             'branch_id' => ['required', 'integer'],
             'specialty_ids' => ['present', 'array'],
-            'specialty_ids.*' => ['integer', Rule::exists('specialties', 'id')->where('customer_id', $customerId)->where('status', true)],
+            'specialty_ids.*' => ['integer'],
         ]);
         $branchId = (int) $data['branch_id'];
         $allowedBranchIds = \App\Support\ClinicBranchContext::canAdministerAllBranches($request->user(), $customerId)
@@ -713,21 +726,13 @@ class ProfessionalController extends Controller
         $effectiveBranchId = $this->activeBranchId($customerId)
             ?? \App\Support\ClinicBranchContext::defaultBranch($request->user(), $customerId)?->id;
         $isHeadquarters = \App\Support\ClinicBranchContext::canAdministerAllBranches($request->user(), $customerId);
-        if (!$isHeadquarters) {
+        if (! $isHeadquarters) {
             $allowedBranchIds = $effectiveBranchId ? [(int) $effectiveBranchId] : [];
         }
         abort_unless(in_array($branchId, $allowedBranchIds, true) && $user->branches()->whereKey($branchId)->exists(), 403);
         abort_unless($this->canManageRolesInBranch($request->user(), $customerId, $branchId), 403, 'No tienes permiso para administrar especialidades en esta sede.');
-        $hasDoctorRole = $user->clinicRolesForBranch($customerId, $branchId)->whereRaw('LOWER(TRIM(roles.name)) = ?', ['doctor'])->exists();
-        abort_unless($hasDoctorRole, 422, 'El usuario debe tener el rol Doctor en esta sede para recibir especialidades.');
+        $this->syncUserSpecialties($user, $customerId, $branchId, $data['specialty_ids']);
 
-        DB::table('specialty_user')->where('customer_id', $customerId)->where('user_id', $user->id)->where('clinic_branch_id', $branchId)->delete();
-        $now = now();
-        $rows = collect($data['specialty_ids'])->unique()->map(fn ($specialtyId) => [
-            'specialty_id' => (int) $specialtyId, 'user_id' => (int) $user->id, 'customer_id' => $customerId,
-            'clinic_branch_id' => $branchId, 'created_at' => $now, 'updated_at' => $now,
-        ])->all();
-        if ($rows) DB::table('specialty_user')->insert($rows);
         return response()->json(['success' => true]);
     }
 
@@ -750,7 +755,7 @@ class ProfessionalController extends Controller
         // Verificar si tiene citas
         if ($professional->appointments()->exists()) {
             return response()->json([
-                'message' => 'No se puede eliminar el usuario porque tiene citas registradas.'
+                'message' => 'No se puede eliminar el usuario porque tiene citas registradas.',
             ], 422);
         }
 
@@ -761,7 +766,7 @@ class ProfessionalController extends Controller
         $professional->delete();
 
         return response()->json([
-            'message' => 'Usuario eliminado correctamente.'
+            'message' => 'Usuario eliminado correctamente.',
         ]);
     }
 
@@ -786,6 +791,7 @@ class ProfessionalController extends Controller
     {
         $user = auth()->user();
         $branchId = $this->activeBranchId($customerId) ?? ($user ? \App\Support\ClinicBranchContext::defaultBranch($user, $customerId)?->id : null);
+
         return $user?->hasClinicRole('Administrador', $customerId, $branchId) ?? false;
     }
 
@@ -801,12 +807,13 @@ class ProfessionalController extends Controller
         }
 
         $branchId = $this->activeBranchId($customerId) ?? ($user ? \App\Support\ClinicBranchContext::defaultBranch($user, $customerId)?->id : null);
+
         return $user?->hasClinicRole('Administrador de sede', $customerId, $branchId) ?? false;
     }
 
     private function activeBranchId(int $customerId): ?int
     {
-        if ((int) session('active_branch_customer_id') !== $customerId || !session()->has('active_branch_id')) {
+        if ((int) session('active_branch_customer_id') !== $customerId || ! session()->has('active_branch_id')) {
             return null;
         }
 
@@ -822,7 +829,7 @@ class ProfessionalController extends Controller
         $canAssignAcrossBranches = $user && $activeBranchId
             && \App\Support\ClinicBranchContext::canAdministerAllBranches($user, $customerId)
             && \App\Support\ClinicBranchContext::hasPermissionInBranch($user, $customerId, (int) $activeBranchId, 'professionals.manage');
-        if (!$canAssignAcrossBranches) {
+        if (! $canAssignAcrossBranches) {
             $rule->where('id', $activeBranchId ?? 0);
         }
 
@@ -847,18 +854,7 @@ class ProfessionalController extends Controller
 
     private function syncUserSpecialties(User $user, int $customerId, int $branchId, array $specialtyIds): void
     {
-        DB::table('specialty_user')->where('customer_id', $customerId)->where('user_id', $user->id)
-            ->where('clinic_branch_id', $branchId)->delete();
-        $now = now();
-        $rows = collect($specialtyIds)->filter()->unique()->map(fn ($specialtyId) => [
-            'specialty_id' => (int) $specialtyId,
-            'user_id' => (int) $user->id,
-            'customer_id' => $customerId,
-            'clinic_branch_id' => $branchId,
-            'created_at' => $now,
-            'updated_at' => $now,
-        ])->all();
-        if ($rows) DB::table('specialty_user')->insert($rows);
+        app(\App\Services\SpecialtyCatalog::class)->sync($user, $customerId, $branchId, $specialtyIds);
     }
 
     private function canManageRolesInBranch(User $actor, int $customerId, int $branchId): bool
@@ -881,6 +877,4 @@ class ProfessionalController extends Controller
             || $actor->clinicRolesForBranch($customerId, $branchId)
                 ->whereHas('permissions', fn ($query) => $query->where('permissions.slug', 'roles.manage'))->exists();
     }
-
-    
 }

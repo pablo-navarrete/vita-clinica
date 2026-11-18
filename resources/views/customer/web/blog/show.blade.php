@@ -6,12 +6,12 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ !empty($previewMode) ? 'Vista previa - ' : '' }}{{ $post->title }} | {{ $blogSetting->title ?: 'Blog' }} | {{ app('customer')->name }}</title>
     <meta name="description" content="{{ $post->excerpt ?: \Illuminate\Support\Str::limit($post->content, 155) }}">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.bunny.net/css?family=figtree:400,500,600,700&display=swap" rel="stylesheet">
     <link href="{{ asset('css/style.css') }}" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
     @include('customer.web.theme-colors')
     <style>
-        body{font-family:Poppins,sans-serif;background:#f8fafc;color:#1f2937}.blog-article{max-width:900px;margin:3rem auto 4rem;padding:0 1rem}.blog-back{display:inline-flex;align-items:center;gap:.5rem;margin-bottom:1.5rem;color:{{ themeColor(700) }};font-weight:600;text-decoration:none}.blog-article__header{margin-bottom:2rem}.blog-article time{font-size:.9rem;color:#64748b}.blog-article h1{margin:.6rem 0;font-size:clamp(2rem,5vw,3rem);line-height:1.2;font-weight:700;color:#172033}.blog-article__excerpt{font-size:1.15rem;color:#64748b;line-height:1.7}.blog-article__image{width:100%;max-height:520px;object-fit:cover;border-radius:1rem;margin:1rem 0 2rem}.blog-article__content{white-space:normal;overflow-wrap:anywhere;font-size:1rem;line-height:1.9;color:#374151}.blog-article__content p{margin:0 0 1.2rem}.blog-article__content table{width:100%;border-collapse:collapse;margin:1rem 0}.blog-article__content th,.blog-article__content td{border:1px solid #d1d5db;padding:.5rem;text-align:left}.blog-article__content img{max-width:100%;height:auto}
+        body{font-family:Figtree,sans-serif;background:#f8fafc;color:#1f2937}.blog-article{max-width:900px;margin:3rem auto 4rem;padding:0 1rem}.blog-back{display:inline-flex;align-items:center;gap:.5rem;margin-bottom:1.5rem;color:{{ themeColor(700) }};font-weight:600;text-decoration:none}.blog-article__header{margin-bottom:2rem}.blog-article time{font-size:.9rem;color:#64748b}.blog-article h1{margin:.6rem 0;font-size:clamp(2rem,5vw,3rem);line-height:1.2;font-weight:700;color:#172033}.blog-article__excerpt{font-size:1.15rem;color:#64748b;line-height:1.7}.blog-article__image{width:100%;max-height:520px;object-fit:cover;border-radius:1rem;margin:1rem 0 2rem}.blog-article__content{white-space:normal;overflow-wrap:anywhere;font-size:1rem;line-height:1.9;color:#374151}.blog-article__content p{margin:0 0 1.2rem}.blog-article__content table{width:100%;border-collapse:collapse;margin:1rem 0}.blog-article__content th,.blog-article__content td{border:1px solid #d1d5db;padding:.5rem;text-align:left}.blog-article__content img{max-width:100%;height:auto}
     </style>
     <style>
         body { margin: 0; overflow-x: hidden; }
@@ -22,6 +22,8 @@
         @endif
         @media (max-width: 767.98px) { .blog-hero { min-height: 220px; margin-bottom: 1.5rem; padding: 1.5rem .75rem; } }
     </style>
+@include('components.phone-assets')
+@include('components.favicon')
 </head>
 <body>
     @include('customer.web.menu')

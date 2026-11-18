@@ -1,0 +1,6 @@
+:is(.portal-login,.vita-login,body) .vita-access-footer{margin-top:auto;flex-shrink:0;border-top:1px solid #bfdbfe;padding:20px 24px;text-align:center;font-size:12px;line-height:1.6;font-family:inherit;color:#687581;background:#fff;box-shadow:none}
+.vita-access-footer p{margin:0}
+.vita-access-footer a{color:#1d4ed8;text-decoration:underline;text-underline-offset:4px}
+.vita-access-footer a:hover{color:#1e40af}
+:is(.portal-login,.vita-login,body) .vita-access-footer>span{display:block;margin-top:4px}
+.vita-access-footer a:focus-visible{outline:2px solid #1d4ed8;outline-offset:4px}

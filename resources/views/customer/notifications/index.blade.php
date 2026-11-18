@@ -5,10 +5,8 @@
 @endsection
 
 @section('content')
-    <div class="mx-auto max-w-7xl space-y-5 sm:px-6 lg:px-8">
-        @if (session('success'))
-            <div class="rounded-md bg-green-100 px-4 py-3 text-green-800">{{ session('success') }}</div>
-        @endif
+    <div id="system-notification-page" class="mx-auto max-w-7xl space-y-5 sm:px-6 lg:px-8">
+        
         @if (session('info'))
             <div class="rounded-md bg-blue-50 px-4 py-3 text-blue-800">{{ session('info') }}</div>
         @endif
@@ -48,7 +46,7 @@
                             </div>
                             <p class="mt-1 text-sm text-gray-600">{{ $item['message'] ?? '' }}</p>
                             <dl class="mt-3 grid gap-x-8 gap-y-1 text-sm text-gray-600 sm:grid-cols-2">
-                                <div><dt class="inline font-medium text-gray-700">Paciente: </dt><dd class="inline">{{ $item['patient_name'] ?? '—' }}@if(!empty($item['patient_rut'])) ({{ $item['patient_rut'] }})@endif</dd></div>
+                                <div><dt class="inline font-medium text-gray-700">Paciente: </dt><dd class="inline">{{ $item['patient_name'] ?? '—' }}@if(!empty($item['patient_rut'])) ({{ app(\App\Services\Identification\DocumentIdentityPresenter::class)->label(['rut' => $item['patient_rut']], true) }})@endif</dd></div>
                                 <div><dt class="inline font-medium text-gray-700">Fecha y hora: </dt><dd class="inline">{{ !empty($item['starts_at']) ? \Illuminate\Support\Carbon::parse($item['starts_at'])->timezone(config('app.timezone'))->format('d/m/Y H:i') : '—' }}</dd></div>
                                 <div><dt class="inline font-medium text-gray-700">Especialidad: </dt><dd class="inline">{{ $item['specialty'] ?? '—' }}</dd></div>
                                 @if (!empty($item['reason']))<div><dt class="inline font-medium text-gray-700">Motivo: </dt><dd class="inline">{{ $item['reason'] }}</dd></div>@endif
@@ -73,8 +71,9 @@
     </div>
 
     <script>
-        document.querySelectorAll('[data-mark-notification-read]').forEach((form) => {
-            form.addEventListener('submit', async (event) => {
+        document.addEventListener('submit', async (event) => {
+                const form = event.target.closest('[data-mark-notification-read]');
+                if (!form) return;
                 event.preventDefault();
                 const button = form.querySelector('button[type="submit"]');
                 const article = form.closest('article');
@@ -108,7 +107,21 @@
                     if (typeof Toast !== 'undefined') Toast.fire({ icon: 'error', title: error.message });
                     else alert(error.message);
                 }
-            });
+        });
+        let systemRefresh;
+        window.addEventListener('vita:system-sync', () => {
+            clearTimeout(systemRefresh);
+            systemRefresh = setTimeout(async () => {
+                if (document.hidden) return;
+                try {
+                    const response = await fetch(location.href, {headers:{'X-Requested-With':'XMLHttpRequest'}});
+                    if (!response.ok) return;
+                    const page = new DOMParser().parseFromString(await response.text(), 'text/html');
+                    const next = page.getElementById('system-notification-page');
+                    const current = document.getElementById('system-notification-page');
+                    if (next && current) current.innerHTML = next.innerHTML;
+                } catch (_) {}
+            }, 250);
         });
     </script>
 @endsection

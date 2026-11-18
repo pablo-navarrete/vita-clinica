@@ -12,6 +12,14 @@ use Illuminate\View\View;
 
 class AppointmentNotificationController extends Controller
 {
+    public function summary(Request $request): JsonResponse
+    {
+        $query = $request->user()->notifications()->where('data->customer_id', (int) app('customer')->id);
+        return response()->json([
+            'unread' => (clone $query)->whereNull('read_at')->count(),
+            'html' => view('customer.notifications.dropdown', ['tenantNotifications' => $query->latest()->take(6)->get()])->render(),
+        ])->header('Cache-Control', 'private, no-store');
+    }
     public function index(Request $request): View
     {
         $customerId = (int) app('customer')->id;
@@ -50,6 +58,7 @@ class AppointmentNotificationController extends Controller
             DB::table('notifications')->where('id', $notification)->whereNull('read_at')->update([
                 'read_at' => now(),
             ]);
+            \App\Support\UserRealtime::notify((int) app('customer')->id, (int) $user->id, 'system');
         }
 
         if ($request->expectsJson()) {
@@ -64,6 +73,7 @@ class AppointmentNotificationController extends Controller
         $request->user()->unreadNotifications()
             ->where('data->customer_id', (int) app('customer')->id)
             ->update(['read_at' => now()]);
+        \App\Support\UserRealtime::notify((int) app('customer')->id, (int) $request->user()->id, 'system');
 
         return back()->with('success', 'Notificaciones marcadas como leídas.');
     }
@@ -82,7 +92,8 @@ class AppointmentNotificationController extends Controller
         }
 
         $isRecipient = $record->notifiable_type === $request->user()->getMorphClass()
-            && (string) $record->notifiable_id === (string) $request->user()->getAuthIdentifier();
+            && (string) $record->notifiable_id === (string) $request->user()->getAuthIdentifier()
+            && (int) ($record->data['customer_id'] ?? 0) === $customerId;
         if (! $isRecipient) {
             return redirect()->route('customers.notifications.index', [
                 'customer' => $request->route('customer'),
@@ -91,6 +102,7 @@ class AppointmentNotificationController extends Controller
 
         if ($record->unread()) {
             $record->markAsRead();
+            \App\Support\UserRealtime::notify($customerId, (int) $request->user()->id, 'system');
         }
 
         $appointmentId = $record->data['appointment_id'] ?? null;

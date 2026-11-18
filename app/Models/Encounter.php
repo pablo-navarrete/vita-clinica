@@ -92,6 +92,22 @@ class Encounter extends Model
         return $this->hasMany(PatientDocument::class);
     }
 
+    public function signatures()
+    {
+        return $this->hasMany(EncounterSignature::class);
+    }
+
+    public function signature()
+    {
+        return $this->hasOne(EncounterSignature::class)->whereHas('documentVersion', fn ($q) => $q->where('kind', 'original'));
+    }
+
+    public function addendumSignatures()
+    {
+        return $this->hasMany(EncounterSignature::class)->whereHas('documentVersion', fn ($q) => $q->where('kind', 'addendum'))
+            ->orderBy('document_version_id');
+    }
+
     public function observations()
     {
         return $this->hasMany(EncounterObservation::class)->orderBy('created_at');

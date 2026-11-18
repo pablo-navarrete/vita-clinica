@@ -3,7 +3,8 @@
     "type": "module",
     "scripts": {
         "dev": "vite",
-        "build": "vite build"
+        "build": "vite build",
+        "build:mi-salud-viti": "esbuild resources/js/mi-salud-viti.js --bundle --minify --outfile=public/js/mi-salud-viti.js"
     },
     "devDependencies": {
         "@tailwindcss/forms": "^0.5.2",
@@ -19,6 +20,7 @@
     },
     "dependencies": {
         "chart.js": "^4.5.1",
+        "intl-tel-input": "29.5.11",
         "three": "^0.186.1"
     }
 }

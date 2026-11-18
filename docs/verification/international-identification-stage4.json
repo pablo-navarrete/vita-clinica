@@ -1,0 +1,49 @@
+{
+  "scope": "patient international identification stage 4",
+  "migration": {
+    "database": "vita_clinica",
+    "host": "127.0.0.1",
+    "mysql": "8.0.30",
+    "column_before": {
+      "COLUMN_TYPE": "varchar(255)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": null,
+      "CHARACTER_SET_NAME": "utf8mb4",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "EXTRA": ""
+    },
+    "target": "2026_11_06_000200_allow_absent_legacy_patient_rut",
+    "backup_directory": "C:/laragon/backups/vita-identification-stage4/20261106_035227_a178aa",
+    "backup_sha256": "552d741c86b0b6040433bf4c8e2e6011ec7feef8370bfb00ab42ae17624be60d",
+    "restored_and_verified": true,
+    "restore_database": "vita_identification_restore_stage4_20261106_035227_98de3d",
+    "migration_applied": true,
+    "data_unchanged": true,
+    "patient_values_byte_verified": true,
+    "schema_matches_restored_validation": true,
+    "triggers_unchanged": true,
+    "env_unchanged": true
+  },
+  "tests": {
+    "database": "vita_identification_test_stage3_20261106_035257_ec91be",
+    "total": 291,
+    "assertions": 3689,
+    "skipped": 2,
+    "failures": 0,
+    "seconds": 41.502,
+    "memory_mb": 86,
+    "habitual_database_unchanged": true,
+    "env_unchanged": true,
+    "javascript_results_passed": 8
+  },
+  "new_patient_registration_enabled": false,
+  "blocker": "Legacy public booking and Viti writers are not coordinated with patient identifier reservations.",
+  "historical_auto_migration": false,
+  "signed_schema_versions_supported": [
+    1,
+    2,
+    3,
+    4
+  ],
+  "stage5_started": false
+}

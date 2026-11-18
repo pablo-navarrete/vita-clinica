@@ -19,11 +19,17 @@ class ClinicBranch extends Model
 
     protected $casts = [
         'status' => 'boolean',
+        'directory_publication_enabled' => 'boolean',
     ];
 
     public function customer()
     {
         return $this->belongsTo(Customer::class);
+    }
+
+    public function getOperatingCountryCodeAttribute(): ?string
+    {
+        return $this->customer?->operating_country_code;
     }
 
     public function appointments()

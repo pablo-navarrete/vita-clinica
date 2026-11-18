@@ -5,7 +5,7 @@
 @endsection
 
 @section('content')
-    <div class="mx-auto max-w-7xl px-3 py-8 sm:px-6 lg:px-8">
+    <div class="mx-auto max-w-7xl px-3 pb-8 sm:px-6 lg:px-8">
         <section class="rounded-xl bg-white p-6 shadow-sm">
             <h3 class="text-lg font-semibold text-gray-800">{{ $isSuperAdmin ? 'Atenciones' : 'Mis atenciones' }}</h3>
             <p class="mb-6 mt-1 text-sm text-gray-500">{{ $isSuperAdmin ? 'Atenciones de la clínica en' : 'Tus atenciones en' }} {{ $allBranches ? 'todas las sedes' : $branch->name }}.</p>
@@ -67,7 +67,7 @@ document.addEventListener('DOMContentLoaded', () => {
             {data:null, orderable:false, searchable:false, render:(data,type,row,meta) => meta.settings._iDisplayStart + meta.row + 1},
             {data:'id', name:'encounters.id', render:text},
             {data:'patient.name', name:'patient.name', defaultContent:'Paciente no disponible', render:text},
-            {data:'patient.rut', name:'patient.rut', defaultContent:'', render:text},
+            {data:'patient.identification_label', name:'patient.name', defaultContent:'', render:text},
             {data:'specialty.name', name:'specialty.name', defaultContent:'Sin especialidad', render:text},
             {data:'modality_label', orderable:false, searchable:false, render:text},
             {data:'status_label', orderable:false, searchable:false, render:text},

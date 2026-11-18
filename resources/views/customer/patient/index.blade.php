@@ -81,7 +81,7 @@
 
 @section('content')
 
-<div class="py-12">
+<div class="pb-12">
 
     <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
 
@@ -116,7 +116,7 @@
 
                 <div class="overflow-x-auto">
 
-                    <table
+<table
                         id="patient-table"
                         class="min-w-full display responsive nowrap rounded-xl overflow-hidden">
 
@@ -154,262 +154,7 @@
                 <!-- MODAL CREAR / EDITAR PACIENTE -->
                 <!-- ========================================================= -->
 
-                <div
-                    id="patient-modal"
-                    class="hidden fixed inset-0 items-center justify-center bg-black/50 z-50 overflow-y-auto p-4">
-
-                    <div class="bg-white rounded-lg shadow-lg w-full max-w-2xl max-h-[90vh] flex flex-col">
-
-                        <!-- HEADER -->
-
-                        <div
-                            class="px-6 py-4 border-b rounded-t-lg"
-                            style="background-color: {{ themeColor(100) }}">
-
-                            <h2
-                                id="patient-modal-title"
-                                class="text-lg font-bold">
-
-                                Nuevo Paciente
-
-                            </h2>
-
-                        </div>
-
-
-                        <!-- BODY -->
-
-                        <div class="p-6 space-y-4 overflow-y-auto flex-1">
-
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-
-                                <!-- NOMBRE -->
-
-                                <div>
-
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">
-                                        Nombre Completo *
-                                    </label>
-
-                                    <input
-                                        type="text"
-                                        id="patient-name"
-                                        name="name"
-                                        class="w-full rounded-lg border-gray-300">
-
-                                    <p
-                                        id="error-name"
-                                        class="text-xs text-red-500 mt-1 hidden">
-                                    </p>
-
-                                </div>
-
-
-                                <!-- RUT -->
-
-                                <div>
-
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">
-                                        RUT *
-                                    </label>
-
-                                    <input
-                                        type="text"
-                                        id="patient-rut"
-                                        name="rut"
-                                        class="w-full rounded-lg border-gray-300">
-
-                                    <p
-                                        id="error-rut"
-                                        class="text-xs text-red-500 mt-1 hidden">
-                                    </p>
-
-                                </div>
-
-
-                                <!-- FECHA NACIMIENTO -->
-
-                                <div>
-
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">
-                                        Fecha Nacimiento
-                                    </label>
-
-                                    <input
-                                        type="date"
-                                        id="patient-birth-date"
-                                        name="birth_date"
-                                        max="{{ now()->format('Y-m-d') }}"
-                                        class="w-full rounded-lg border-gray-300">
-
-                                    <p
-                                        id="error-birth-date"
-                                        class="text-xs text-red-500 mt-1 hidden">
-                                    </p>
-
-                                </div>
-
-
-                                <!-- SEXO -->
-
-                                <div>
-
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">
-                                        Sexo
-                                    </label>
-
-                                    <select
-                                        id="patient-gender"
-                                        name="gender"
-                                        class="w-full rounded-lg border-gray-300">
-
-                                        <option value="Masculino">
-                                            Masculino
-                                        </option>
-
-                                        <option value="Femenino">
-                                            Femenino
-                                        </option>
-
-                                        <option value="Otro">
-                                            Otro
-                                        </option>
-
-                                    </select>
-
-                                </div>
-
-
-                                <!-- TELÉFONO -->
-
-                                <div>
-
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">
-                                        Teléfono
-                                    </label>
-
-                                    <input
-                                        type="text"
-                                        id="patient-phone"
-                                        name="phone"
-                                        maxlength="20"
-                                        class="w-full rounded-lg border-gray-300">
-
-                                    <p
-                                        id="error-phone"
-                                        class="text-xs text-red-500 mt-1 hidden">
-                                    </p>
-
-                                </div>
-
-
-                                <!-- EMAIL -->
-
-                                <div>
-
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">
-                                        Correo Electrónico
-                                    </label>
-
-                                    <input
-                                        type="email"
-                                        id="patient-email"
-                                        name="email"
-                                        class="w-full rounded-lg border-gray-300">
-
-                                    <p
-                                        id="error-email"
-                                        class="text-xs text-red-500 mt-1 hidden">
-                                    </p>
-
-                                </div>
-
-
-                                <!-- DIRECCIÓN -->
-
-                                <div class="md:col-span-2">
-
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">
-                                        Dirección
-                                    </label>
-
-                                    <input
-                                        type="text"
-                                        id="patient-address"
-                                        name="address"
-                                        maxlength="255"
-                                        class="w-full rounded-lg border-gray-300">
-
-                                    <p
-                                        id="error-address"
-                                        class="text-xs text-red-500 mt-1 hidden">
-                                    </p>
-
-                                </div>
-
-
-                                <!-- PREVISIÓN -->
-
-                                <div>
-
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">
-                                        Previsión
-                                    </label>
-
-                                    <select
-                                        id="patient-insurance"
-                                        name="insurance_id"
-                                        class="w-full rounded-lg border-gray-300">
-
-                                        @foreach ($insurances as $insurance)
-
-                                            <option value="{{ $insurance->id }}">
-                                                {{ $insurance->name }}
-                                            </option>
-
-                                        @endforeach
-
-                                    </select>
-
-                                </div>
-
-
-                            </div>
-
-                        </div>
-
-
-                        <!-- FOOTER -->
-
-                        <div class="px-6 py-4 border-t flex justify-end gap-2">
-
-                            <button
-                                type="button"
-                                id="patient-modal-cancel"
-                                class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded">
-
-                                Cancelar
-
-                            </button>
-
-
-                            <button
-                                type="button"
-                                id="patient-modal-save"
-                                style="background-color: {{ themeColor(600) }}"
-                                class="hover:brightness-90 transition text-white px-4 py-2 rounded">
-
-                                Guardar
-
-                            </button>
-
-                        </div>
-
-                    </div>
-
-                </div>
-
+                @include('customer.patient.partials.form-modal')
 
                 <!-- ========================================================= -->
                 <!-- MENÚ DE ACCIONES GLOBAL -->
@@ -624,6 +369,8 @@
 @endphp
 
 <script src="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/js/select2.min.js"></script>
+
+<script src="{{ asset('js/patient-form.js').'?v='.filemtime(public_path('js/patient-form.js')) }}"></script>
 <script>
 
 $(function () {
@@ -688,7 +435,7 @@ $(function () {
         }
 
         const list = $('#patient-appointments-detail-list').empty();
-        $('#patient-appointments-detail-name').text(`${patient.name} · RUT: ${patient.rut}`);
+        $('#patient-appointments-detail-name').text(`${patient.name} · Identificación: ${patient.identification_label}`);
         const statusLabels = {
             0: 'Agendada', 1: 'Confirmada', 2: 'En atención',
             3: 'Atendida', 4: 'No asistió', 5: 'Cancelada'
@@ -778,7 +525,7 @@ $(function () {
         const futureAppointmentsStatus = $('#patient-future-appointments-status');
         const futureAppointmentsCount = Number(patient.future_appointments_count || 0);
 
-        $('#patient-appointment-name').text(`${patient.name} · RUT: ${patient.rut}`);
+        $('#patient-appointment-name').text(`${patient.name} · Identificación: ${patient.identification_label}`);
         if (futureAppointmentsCount > 0) {
             futureAppointmentsStatus
                 .attr('class', 'mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800')
@@ -1129,13 +876,29 @@ $(function () {
     |--------------------------------------------------------------------------
     */
 
+    function newPatientRegistrationOperation() {
+        if (typeof globalThis.crypto.randomUUID === 'function') return globalThis.crypto.randomUUID();
+        // Local Laragon HTTP domains do not expose randomUUID (secure-context API).
+        const bytes = globalThis.crypto.getRandomValues(new Uint8Array(16));
+        bytes[6] = (bytes[6] & 15) | 64;
+        bytes[8] = (bytes[8] & 63) | 128;
+        const hex = Array.from(bytes, value => value.toString(16).padStart(2, '0')).join('');
+        return `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`;
+    }
+    let registrationOperation = newPatientRegistrationOperation();
     tableActive = $('#patient-table').DataTable({
 
         processing: true,
 
         serverSide: true,
 
-        ajax: '/patient-data',
+        ajax: {url:'/patient-data/search',type:'POST',headers:{'X-CSRF-TOKEN':document.querySelector('meta[name=csrf-token]').content}},
+        searchDelay: 350,
+        initComplete: function () {
+            const input=this.api().table().container().querySelector('.dataTables_filter input, .dt-search input');
+            input.setAttribute('placeholder','Nombre o RUT');
+            input.setAttribute('autocomplete','off');
+        },
 
         pageLength: 10,
 
@@ -1213,7 +976,7 @@ $(function () {
             */
 
             {
-                data: 'rut'
+                data: 'identification_label', name: 'name'
             },
 
 
@@ -1224,7 +987,14 @@ $(function () {
             */
 
             {
-                data: 'phone'
+                data: 'phone',
+                render(data, type) {
+                    if (type !== 'display') return data;
+                    const label = document.createElement('span');
+                    label.setAttribute('data-phone-display', '');
+                    label.textContent = data || '—';
+                    return label.outerHTML;
+                }
             },
 
 
@@ -1511,6 +1281,7 @@ $(function () {
     */
 
     function openCreateModal() {
+        registrationOperation = newPatientRegistrationOperation();
 
         isEdit = false;
 
@@ -1554,8 +1325,16 @@ $(function () {
             .val(data.name ?? '');
 
 
-        $('#patient-rut')
-            .val(data.rut ?? '');
+        const identityState = Alpine.$data(document.getElementById('patient-modal'));
+        identityState.isEdit = true;
+        identityState.form = VitaIdentification.defaults();
+        identityState.form.identification_enabled = false;
+        identityState.errors = {};
+        identityState.identityLoading = true;
+        identityState.identityFailed = false;
+        VitaIdentification.load(`/patient/${data.id}/identification`,identityState.form)
+            .catch(error => {identityState.identityFailed=true;identityState.errors={identification_number:[error.message]};})
+            .finally(()=>identityState.identityLoading=false);
 
 
         const birthDateInput = document.getElementById('patient-birth-date');
@@ -1667,10 +1446,16 @@ $(function () {
     */
 
     function clearForm() {
+        document.getElementById('patient-modal').dispatchEvent(new Event('portal-autofill-reset'));
 
         $('#patient-name').val('');
 
-        $('#patient-rut').val('');
+        const identityState = Alpine.$data(document.getElementById('patient-modal'));
+        identityState.isEdit = false;
+        identityState.form = VitaIdentification.defaults();
+        identityState.errors = {};
+        identityState.identityFailed = false;
+        identityState.identityLoading = false;
 
         const birthDateInput = document.getElementById('patient-birth-date');
         if (birthDateInput?._flatpickr) birthDateInput._flatpickr.clear();
@@ -1755,176 +1540,8 @@ $(function () {
     */
 
     function savePatient() {
-
-        clearErrors();
-
-
-        const patientData = {
-
-            name: $('#patient-name').val(),
-
-            rut: $('#patient-rut').val(),
-
-            birth_date: $('#patient-birth-date').val(),
-
-            gender: $('#patient-gender').val(),
-
-            phone: $('#patient-phone').val(),
-
-            email: $('#patient-email').val(),
-
-            address: $('#patient-address').val(),
-
-            insurance_id: $('#patient-insurance').val(),
-
-        };
-
-
-        let url;
-
-        let method;
-
-
-        if (isEdit) {
-
-            url = `/patient/${editingPatientId}`;
-
-            method = 'PUT';
-
-        } else {
-
-            url = '/patient';
-
-            method = 'POST';
-
-        }
-
-
-        const saveButton =
-            $('#patient-modal-save');
-
-
-        saveButton
-            .prop('disabled', true)
-            .text('Guardando...');
-
-
-        fetch(url, {
-
-            method: method,
-
-            headers: {
-
-                'Content-Type': 'application/json',
-
-                'Accept': 'application/json',
-
-                'X-CSRF-TOKEN': csrfToken
-
-            },
-
-            body: JSON.stringify(patientData)
-
-        })
-
-        .then(async response => {
-
-            const data =
-                await response.json();
-
-
-            if (!response.ok) {
-
-                if (response.status === 422) {
-
-                    showErrors(
-                        data.errors || {}
-                    );
-
-
-                    throw new Error(
-                        'validation'
-                    );
-
-                }
-
-
-                throw new Error(
-                    data.message ||
-                    'Error al guardar paciente'
-                );
-
-            }
-
-
-            return data;
-
-        })
-
-        .then(() => {
-
-            Swal.fire({
-
-                toast: true,
-
-                position: 'top-end',
-
-                icon: 'success',
-
-                title: isEdit
-                    ? 'Paciente actualizado correctamente'
-                    : 'Paciente creado correctamente',
-
-                showConfirmButton: false,
-
-                timer: 2000
-
-            });
-
-
-            closeModal();
-
-
-            tableActive
-                .ajax
-                .reload(null, false);
-
-        })
-
-        .catch(error => {
-
-            console.error(error);
-
-
-            if (
-                error.message !==
-                'validation'
-            ) {
-
-                Swal.fire({
-
-                    icon: 'error',
-
-                    title: 'Error',
-
-                    text:
-                        error.message ||
-                        'No se pudo guardar el paciente'
-
-                });
-
-            }
-
-        })
-
-        .finally(() => {
-
-            saveButton
-                .prop('disabled', false)
-                .text('Guardar');
-
-        });
-
+        return window.VitaPatientForm.save({isEdit,editingPatientId,registrationOperation,clearErrors,showErrors,csrfToken,
+            onSaved() {closeModal();tableActive.ajax.reload(null,false);}});
     }
 
 
@@ -1941,7 +1558,7 @@ $(function () {
             title: '¿Eliminar paciente?',
 
             text:
-                'Esto lo eliminará del sistema permanentemente.',
+                'Se eliminará permanentemente solo si no tiene historial ni registros asociados que deban conservarse.',
 
             icon: 'warning',
 
@@ -2131,5 +1748,6 @@ $(function () {
 });
 
 </script>
+<script src="{{ asset('js/patient-portal-autofill.js').'?v='.filemtime(public_path('js/patient-portal-autofill.js')) }}" defer></script>
 
 @endpush

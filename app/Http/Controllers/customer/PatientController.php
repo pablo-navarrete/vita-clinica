@@ -15,6 +15,16 @@ use Illuminate\Support\Facades\Validator;
 
 class PatientController extends Controller
 {
+    public function portalProfile(Request $request)
+    {
+        return response()->json(['profile'=>app(\App\Services\MiSalud\PortalProfileSharingService::class)->lookup($request->user(),$request->all())])
+            ->header('Cache-Control','private, no-store')->header('Pragma','no-cache');
+    }
+    public function destroy(Request $request)
+    {
+        app(\App\Services\PatientDeletion::class)->delete($request->user(), (int) $request->route('id'));
+        return response()->json(['success' => true, 'message' => 'Paciente eliminado correctamente.']);
+    }
    
     public function index()
     {
@@ -76,8 +86,13 @@ class PatientController extends Controller
     }
 
     // datatable
-    public function getPatient()
+    public function getPatient(Request $request)
     {
+        $request->validate([
+            'search' => ['nullable', 'array'], 'search.value' => ['nullable', 'string', 'max:128'],
+            'document_country' => ['nullable', 'required_with:document_type', 'string', 'size:2'],
+            'document_type' => ['nullable', 'required_with:document_country', 'string', 'max:32'],
+        ]);
         $customerId = app('customer')->id;
         $now = now();
         $query = Patient::with(['insurance', 'clinicBranch'])
@@ -94,7 +109,14 @@ class PatientController extends Controller
             ->orderByDesc('created_at')
             ->orderByDesc('id');
 
-        return DataTables::of($query)
+        if ($request->filled('document_number')) {
+            $request->validate(['document_country'=>'required|string|size:2','document_type'=>'required|string','document_number'=>'required|string|max:128']);
+            app(\App\Services\Identification\PatientIdentification::class)->filter($query,$request->input('document_number'),$request->input('document_country'),$request->input('document_type'));
+        }
+        $response = DataTables::of($query)
+            ->filter(fn ($query) => app(\App\Services\Identification\PatientIdentification::class)->filterDataTable($query, $request))
+            ->removeColumn('rut')
+            ->addColumn('identification_label', fn ($patient) => app(\App\Services\Identification\PatientIdentification::class)->patientTableNumber($patient))
             ->addIndexColumn()
             ->addColumn('future_appointments', function ($row) use ($customerId, $now) {
                 return Appointment::where('customer_id', $customerId)
@@ -143,6 +165,11 @@ class PatientController extends Controller
             })
             ->rawColumns(['actions'])
             ->make(true);
+        // Never echo document search input or SQL diagnostics, even with APP_DEBUG.
+        $payload = $response->getData(true);
+        unset($payload['input'], $payload['queries']);
+        return $response->setData($payload)->header('Cache-Control', 'no-store');
+
     }
 
     public function appointments(Request $request, $customer, $id)
@@ -200,149 +227,48 @@ class PatientController extends Controller
             ->make(true);
     }
 
-    // crear paciente
+    public function identification(Request $request, $customer, int $id)
+    {
+        $patient = Patient::where('customer_id', app('customer')->id)->findOrFail($id);
+        return response()->json(app(\App\Services\Identification\PatientIdentification::class)->form($patient, $request->user()))->header('Cache-Control', 'no-store');
+    }
+
+    // Compatibility adapter: no HTTP route and no client-controlled bypass flag.
+    private function patientFields(Request $request): array
+    {
+        return $request->validate([
+            'name' => ['required', 'string', 'max:255'], 'birth_date' => ['required', 'date', 'before_or_equal:today'],
+            'gender' => ['required', 'in:Masculino,Femenino,Otro'], 'phone' => ['required', 'string', 'max:20'],
+            'email' => ['required', 'email', 'max:255'], 'address' => ['required', 'string', 'max:255'],
+            'insurance_id' => ['nullable', Rule::exists('insurances','id')->where('customer_id', app('customer')->id)],
+        ]);
+    }
+
     public function store(Request $request)
     {
-        
-        $validator = Validator::make($request->all(), [
-
-            'name' => 'required|string|max:255',
-
-            'rut' => [
-                'required',
-                'string',
-                'max:20',
-                Rule::unique('patients')
-                    ->where('customer_id', app('customer')->id)
-            ],
-
-            'birth_date' => 'required|date|before_or_equal:today',
-
-            'gender' => 'required',
-
-            'phone' => 'required|string|max:20',
-
-            'email' => 'required|email|max:255',
-
-            'address' => 'required|string|max:255'
-
-        ], [
-
-            'name.required' => 'El nombre del paciente es obligatorio',
-            'rut.required' => 'El RUT es obligatorio',
-            'rut.unique' => 'Ya existe un paciente con este RUT',
-            'birth_date.date' => 'La fecha de nacimiento no es válida',
-            'birth_date.required' => 'La fecha de nacimiento es obligatoria',
-            'birth_date.before_or_equal' => 'La fecha de nacimiento no puede ser futura',
-            'gender.in' => 'Sexo inválido',
-            'address.required' => 'La dirección es obligatoria',
-            'email.email' => 'El correo electrónico no es válido',
-            'email.required' => 'El correo electrónico es obligatorio',
-        ]);
-
-        if ($validator->fails()) {
-
-            return response()->json([
-                'errors' => $validator->errors()
-            ], 422);
-        }
-
-        $patient = Patient::create([
-
-            'customer_id' => app('customer')->id,
-
-            'clinic_branch_id' => (int) session('active_branch_customer_id') === (int) app('customer')->id
-                ? session('active_branch_id')
-                : null,
-
-            'name' => $request->name,
-
-            'rut' => $request->rut,
-
-            'birth_date' => $request->birth_date,
-
-            'gender' => $request->gender,
-
-            'phone' => $request->phone,
-
-            'email' => $request->email,
-
-            'address' => $request->address,
-
-            'status' => 1,
-
-            'insurance_id' => $request->insurance_id,
-
-        ]);
-
-
-        $patient->medicalRecord()->create([
-            'customer_id' => app('customer')->id,
-        ]);
-
-        $patientFields = ['clinic_branch_id', 'name', 'rut', 'birth_date', 'gender', 'phone', 'email', 'address', 'status', 'insurance_id'];
-        PatientAuditLogger::record(
-            $patient,
-            'created',
-            'Datos del paciente',
-            [],
-            array_intersect_key($patient->getRawOriginal(), array_flip($patientFields))
-        );
-        PatientAuditLogger::record($patient, 'created', 'Ficha clínica', [], ['ficha' => 'Ficha clínica creada']);
-        
-        return response()->json([
-            'success' => true,
-            'data' => $patient
-        ]);
+        $request->validate(['registration_operation' => 'nullable|uuid']);
+        $patient = app(\App\Services\Patients\PatientRegistrationService::class)->register($request->user(), $request->all(), 'internal', $request->input('registration_operation'));
+        app(\App\Services\Identification\PatientIdentification::class)->decorate($patient);
+        return response()->json(['success' => true, 'data' => $patient]);
     }
 
     public function update(Request $request)
     {
-        $customerId = app('customer')->id;
-        $id = $request->route('id');
-        $patient = Patient::where('customer_id', $customerId)->findOrFail($id);
-
-        $validator = Validator::make($request->all(), [
-            'name' => ['required', 'string', 'max:255'],
-            'rut' => [
-                'required',
-                'string',
-                'max:20',
-                Rule::unique('patients', 'rut')
-                    ->where('customer_id', $customerId)
-                    ->ignore($patient->id),
-            ],
-            'birth_date' => ['required', 'date', 'before_or_equal:today'],
-            'gender' => ['required', 'in:Masculino,Femenino,Otro'],
-            'phone' => ['required', 'string', 'max:20'],
-            'email' => ['required', 'email', 'max:255'],
-            'address' => ['required', 'string', 'max:255'],
-            'insurance_id' => [
-                'nullable',
-                Rule::exists('insurances', 'id')->where('customer_id', $customerId),
-            ],
-        ], [
-            'rut.unique' => 'Ya existe otro paciente con este RUT.',
-            'birth_date.before_or_equal' => 'La fecha de nacimiento no puede ser futura.',
-            'gender.in' => 'Selecciona un sexo válido.',
-            'insurance_id.exists' => 'La previsión seleccionada no es válida.',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
-
-        $validated = $validator->validated();
-        $before = array_intersect_key($patient->getRawOriginal(), $validated);
-        $patient->update($validated);
-        $after = array_intersect_key($patient->fresh()->getRawOriginal(), $validated);
-
-        PatientAuditLogger::record($patient, 'updated', 'Datos del paciente', $before, $after);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Paciente actualizado correctamente.',
-            'data' => $patient->fresh(),
-        ]);
+        $customer = (int) app('customer')->id;
+        $patient = Patient::where('customer_id',$customer)->findOrFail($request->route('id'));
+        $fields = $this->patientFields($request);
+        $identification = app(\App\Services\Identification\PatientIdentification::class);
+        $doc = $identification->parse($request,$patient);
+        \Illuminate\Support\Facades\DB::transaction(function () use ($request,$patient,$fields,$identification,$doc,$customer) {
+            abort_unless(\Illuminate\Support\Facades\DB::table('customers')->where('id',$customer)->lockForUpdate()->first(),403);
+            $patient->refresh();
+            if ($doc) $identification->assertUnique($doc,$request->user(),$patient);
+            $before = $patient->only(array_keys($fields));
+            $identification->save($patient,$request->user(),$doc,$request,false);
+            $patient->update($fields);
+            PatientAuditLogger::record($patient,'updated','Datos del paciente',$before,$patient->only(array_keys($fields)));
+        });
+        $patient->makeHidden('rut')->setAttribute('identification_label',$identification->masked($patient));
+        return response()->json(['success'=>true,'message'=>'Paciente actualizado correctamente.','data'=>$patient]);
     }
 }

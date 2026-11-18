@@ -1,0 +1,38 @@
+[
+  {
+    "label": "hero before",
+    "foreground": "#64748b",
+    "background": "#eff6ff",
+    "ratio": 4.37
+  },
+  {
+    "label": "hero corrected",
+    "foreground": "#52677d",
+    "background": "#eff6ff",
+    "ratio": 5.37
+  },
+  {
+    "label": "body text",
+    "foreground": "#64748b",
+    "background": "#ffffff",
+    "ratio": 4.76
+  },
+  {
+    "label": "button",
+    "foreground": "#ffffff",
+    "background": "#1d4ed8",
+    "ratio": 6.7
+  },
+  {
+    "label": "specialty tag",
+    "foreground": "#1e40af",
+    "background": "#eff6ff",
+    "ratio": 8.01
+  },
+  {
+    "label": "focus outline",
+    "foreground": "#1d4ed8",
+    "background": "#eff6ff",
+    "ratio": 6.16
+  }
+]

@@ -14,7 +14,7 @@
         background-color: {{ themeColor(100) }};
         border-color: {{ themeColor(200) }};
     ">
-    <div class="px-4 sm:px-6 lg:px-8">
+    <div class="vita-layout-topbar-inner px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between items-center h-16">
 
             <!-- IZQUIERDA -->
@@ -22,12 +22,12 @@
 
                 <!-- Botón Sidebar Mobile -->
                 <button @click="open = !open" style="color: {{ themeColor(600) }}"
-                    class="md:hidden hover:brightness-75 transition">
+                    class="inline-flex h-10 w-10 items-center justify-center rounded-lg transition hover:bg-gray-100 md:hidden">
                     <i class="fa-solid fa-bars text-xl"></i>
                 </button>
 
                 @if ($availableClinicBranches->count() > 1 && $activeClinicBranch)
-                    <form id="clinic-branch-switcher" method="POST" action="{{ route('customers.branch-context.update', ['customer' => request()->route('customer')]) }}" class="relative mt-1">
+                    <form id="clinic-branch-switcher" method="POST" action="{{ route('customers.branch-context.update', ['customer' => request()->route('customer')]) }}" class="relative m-0">
                         @csrf
                         <label class="sr-only" for="active-clinic-branch">Sede activa</label>
                         <input id="active-clinic-branch" type="hidden" name="branch_id" value="{{ $activeClinicBranch->id }}">
@@ -80,7 +80,7 @@
 <!-- Acceso a Viti al otro lado de las notificaciones -->
 <button type="button" data-viti-nav-toggle
     style="color: {{ themeColor(600) }}"
-    class="viti-nav-toggle inline-flex h-10 w-10 items-center justify-center rounded-lg transition hover:bg-white/60 hover:brightness-90"
+    class="viti-nav-toggle inline-flex h-10 w-10 items-center justify-center rounded-lg transition hover:bg-gray-100"
     aria-label="Abrir asistente Viti" title="Hablar con Viti">
     <span class="viti-nav-face" aria-hidden="true">@include('components.viti-robot')</span>
 </button>
@@ -97,20 +97,16 @@
         ->where('data->customer_id', $tenantIdForNotifications)
         ->count();
 @endphp
-<div x-data="{ open: false }" class="relative">
+<div id="vita-system-notifications" data-customer-id="{{ app('customer')->id }}" data-user-id="{{ auth()->id() }}" data-summary-url="{{ route('customers.notifications.summary', ['customer' => request()->route('customer')]) }}" x-data="{ open: false }" class="relative">
 
     <!-- TRIGGER -->
-    <button @click="open = !open"
+    <button aria-label="Notificaciones del sistema" @click="open = !open"
         style="color: {{ themeColor(600) }}"
-        class="relative inline-flex h-10 w-10 items-center justify-center rounded-lg transition hover:bg-white/60 hover:brightness-90">
+        class="relative inline-flex h-10 w-10 items-center justify-center rounded-lg transition hover:bg-white/60">
 
-        <i class="fa-solid fa-bell text-lg"></i>
+        <i class="fa-solid fa-bell text-lg" aria-hidden="true"></i>
 
-        @if ($tenantUnreadNotificationCount > 0)
-            <span class="absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-xs font-bold text-white">
-                {{ $tenantUnreadNotificationCount > 99 ? '99+' : $tenantUnreadNotificationCount }}
-            </span>
-        @endif
+        <span id="system-notification-badge" style="{{ $tenantUnreadNotificationCount ? '' : 'display:none' }}" @if(!$tenantUnreadNotificationCount) hidden @endif class="absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-xs font-bold text-white">{{ $tenantUnreadNotificationCount > 99 ? '99+' : $tenantUnreadNotificationCount }}</span>
 
     </button>
 
@@ -122,30 +118,11 @@
         class="absolute right-0 mt-2 w-80 max-w-[90vw] bg-white shadow-lg rounded-lg z-50 overflow-hidden">
 
         <div class="flex items-center justify-between px-4 py-3 text-sm font-semibold text-gray-700 border-b">
-            <span>Notificaciones</span>
-            @if ($tenantUnreadNotificationCount > 0)
-                <span class="rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-700">{{ $tenantUnreadNotificationCount }} nuevas</span>
-            @endif
+            <span>Notificaciones del sistema</span>
+            <span id="system-notification-count" @if(!$tenantUnreadNotificationCount) hidden @endif class="rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-700">{{ $tenantUnreadNotificationCount }} nuevas</span>
         </div>
-        <div class="max-h-96 overflow-y-auto">
-            @forelse ($tenantNotifications as $notification)
-                @php
-                    $notificationData = $notification->data;
-                @endphp
-                <div class="border-b border-gray-100 px-4 py-3 {{ $notification->unread() ? 'bg-blue-50' : 'bg-white' }}">
-                    <div class="flex items-start gap-2">
-                        <i class="fa-solid {{ ($notificationData['event'] ?? '') === 'cancelled' ? 'fa-calendar-xmark' : 'fa-calendar-check' }} mt-1" style="color: {{ themeColor(600) }}"></i>
-                        <a href="{{ route('customers.notifications.open', ['customer' => request()->route('customer'), 'notification' => $notification->id]) }}" class="min-w-0 flex-1 hover:underline">
-                            <p class="text-sm font-semibold text-gray-800">{{ $notificationData['title'] ?? 'Cita médica' }}</p>
-                            <p class="mt-0.5 truncate text-xs text-gray-600">{{ $notificationData['patient_name'] ?? 'Paciente' }} · {{ !empty($notificationData['starts_at']) ? \Illuminate\Support\Carbon::parse($notificationData['starts_at'])->timezone(config('app.timezone'))->format('d/m/Y H:i') : '—' }}</p>
-                            <p class="mt-1 text-xs text-gray-500">{{ $notificationData['message'] ?? '' }}</p>
-                        </a>
-                        @if ($notification->unread())<span class="mt-1 h-2 w-2 shrink-0 rounded-full bg-blue-600" title="No leída"></span>@endif
-                    </div>
-                </div>
-            @empty
-                <p class="px-4 py-6 text-center text-sm text-gray-500">No tienes notificaciones de citas.</p>
-            @endforelse
+        <div id="system-notification-list" class="max-h-96 overflow-y-auto">
+            @include('customer.notifications.dropdown')
         </div>
         <a href="{{ route('customers.notifications.index', ['customer' => request()->route('customer')]) }}"
             class="block border-t px-4 py-3 text-center text-sm font-semibold hover:bg-gray-50" style="color: {{ themeColor(700) }}">
@@ -159,8 +136,8 @@
 <!-- Chat -->
 <div x-data="{ open: false }" class="relative">
     <button type="button" @click="open = !open" style="color: {{ themeColor(600) }}"
-        class="relative inline-flex h-10 w-10 items-center justify-center rounded-lg transition hover:bg-white/60 hover:brightness-90" aria-label="Mensajes del chat" title="Chat interno">
-        <i class="fa-solid fa-comment text-lg"></i>
+        class="relative inline-flex h-10 w-10 items-center justify-center rounded-lg transition hover:bg-white/60" aria-label="Mensajes del chat" title="Chat interno">
+        <i class="fa-solid fa-comment text-lg" aria-hidden="true"></i>
         <span id="chat-nav-unread" class="absolute -right-0.5 -top-0.5 hidden min-w-5 h-5 items-center justify-center rounded-full bg-red-500 px-1 text-xs font-bold text-white"></span>
     </button>
     <div x-show="open" x-cloak @click.outside="open = false" x-transition
@@ -211,9 +188,9 @@
     });
 </script>
 
-                <a href="/" style="color: {{ themeColor(600) }}" class="inline-flex h-10 w-10 items-center justify-center rounded-lg transition hover:bg-white/60 hover:brightness-90"
+                <a href="/" style="color: {{ themeColor(600) }}" class="inline-flex h-10 w-10 items-center justify-center rounded-lg transition hover:bg-white/60"
                     target="_blank" rel="noopener noreferrer" aria-label="Ver web pública" title="Ver web pública">
-                    <i class="fa-solid fa-globe"></i>
+                    <i class="fa-solid fa-globe" aria-hidden="true"></i>
                 </a>
 
                 @php
@@ -226,8 +203,8 @@
 
                     <!-- TRIGGER -->
                     <button @click="open = !open" style="color: {{ themeColor(600) }}"
-                        class="inline-flex h-10 w-10 items-center justify-center rounded-lg transition hover:bg-white/60 hover:brightness-90" aria-label="Cambiar tema" title="Cambiar tema">
-                        <i class="fa-solid fa-brush text-lg"></i>
+                        class="inline-flex h-10 w-10 items-center justify-center rounded-lg transition hover:bg-white/60" aria-label="Cambiar tema" title="Cambiar tema">
+                        <i class="fa-solid fa-palette text-lg" aria-hidden="true"></i>
                     </button>
 
                     <!-- DROPDOWN -->
@@ -305,46 +282,51 @@
                     </div>
                 </div>
                 @endif
+                <div class="vita-clinic-account-menu">
                 <x-dropdown align="right" width="48" content-classes="bg-white overflow-hidden">
 
                     <x-slot name="trigger">
                         <button 
-                            class="inline-flex h-10 w-10 items-center justify-center rounded-lg text-sm font-medium transition hover:bg-white/60 hover:brightness-90" aria-label="Abrir perfil" title="Perfil">
-                            <div style="background-color: {{ themeColor(600) }}"
-                                class="w-6 h-6 rounded-full text-white flex items-center justify-center font-bold text-xl">
-                                {{ strtoupper(mb_substr(Auth::user()->name, 0, 1)) }}
+                            type="button" class="inline-flex h-10 w-10 items-center justify-center rounded-full transition hover:bg-white/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2" style="--tw-ring-color: {{ themeColor(500) }}" aria-label="Abrir perfil" title="{{ Auth::user()->name }}">
+                            <div style="background-color: {{ themeColor(50) }}; color: {{ themeColor(800) }}; border: 1px solid {{ themeColor(300) }}; width: 34px; height: 34px; font-size: 14px; line-height: 1; box-shadow: 0 1px 3px rgba(15, 23, 42, .08);"
+                                class="rounded-full flex items-center justify-center font-semibold">
+                                @php
+                    $avatarWords = preg_split('/\s+/u', trim(Auth::user()->name), -1, PREG_SPLIT_NO_EMPTY);
+                    $avatarInitials = count($avatarWords) > 1
+                        ? mb_substr($avatarWords[0], 0, 1) . mb_substr($avatarWords[1], 0, 1)
+                        : mb_substr($avatarWords[0] ?? '', 0, 2);
+                @endphp
+                {{ mb_strtoupper($avatarInitials) }}
                             </div>
-
-                           
                         </button>
                     </x-slot>
 
                     <x-slot name="content">
-                        <x-dropdown-link style="background-color: {{ themeColor(100) }}">
-                            <p>{{ Auth::user()->name }}</p>
+                        <x-dropdown-link style="background-color: {{ themeColor(50) }}">
+                            <p class="truncate font-semibold" title="{{ Auth::user()->name }}">{{ Auth::user()->name }}</p>
+                            <p class="mt-1 truncate text-xs text-gray-500" title="{{ Auth::user()->email }}">{{ Auth::user()->email }}</p>
 
 
                         </x-dropdown-link>
                         <hr>
                         <x-dropdown-link href="{{ route('customers.profile.index', ['customer' => request()->route('customer')]) }}">
 
-                            Perfil
+                            <i class="fa-regular fa-user mr-2" aria-hidden="true"></i>Perfil
                         </x-dropdown-link>
 
-                        <form method="POST" action="{{ route('logout') }}" class="border-t border-gray-100">
+                        <form method="POST" action="{{ route('logout') }}" class="border-t border-gray-100" style="margin: 0; padding: 0;">
                             @csrf
 
-                            <x-dropdown-link :href="route('logout')"
-                                class="rounded-b-md"
-                                onclick="event.preventDefault();
-                                         this.closest('form').requestSubmit();">
-                                Cerrar Sesión
-                            </x-dropdown-link>
+                            <button type="submit" class="flex w-full items-center gap-3 rounded-b-md px-4 py-2 text-left text-sm leading-5 text-red-600 transition hover:bg-red-50 focus:outline-none focus:bg-red-50 focus:ring-2 focus:ring-inset focus:ring-red-500">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width: 16px; height: 16px; flex-shrink: 0;"><path d="M9 4H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h4M14 8l4 4-4 4M8 12h10"/></svg>
+                                <span>Cerrar Sesión</span>
+                            </button>
                         </form>
 
                     </x-slot>
 
                 </x-dropdown>
+                </div>
 
             </div>
 
@@ -417,7 +399,7 @@
             </div>
         </div>
         <div id="vita-chat-messages" class="h-80 space-y-2 overflow-y-auto bg-gray-50 p-3"></div>
-        <div id="vita-chat-readonly" class="hidden border-t bg-gray-50 px-3 py-2 text-center text-xs text-gray-600">Saliste del grupo; puedes revisar el historial, pero no enviar mensajes.</div>
+        <div id="vita-chat-readonly" class="hidden border-t bg-gray-50 px-3 py-2 text-center text-xs text-gray-600">Solo lectura: puedes revisar el historial, pero no enviar mensajes.</div>
         <form id="vita-chat-form" class="relative flex items-end gap-2 border-t p-2">
             @csrf
             <input type="hidden" name="reply_to_id" id="vita-chat-reply-to">
@@ -859,7 +841,7 @@ document.addEventListener('DOMContentLoaded', () => {
         patientPanel.classList.toggle('hidden', !item?.patient);
         document.getElementById('vita-chat-patient-name').textContent = item?.patient || '';
         const rut = document.getElementById('vita-chat-patient-rut');
-        rut.textContent = item?.patient_rut ? `RUT: ${item.patient_rut}` : '';
+        rut.textContent = item?.patient_rut ? `${item.patient_rut}` : '';
         rut.classList.toggle('hidden', !item?.patient_rut);
         const patientLink = document.getElementById('vita-chat-patient-link');
         patientLink.classList.toggle('hidden', !item?.patient_url);
@@ -1044,9 +1026,30 @@ document.addEventListener('DOMContentLoaded', () => {
         event.preventDefault();
         if (messageInput.value.trim()) form.requestSubmit();
     });
+    let realtimeChatTimer;
+    window.addEventListener('vita:chat-sync', () => {
+        clearTimeout(realtimeChatTimer);
+        realtimeChatTimer = setTimeout(async () => {
+            await refresh();
+            if (!activeId || panel.classList.contains('hidden') || document.hidden) return;
+            const id = activeId;
+            try {
+                const response = await fetch(`${endpoint(dock.dataset.messagesUrl, id)}?after=0`, {headers:{Accept:'application/json'}});
+                if (response.ok && activeId === id) {
+                    const result = await response.json();
+                    const atBottom = messages.scrollHeight - messages.scrollTop - messages.clientHeight < 60;
+                    const scrollTop = messages.scrollTop;
+                    messages.replaceChildren();
+                    lastMessageId = 0;
+                    paintMessages(result.data || []);
+                    if (!atBottom) messages.scrollTop = scrollTop;
+                }
+            } catch (_) {}
+        }, 200);
+    });
     refresh();
     setInterval(async()=>{
-        if(window.Echo?.connector?.pusher?.connection?.state==='connected')return;
+        if(window.VitaUserRealtime?.ready)return;
         await refresh();
         if(!activeId||panel.classList.contains('hidden')||document.hidden)return;
         try{const response=await fetch(`${endpoint(dock.dataset.messagesUrl,activeId)}?after=${lastMessageId}`,{headers:{'Accept':'application/json'}});if(response.ok)paintMessages((await response.json()).data||[]);}catch(_){}

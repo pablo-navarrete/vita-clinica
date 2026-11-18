@@ -16,6 +16,10 @@ trait CreatesApplication
 
         $app->make(Kernel::class)->bootstrap();
 
+        $database = (string) $app['config']->get('database.connections.'.$app['config']->get('database.default').'.database');
+        \App\Support\TestingDatabaseGuard::assertIsolated(
+            (string) $app['config']->get('database.connections.'.$app['config']->get('database.default').'.driver'), $database);
+
         return $app;
     }
 }

@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Confirmar cita</title>
+@include('components.favicon')
 </head>
 <body style="margin:0;background:#f3f4f6;color:#1f2937;font-family:Arial,sans-serif">
     <main style="box-sizing:border-box;max-width:560px;margin:8vh auto;padding:28px;background:#fff;border-radius:16px;box-shadow:0 12px 40px rgba(15,23,42,.1)">

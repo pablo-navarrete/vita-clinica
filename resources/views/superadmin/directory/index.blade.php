@@ -1,0 +1,7 @@
+<x-app-layout><x-slot name="header"><h2 class="text-xl font-semibold text-gray-800">Directorio público de clientes</h2></x-slot>
+<div class="p-6"><div class="mx-auto max-w-7xl space-y-5 sm:px-6 lg:px-8">
+<p class="rounded-lg bg-white p-5 text-sm text-gray-600">Supervisión de publicaciones voluntarias. Suspender no modifica el consentimiento de la clínica. Levantar una suspensión no publica un perfil sin autorización.</p>
+@foreach($profiles as $profile)<section class="rounded-lg bg-white p-6 shadow-sm"><h3 class="font-semibold">{{ $profile->customer?->name ?? 'Cliente no disponible' }}</h3><p class="my-3 text-sm text-gray-500">{{ $profile->publication_enabled ? 'Autorización registrada' : 'Sin publicación autorizada' }} · {{ $profile->suspended_at ? 'Suspendida' : 'Sin suspensión' }}</p>
+<p class="mb-4 text-sm">{{ $profile->description }}</p>
+<form method="POST" action="{{ route('superadmin.directory.update',$profile->id) }}">@csrf @method('PUT')<input type="hidden" name="revision" value="{{ $profile->revision }}"><input type="hidden" name="suspend" value="{{ $profile->suspended_at ? 0 : 1 }}"><label class="block text-sm font-medium">Motivo<textarea name="reason" required maxlength="2000" rows="2" class="mt-2 w-full rounded-md border-gray-300"></textarea></label><button class="mt-3 rounded-md px-4 py-2 font-semibold text-white" style="background:{{ themeColor(600) }}">{{ $profile->suspended_at ? 'Levantar suspensión' : 'Suspender publicación' }}</button></form></section>@endforeach
+{{ $profiles->links() }}</div></div></x-app-layout>

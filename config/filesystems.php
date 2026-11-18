@@ -29,6 +29,19 @@ return [
     */
 
     'disks' => [
+        'signed_encounters' => [
+            'driver' => 'local',
+            'root' => storage_path('app/private/signed-encounters'),
+            'visibility' => 'private',
+            'throw' => true,
+        ],
+
+        'professional_signatures' => [
+            'driver' => 'local',
+            'root' => storage_path('app/private/professional-signatures'),
+            'visibility' => 'private',
+            'throw' => true,
+        ],
 
         'local' => [
             'driver' => 'local',

@@ -2,6 +2,12 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+Route::prefix('billing/flow')->middleware('throttle:120,1')->group(function(){
+    Route::post('card-return',[\App\Http\Controllers\FlowBillingCallbackController::class,'card']);
+    Route::post('payment',[\App\Http\Controllers\FlowBillingCallbackController::class,'payment']);
+    Route::post('payment-return',[\App\Http\Controllers\FlowBillingCallbackController::class,'returned']);
+    Route::post('recurring/{agreement}',[\App\Http\Controllers\FlowBillingCallbackController::class,'recurring'])->whereUuid('agreement');
+});
 
 /*
 |--------------------------------------------------------------------------

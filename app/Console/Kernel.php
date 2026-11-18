@@ -12,6 +12,12 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
+        $schedule->command('mi-salud:reconcile-patients')->everyMinute()->withoutOverlapping();
+        $schedule->command('patients:cleanup-registrations')->daily()->withoutOverlapping();
+        $schedule->command('signatures:cleanup')->hourly()->withoutOverlapping();
+        $schedule->command('flow:sync-fees')->hourly()->withoutOverlapping();
+        $schedule->command('flow:reconcile-subscriptions')->everyFiveMinutes()->withoutOverlapping();
+        $schedule->command('flow:send-fee-alerts')->hourly()->withoutOverlapping();
         // $schedule->command('inspire')->hourly();
         $schedule->command('appointments:update-status')
         ->everyFiveMinutes();

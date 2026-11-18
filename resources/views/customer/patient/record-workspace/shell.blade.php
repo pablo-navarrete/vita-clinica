@@ -4,9 +4,12 @@
         <div class="min-w-0">
             <p class="text-xs font-semibold uppercase tracking-wide" style="color: {{ themeColor(700) }}">Ficha clínica</p>
             <h1 class="break-words text-xl font-bold text-gray-900">{{ $patient->name }}</h1>
-            <p class="mt-1 text-xs text-gray-600">RUT {{ $patient->rut }} · {{ $patient->birth_date && !$patient->birth_date->isFuture() ? $patient->birth_date->age . ' años' : 'Edad no registrada' }}</p>
+            <p class="mt-1 text-xs text-gray-600">{{ app(\App\Services\Identification\PatientIdentification::class)->clinicalNumber($patient) }} · {{ $patient->birth_date && !$patient->birth_date->isFuture() ? $patient->birth_date->age . ' años' : 'Edad no registrada' }}</p>
         </div>
         <div class="flex flex-wrap items-center gap-2">
+            @if(auth()->user() && app(\App\Policies\PortalClinicalAccessPolicy::class)->manage(auth()->user(),$patient))
+                <a href="{{ route('patients.portal-access.index',['customer'=>request()->route('customer'),'id'=>$patient->id]) }}" class="rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs font-semibold text-gray-700">Acceso Mi Salud</a>
+            @endif
             <label class="clinical-ratio text-xs text-gray-600">Distribución
                 <select x-model="ratio" aria-label="Distribución de ficha y atención" class="ml-1 rounded-lg border-gray-300 py-1 text-sm">
                     <option value="50">50 / 50</option><option value="40">40 / 60</option><option value="60">60 / 40</option>

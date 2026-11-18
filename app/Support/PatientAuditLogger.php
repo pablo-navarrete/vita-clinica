@@ -52,7 +52,8 @@ class PatientAuditLogger
         string $action,
         string $section,
         array $before = [],
-        array $after = []
+        array $after = [],
+        bool $anonymous = false
     ): void {
         $changes = [];
 
@@ -76,7 +77,7 @@ class PatientAuditLogger
             'customer_id' => $patient->customer_id,
             'patient_id' => $patient->id,
             'clinic_branch_id' => self::branchId($patient),
-            'user_id' => auth()->id(),
+            'user_id' => $anonymous ? null : auth()->id(),
             'action' => $action,
             'section' => $section,
             'changes' => $changes,

@@ -32,7 +32,7 @@
         ];
     @endphp
 
-    <div class="py-12">
+    <div class="pb-12">
 
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
 
@@ -203,7 +203,7 @@
                                     <th>#</th>
 
                                     <th>Paciente</th>
-                                    <th>RUT</th>
+                                    <th>Identificación</th>
 
                                     <th>Especialidad</th>
 
@@ -317,6 +317,7 @@
 
                     <p
                         id="contact-patient-phone"
+                        data-phone-display
                         class="text-gray-800 flex-1">
 
                         —
@@ -519,7 +520,7 @@ class="px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition">
                     },
                     {
                         data: 'rut',
-                        name: 'patient.rut'
+                        name: 'patient.identification_label'
                     },
                     {
                         data: 'specialty',
@@ -689,7 +690,7 @@ function contactAppointment(patient) {
         patient.name ?? 'No registrado';
     
     document.getElementById('contact-patient-rut').textContent =
-        patient.rut ?? 'No registrado';
+        patient.identification_label ?? 'No registrado';
 
     document.getElementById('contact-patient-phone').textContent =
         patient.phone ?? 'No registrado';

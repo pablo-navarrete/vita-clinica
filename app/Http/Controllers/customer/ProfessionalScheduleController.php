@@ -15,6 +15,20 @@ use Yajra\DataTables\Facades\DataTables;
 
 class ProfessionalScheduleController extends Controller
 {
+    public function indexMine(Request $request)
+    {
+        $schedules = $this->myScheduleData($request)->getData();
+        $activeBranch = ClinicBranchContext::defaultBranch($request->user(), (int) app('customer')->id);
+        $customerId = (int) app('customer')->id;
+        $activeBranchId = $this->activeBranchId();
+        $canManageSchedules = ClinicBranchContext::canManageSchedulesInBranch($request->user(), $customerId, $activeBranchId);
+        $isHeadquarters = ClinicBranchContext::canAdministerAllBranches($request->user(), $customerId);
+        $branches = $isHeadquarters
+            ? ClinicBranchContext::centralAdministrationBranches($request->user(), $customerId)
+            : collect([$activeBranch]);
+        $professional = $request->user()->only(['id', 'name']);
+        return view('customer.user.schedules', compact('schedules', 'activeBranch', 'activeBranchId', 'canManageSchedules', 'isHeadquarters', 'branches', 'professional'));
+    }
 
     public function getSchedule($customer, $professional)
     {
@@ -95,6 +109,7 @@ class ProfessionalScheduleController extends Controller
     {
         $user = $request->user();
         $customerId = app('customer')->id;
+        abort_unless((int) $user->customer_id === (int) $customerId && (int) $user->status === 1, 403);
         $branchId = $this->activeBranchId();
 
         $schedules = ProfessionalSchedule::where('customer_id', $customerId)
@@ -361,8 +376,7 @@ class ProfessionalScheduleController extends Controller
     {
         $customerId = (int) app('customer')->id;
         $branchId = $this->activeBranchId();
-        $allowed = $request->user()?->roles()->whereNull('roles.customer_id')->where('roles.name', 'Super Administrador')->exists()
-            || ClinicBranchContext::hasPermissionInBranch($request->user(), $customerId, $branchId, 'schedules.manage');
+        $allowed = ClinicBranchContext::canManageSchedulesInBranch($request->user(), $customerId, $branchId);
         abort_unless($allowed, 403, 'No tienes permiso para administrar horarios en esta sede.');
     }
 
@@ -430,7 +444,7 @@ class ProfessionalScheduleController extends Controller
         $schedule = $scheduleQuery->firstOrFail();
 
         $query = Appointment::with([
-            'patient:id,name,phone,email,rut',
+            'patient:id,customer_id,clinic_branch_id,name,phone,email,rut',
             'specialty',
             'professional',
         ])
@@ -463,6 +477,7 @@ class ProfessionalScheduleController extends Controller
             ->orderBy('start_at');
 
         return DataTables::of($query)
+            ->editColumn('patient', fn ($row) => $row->patient ? app(\App\Services\Identification\PatientIdentification::class)->decorate($row->patient)->toArray() : null)
 
             /*
         |--------------------------------------------------------------------------
@@ -481,7 +496,7 @@ class ProfessionalScheduleController extends Controller
         */
             ->addColumn('rut', function ($appointment) {
 
-                return $appointment->patient?->rut ?? '-';
+                return $appointment->patient?->identification_label ?? '-';
             })
 
        
@@ -607,7 +622,7 @@ class ProfessionalScheduleController extends Controller
                 $id = $appointment->id;
                 $patientId = $appointment->patient?->id;
                 $patientName = $appointment->patient?->name ?? 'Sin nombre';
-                $patientRut = $appointment->patient?->rut ?? 'Sin RUT';
+                $patientRut = $appointment->patient?->identification_label ?? 'Sin RUT';
                 $patientPhone = $appointment->patient?->phone ?? 'Sin teléfono';
                 $patientEmail = $appointment->patient?->email ?? 'Sin correo';
 

@@ -1,0 +1,75 @@
+/* Shared field focus for VITA administration, clinics and Mi Salud. */
+.vita-patient-portal{--vita-field-focus:#3b82f6;--vita-field-ring:#dbeafe}
+/* rounded-lg from the clinic patient forms, including modal/plugin fields. */
+.vita-superadmin .vita-customer-form-grid,.vita-superadmin .vita-customer-fields-grid{grid-template-columns:minmax(0,1fr)}
+.vita-superadmin .vita-customer-form-grid> :is(.col-span-2,section){grid-column:1 / -1}
+.vita-superadmin .vita-customer-form-grid>*{min-width:0}
+@media(min-width:640px){.vita-superadmin :is(.vita-customer-form-grid,.vita-customer-fields-grid){grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(min-width:1024px){.vita-superadmin :is(.vita-customer-form-grid,.vita-customer-fields-grid){grid-template-columns:repeat(3,minmax(0,1fr))}}
+.vita-superadmin :is(input:not([type=hidden]):not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]):not([type=button]):not([type=submit]):not([type=reset]):not([type=image]),textarea,select),
+.vita-superadmin .select2-selection,
+.vita-superadmin .ts-control {
+    border-radius:8px !important;
+}
+.vita-superadmin input[type=checkbox]{border-radius:6px !important}
+.vita-superadmin input[type=radio]{border-radius:50% !important}
+:is(.vita-clinic-admin,.vita-superadmin,.vita-patient-portal) :is(input:not([type=hidden]):not([type=button]):not([type=submit]):not([type=reset]),textarea,select,[contenteditable=true],[role=combobox]):focus,
+:is(.vita-clinic-admin,.vita-superadmin,.vita-patient-portal) .select2-container:is(.select2-container--focus,.select2-container--open) .select2-selection,
+:is(.vita-clinic-admin,.vita-superadmin,.vita-patient-portal) .select2-container:focus-within .select2-selection,
+:is(.vita-clinic-admin,.vita-superadmin,.vita-patient-portal) .ts-control:focus-within,
+.vita-patient-portal .portal-country-trigger:focus {
+    border-color:var(--vita-field-focus) !important;
+    outline:2px solid transparent !important;
+    outline-offset:2px;
+    --tw-ring-color:var(--vita-field-focus) !important;
+    --tw-ring-shadow:0 0 0 3px var(--vita-field-ring) !important;
+    box-shadow:0 0 0 3px var(--vita-field-ring) !important;
+}
+:is(.vita-clinic-admin,.vita-superadmin,.vita-patient-portal) input:is([type=checkbox],[type=radio]) {
+    color:var(--vita-field-focus) !important;
+    accent-color:var(--vita-field-focus) !important;
+}
+/* Visually hidden rating radios display keyboard focus on their visible label. */
+.vita-patient-portal input:is([type=checkbox],[type=radio]){
+    -webkit-appearance:none;
+    appearance:none;
+    box-sizing:border-box;
+    display:inline-block;
+    width:18px;
+    height:18px;
+    min-height:18px;
+    padding:0;
+    border:1px solid #9ca3af;
+    background:#fff;
+    vertical-align:middle;
+    flex-shrink:0;
+    cursor:pointer;
+}
+.vita-patient-portal input[type=checkbox]{border-radius:6px}
+.vita-patient-portal input[type=radio]{border-radius:50%}
+.vita-patient-portal input:is([type=checkbox],[type=radio]):checked{
+    background-color:var(--vita-field-focus);
+    border-color:var(--vita-field-focus);
+}
+.vita-patient-portal input[type=checkbox]:checked{
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='m3.5 8 3 3 6-6' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-size:100% 100%;
+}
+.vita-patient-portal input[type=checkbox]:indeterminate{
+    background-color:var(--vita-field-focus);
+    background-image:linear-gradient(#fff,#fff);
+    background-size:9px 2px;
+    background-position:center;
+    background-repeat:no-repeat;
+}
+.vita-patient-portal input[type=radio]:checked{
+    background-image:radial-gradient(circle,#fff 0 3px,transparent 3.5px);
+}
+.vita-patient-portal input:is([type=checkbox],[type=radio]):disabled{opacity:.5;cursor:not-allowed}
+@media(forced-colors:active){.vita-patient-portal input:is([type=checkbox],[type=radio]){appearance:auto}}
+.vita-patient-portal .review-star-options input:focus-visible+label {
+    outline:2px solid transparent;
+    outline-offset:2px;
+    border-radius:50%;
+    box-shadow:0 0 0 3px var(--vita-field-ring);
+}

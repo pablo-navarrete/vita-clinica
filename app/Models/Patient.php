@@ -27,6 +27,11 @@ class Patient extends Model
         'birth_date' => 'date',
     ];
 
+    public function getIdentificationLabelAttribute($value): string
+    {
+        return $value ?? app(\App\Services\Identification\PatientIdentification::class)->masked($this);
+    }
+
     /*
     |--------------------------------------------------------------------------
     | Relationships

@@ -48,7 +48,13 @@ class LoginRequest extends FormRequest
         $this->ensureIsNotRateLimited();
 
         // Buscar usuario
-        $user = User::where('email', $this->email)->first();
+        $loginCustomer = app()->bound('customer') ? app('customer') : null;
+        if (!$loginCustomer && $this->route('customer')) {
+            $loginCustomer = Customer::where('domain', $this->route('customer'))->first();
+        }
+        $user = User::where('email', $this->email)
+            ->when($loginCustomer, fn ($query) => $query->where('customer_id', $loginCustomer->id))
+            ->first();
 
         if (!$user) {
             throw ValidationException::withMessages([

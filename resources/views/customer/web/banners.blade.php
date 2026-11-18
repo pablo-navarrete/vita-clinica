@@ -1,5 +1,13 @@
 @if ($publicBanners->isNotEmpty())
     <style>
+        #clinic-banner-carousel .banner-content { width:100%; max-width:1100px; }
+        #clinic-banner-carousel .banner-text { max-width:900px; }
+        #clinic-banner-carousel .banner-text[data-align="left"] { text-align:left; margin-right:auto; }
+        #clinic-banner-carousel .banner-text[data-align="center"] { text-align:center; margin-left:auto; margin-right:auto; }
+        #clinic-banner-carousel .banner-text[data-align="right"] { text-align:right; margin-left:auto; }
+        #clinic-banner-carousel .banner-button[data-align="left"] { text-align:left; }
+        #clinic-banner-carousel .banner-button[data-align="center"] { text-align:center; }
+        #clinic-banner-carousel .banner-button[data-align="right"] { text-align:right; }
         .banner-cta-button {
             transition: background-color .2s ease, border-color .2s ease, box-shadow .2s ease, transform .2s ease;
         }
@@ -34,25 +42,33 @@
                     <div class="carousel-item position-relative {{ $loop->first ? 'active' : '' }}" style="min-height: min(78vh, 760px);">
                         <img class="position-absolute w-100 h-100" src="{{ asset('storage/' . $banner->image_path) }}"
                             alt="{{ $banner->image_alt ?: $banner->title }}" style="object-fit: cover;">
-                        <div class="position-absolute w-100 h-100" style="inset:0; background:rgba(0,0,0,.45);"></div>
+                        @if($banner->dark_overlay)
+                            <div class="position-absolute w-100 h-100" data-banner-dark-overlay style="inset:0; background:rgba(0,0,0,.45);"></div>
+                        @endif
+                        @unless($banner->image_only)
                         <div class="carousel-caption d-flex flex-column align-items-center justify-content-center" style="inset:0;">
-                            <div class="p-3" style="max-width: 900px;">
+                            <div class="p-3 banner-content">
+                                <div class="banner-text" data-align="{{ $banner->text_alignment ?? 'center' }}">
                                 @if ($banner->subtitle)
                                     <h6 class="text-white text-uppercase mb-3" style="letter-spacing:3px;">{{ $banner->subtitle }}</h6>
                                 @endif
                                 <h1 class="display-3 text-capitalize text-white mb-3">{{ $banner->title }}</h1>
                                 @if ($banner->description)
-                                    <p class="mx-md-5 px-md-5">{{ $banner->description }}</p>
+                                    <p>{{ $banner->description }}</p>
                                 @endif
+                                </div>
                                 @if ($banner->button_text && $banner->button_url)
+                                    <div class="banner-button" data-align="{{ $banner->button_alignment ?? 'center' }}">
                                     <a class="banner-cta-button btn py-3 px-4 mt-3 text-white" href="{{ $banner->button_url }}"
                                         @if($banner->button_url === '#publicBookingModal' && $websiteNavigationButton?->public_booking_enabled) data-target="#publicBookingModal" data-toggle="modal" @endif
                                         style="background-color: {{ themeColor(600) }}; border-color: {{ themeColor(600) }};">
                                         {{ $banner->button_text }}
                                     </a>
+                                    </div>
                                 @endif
                             </div>
                         </div>
+                        @endunless
                     </div>
                 @endforeach
             </div>

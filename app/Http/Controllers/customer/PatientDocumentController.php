@@ -16,6 +16,7 @@ class PatientDocumentController extends Controller
 {
     public function store(Request $request, $customer, $patientId, $encounterId)
     {
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($request, $customer, $patientId, $encounterId) {
         $customerId = (int) app('customer')->id;
         $doctor = $request->user();
         abort_unless(
@@ -32,6 +33,7 @@ class PatientDocumentController extends Controller
             ->where('customer_id', $customerId)
             ->where('patient_id', $patient->id)
             ->where('status', 1)
+            ->lockForUpdate()
             ->with('appointment')
             ->findOrFail($encounterId);
         $responsibleProfessionalId = $encounter->professional_id ?? $encounter->appointment?->professional_id;
@@ -99,6 +101,7 @@ class PatientDocumentController extends Controller
         }
 
         return back()->with('success', 'Documento agregado a la ficha clínica y vinculado a la atención.');
+        });
     }
 
     public function download($customer, $patientId, $documentId)
@@ -108,6 +111,8 @@ class PatientDocumentController extends Controller
             ->where('customer_id', $customerId)
             ->where('patient_id', $patientId)
             ->findOrFail($documentId);
+
+        if ($response = app(\App\Services\Signatures\SignedAttachmentStore::class)->responseForDocument($document, false)) return $response;
 
         abort_unless(Storage::disk($document->disk)->exists($document->path), 404);
 
@@ -125,8 +130,6 @@ class PatientDocumentController extends Controller
             ->where('patient_id', $patientId)
             ->findOrFail($documentId);
 
-        abort_unless(Storage::disk($document->disk)->exists($document->path), 404);
-
         $extension = strtolower(pathinfo($document->original_name, PATHINFO_EXTENSION));
         $previewTypes = [
             'pdf' => 'application/pdf',
@@ -138,6 +141,9 @@ class PatientDocumentController extends Controller
         if (!isset($previewTypes[$extension])) {
             return $this->download($customer, $patientId, $documentId);
         }
+
+        if ($response = app(\App\Services\Signatures\SignedAttachmentStore::class)->responseForDocument($document, true)) return $response;
+        abort_unless(Storage::disk($document->disk)->exists($document->path), 404);
 
         $safeFilename = rawurlencode(basename($document->original_name));
 

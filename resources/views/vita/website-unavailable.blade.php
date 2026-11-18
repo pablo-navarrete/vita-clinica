@@ -1,0 +1,2 @@
+<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>VITA</title>@include('components.favicon')
+</head><body style="margin:0;min-height:100vh;display:grid;place-items:center;background:#f8fafc;font-family:system-ui;color:#334155"><main style="padding:30px;text-align:center"><h1>Estamos preparando algo para ti.</h1><p>La web de VITA estará disponible próximamente.</p><a href="{{ route('login') }}" style="color:#1d4ed8">Iniciar sesión</a></main></body></html>

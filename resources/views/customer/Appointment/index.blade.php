@@ -121,7 +121,7 @@
 @endpush
 
 @section('content')
-    <div class="py-12">
+    <div class="pb-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
 
             <div class="bg-white shadow-sm rounded-lg">
@@ -285,12 +285,15 @@
 
                         @foreach ($patients as $patient)
                             <option value="{{ $patient->id }}">
-                                {{ $patient->rut }} - {{ $patient->name }}
+                                {{ $patient->identification_label }} - {{ $patient->name }}
                             </option>
                         @endforeach
 
 
                     </select>
+                    @if($canCreatePatientFromAgenda)
+                    <button type="button" id="agenda-create-patient" class="mt-2 text-sm font-semibold hover:underline" style="color: {{ themeColor(600) }}">Crear paciente</button>
+                    @endif
 
                 </div>
                 <div>
@@ -584,6 +587,9 @@
 
 
     </div>
+@if($canCreatePatientFromAgenda)
+    @include('customer.patient.partials.form-modal')
+@endif
 @endsection
 
 @push('styles')
@@ -2042,3 +2048,11 @@ whatsapp_consent: document.getElementById('appointmentWhatsappConsent').checked,
         }
     </script>
 @endpush
+
+@if($canCreatePatientFromAgenda)
+@push('scripts')
+<script src="{{ asset('js/patient-form.js').'?v='.filemtime(public_path('js/patient-form.js')) }}" defer></script>
+<script src="{{ asset('js/patient-portal-autofill.js').'?v='.filemtime(public_path('js/patient-portal-autofill.js')) }}" defer></script>
+<script src="{{ asset('js/agenda-patient-form.js').'?v='.filemtime(public_path('js/agenda-patient-form.js')) }}" defer></script>
+@endpush
+@endif

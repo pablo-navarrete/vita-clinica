@@ -6,14 +6,14 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $page->title }} | {{ app('customer')->name }}</title>
     <link rel="preconnect" href="https://fonts.gstatic.com">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.bunny.net/css?family=figtree:400,500,600,700&display=swap" rel="stylesheet">
     <link href="{{ asset('css/style.css') }}" rel="stylesheet">
     @include('customer.web.theme-colors')
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/summernote@0.9.0/dist/summernote-lite.min.css" rel="stylesheet">
     <style>
         [hidden], .hidden { display: none !important; }
-        body { background: #fff; font-family: Poppins, sans-serif; }
+        body { background: #fff; font-family: Figtree, sans-serif; }
         .site-page-content { min-height: 55vh; padding: 0 1rem 3rem; }
         .site-page-banner { position: relative; display: flex; width: 100vw; min-height: 320px; align-items: center; justify-content: center; margin: 0 calc(50% - 50vw) 3rem; padding: 2rem 1rem; background: {{ themeColor(700) }} center/cover no-repeat; }
         .site-page-banner::before { position: absolute; inset: 0; background: rgba(0,0,0,.42); content: ''; }
@@ -98,6 +98,8 @@
             .icon-picker-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .35rem; margin: .6rem .25rem; }
         }
     </style>
+@include('components.phone-assets')
+@include('components.favicon')
 </head>
 <body>
     @include('customer.web.menu')

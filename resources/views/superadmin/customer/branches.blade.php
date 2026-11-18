@@ -2,35 +2,37 @@
     <x-slot name="header">
         <div class="flex flex-wrap items-center justify-between gap-3">
             <h2 class="text-xl font-semibold leading-tight text-gray-800">Sedes de {{ $customer->name }}</h2>
-            <a href="{{ route('superadmin.customer') }}" class="rounded-md bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200">Volver a clínicas</a>
+            <a href="{{ route('superadmin.customer') }}" class="rounded-md bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200">Volver a clientes</a>
         </div>
     </x-slot>
 
-    <div class="py-12">
+    <div class="p-6" x-data="branchEditor()">
         <div class="mx-auto max-w-7xl space-y-6 sm:px-6 lg:px-8">
-            @if (session('success'))
-                <div class="rounded-md bg-green-100 px-4 py-3 text-green-800">{{ session('success') }}</div>
-            @endif
+            
 
             <div class="overflow-hidden bg-white shadow-sm sm:rounded-lg">
                 <div class="p-6 text-gray-900">
                     <div class="mb-6 rounded-lg border border-gray-200 p-5">
                         <h3 class="mb-4 text-lg font-semibold text-gray-800">Agregar sede</h3>
+                        @if($subscription)
+                            <p class="mb-4 rounded-lg bg-blue-50 p-3 text-sm text-blue-800">Sedes activas: {{ $branches->where('status', true)->count() }} de {{ $subscription->branch_quantity }} contratadas, incluida la principal. Las sedes inactivas no ocupan cupo.</p>
+                        @endif
+                        @error('branch_limit')<p role="alert" class="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{{ $message }}</p>@enderror
                         <form method="POST" action="{{ route('superadmin.customers.branches.store', $customer) }}" class="grid gap-4 md:grid-cols-3">
                             @csrf
                             <div>
                                 <label for="branch-name" class="mb-1 block text-sm font-medium text-gray-700">Nombre de la sede</label>
-                                <input id="branch-name" name="name" value="{{ old('name') }}" required maxlength="255" class="w-full rounded border border-gray-300 px-3 py-2" placeholder="Ej. Sede Centro">
+                                <input id="branch-name" name="name" value="{{ $errors->editBranch->any() ? '' : old('name') }}" required maxlength="255" class="w-full rounded border border-gray-300 px-3 py-2" placeholder="Ej. Sede Centro">
                                 @error('name')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
                             </div>
                             <div>
                                 <label for="branch-address" class="mb-1 block text-sm font-medium text-gray-700">Dirección</label>
-                                <input id="branch-address" name="address" value="{{ old('address') }}" maxlength="255" class="w-full rounded border border-gray-300 px-3 py-2" placeholder="Calle y número">
+                                <input id="branch-address" name="address" value="{{ $errors->editBranch->any() ? '' : old('address') }}" maxlength="255" class="w-full rounded border border-gray-300 px-3 py-2" placeholder="Calle y número">
                                 @error('address')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
                             </div>
                             <div>
                                 <label for="branch-phone" class="mb-1 block text-sm font-medium text-gray-700">Teléfono</label>
-                                <input id="branch-phone" name="phone" value="{{ old('phone') }}" maxlength="50" class="w-full rounded border border-gray-300 px-3 py-2" placeholder="Teléfono de contacto">
+                                <input id="branch-phone" name="phone" value="{{ $errors->editBranch->any() ? '' : old('phone') }}" maxlength="50" class="w-full rounded border border-gray-300 px-3 py-2" placeholder="Teléfono de contacto">
                                 @error('phone')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
                             </div>
                             <div class="md:col-span-3">
@@ -43,7 +45,7 @@
 
                     <h3 class="mb-4 text-lg font-semibold text-gray-800">Sedes registradas</h3>
                     @if ($branches->isEmpty())
-                        <p class="mb-4 rounded-md bg-gray-50 p-4 text-sm text-gray-600">Esta clínica no tiene sedes. El inicio de sesión y las citas seguirán funcionando sin solicitar una selección.</p>
+                        <p class="mb-4 rounded-md bg-gray-50 p-4 text-sm text-gray-600">Este cliente no tiene sedes. El inicio de sesión y las citas seguirán funcionando sin solicitar una selección.</p>
                     @endif
                     <div class="overflow-x-auto">
                         <table id="branches-table" class="min-w-full display responsive nowrap rounded-xl overflow-hidden">
@@ -63,7 +65,7 @@
                                     <td></td>
                                     <td>{{ $branch->name }}</td>
                                     <td>{{ $branch->address ?: '—' }}</td>
-                                    <td>{{ $branch->phone ?: '—' }}</td>
+                                    <td><span data-phone-display>{{ $branch->phone ?: '—' }}</span></td>
                                     <td>
                                         <button type="button"
                                             class="toggle-branch-status px-2 py-1 rounded text-xs text-white {{ $branch->status ? 'bg-green-500' : 'bg-red-500' }}"
@@ -74,6 +76,10 @@
                                         </button>
                                     </td>
                                     <td>
+                                        <button type="button" class="mr-2 text-blue-500 hover:text-blue-700" title="Editar sede" aria-label="Editar sede"
+                                            @click="edit(@js(['id' => $branch->id, 'name' => $branch->name, 'address' => $branch->address, 'phone' => $branch->phone]))">
+                                            <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>
+                                        </button>
                                         <form method="POST" action="{{ route('superadmin.customers.branches.destroy', [$customer, $branch->id]) }}" class="inline branch-delete-form">
                                             @csrf
                                             @method('DELETE')
@@ -88,23 +94,55 @@
                         </table>
                     </div>
                     @if ($branches->isNotEmpty())
-                        <p class="mt-3 text-sm text-gray-500">Las sedes inactivas no aparecerán al iniciar sesión ni estarán disponibles para nuevas citas. La clínica debe conservar al menos una sede activa.</p>
+                        <p class="mt-3 text-sm text-gray-500">Las sedes inactivas no aparecerán al iniciar sesión ni estarán disponibles para nuevas citas. El cliente debe conservar al menos una sede activa.</p>
                     @endif
                 </div>
+            </div>
+        </div>
+        <div x-cloak x-show="open" @keydown.escape.window="close()" @click.self="close()"
+            class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-labelledby="edit-branch-title">
+            <div class="w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-xl bg-white shadow-xl" @click.stop>
+                <div class="border-b px-6 py-4" style="background-color: {{ themeColor(100) }}"><h3 id="edit-branch-title" class="text-lg font-semibold text-gray-800">Editar sede</h3></div>
+                <form method="POST" :action="updateUrl" class="p-6">
+                    @csrf @method('PUT')
+                    <input type="hidden" name="_editing_branch_id" :value="form.id">
+                    <div class="space-y-4">
+                        <div><label for="edit-branch-name" class="mb-1 block text-sm font-medium text-gray-700">Nombre de la sede</label><input x-ref="editName" id="edit-branch-name" name="name" x-model="form.name" required maxlength="255" class="w-full rounded border border-gray-300 px-3 py-2">@error('name', 'editBranch')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror</div>
+                        <div><label for="edit-branch-address" class="mb-1 block text-sm font-medium text-gray-700">Dirección</label><input id="edit-branch-address" name="address" x-model="form.address" maxlength="255" class="w-full rounded border border-gray-300 px-3 py-2">@error('address', 'editBranch')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror</div>
+                        <div><label for="edit-branch-phone" class="mb-1 block text-sm font-medium text-gray-700">Teléfono</label><input id="edit-branch-phone" name="phone" type="tel" data-vita-phone x-model="form.phone" maxlength="50" class="w-full rounded border border-gray-300 px-3 py-2">@error('phone', 'editBranch')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror</div>
+                    </div>
+                    <div class="mt-6 flex justify-end gap-3 border-t pt-5"><button type="button" @click="close()" class="rounded bg-gray-100 px-4 py-2 font-medium text-gray-700">Cancelar</button><button type="submit" class="rounded px-4 py-2 font-semibold text-white hover:brightness-90" style="background-color: {{ themeColor(600) }}">Guardar cambios</button></div>
+                </form>
             </div>
         </div>
     </div>
 @push('scripts')
 <script>
+    function branchEditor() {
+        return {
+            open: @js($errors->editBranch->any()),
+            form: {
+                id: @js($errors->editBranch->any() ? old('_editing_branch_id') : null),
+                name: @js($errors->editBranch->any() ? old('name', '') : ''),
+                address: @js($errors->editBranch->any() ? old('address', '') : ''),
+                phone: @js($errors->editBranch->any() ? old('phone', '') : ''),
+            },
+            trigger: null,
+            get updateUrl() {
+                return @js(route('superadmin.customers.branches.update', [$customer, '__ID__'])).replace('__ID__', encodeURIComponent(this.form.id));
+            },
+            init() { if (this.open) this.$nextTick(() => this.$refs.editName.focus()); },
+            edit(branch) {
+                this.trigger = document.activeElement;
+                this.form = {id: branch.id, name: branch.name, address: branch.address || '', phone: branch.phone || ''};
+                this.open = true;
+                this.$nextTick(() => this.$refs.editName.focus());
+            },
+            close() { if (!this.open) return; this.open = false; this.trigger?.focus(); },
+        };
+    }
     $(function () {
-        @if (session('error'))
-            Swal.fire({
-                icon: 'error',
-                title: 'No se pudo realizar la acción',
-                text: @json(session('error')),
-                confirmButtonText: 'Entendido'
-            });
-        @endif
+        
 
         $('#branches-table').DataTable({
             responsive: true,

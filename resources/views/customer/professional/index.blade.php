@@ -6,7 +6,7 @@
     </h2>
 @endsection
 @section('content')
-    <div class="py-12">
+    <div class="pb-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
 
@@ -241,22 +241,7 @@
 
                                     </div>
 
-                                    {{-- Rut --}}
-                                    <div>
-
-                                        <label class="block text-sm font-medium text-gray-700 mb-1">
-                                            Rut
-                                        </label>
-
-                                        <input type="text" x-model="form.rut" @input="clearError('rut')"
-                                            class="w-full rounded-lg border-gray-300"
-                                            placeholder="con punto y guion ej. 99.999.999-9">
-
-                                        <template x-if="errors.rut">
-                                            <p class="text-xs text-red-500 mt-1" x-text="errors.rut[0]"></p>
-                                        </template>
-
-                                    </div>
+                                    @include('components.identification-fields', ['kind'=>'user'])
 
                                     {{-- Celular --}}
                                     <div>
@@ -265,7 +250,7 @@
                                             Celular
                                         </label>
 
-                                        <input type="text" x-model="form.phone" @input="clearError('phone')"
+                                        <input type="text" data-vita-phone x-model="form.phone" @input="clearError('phone')"
                                             class="w-full rounded-lg border-gray-300" placeholder="ej. +569 56565566">
 
                                         <template x-if="errors.phone">
@@ -378,7 +363,7 @@
                                     @endif
 
                                     {{-- Especialidades --}}
-                                    <div class="md:col-span-2" x-show="!isEdit && isDoctorSelected()" x-cloak>
+                                    <div class="md:col-span-2">
 
                                         <label class="block text-sm font-medium text-gray-700 mb-1" x-text="isEdit ? 'Especialidades de la sede actual' : 'Especialidades para una sede'"></label>
                                         <div class="mb-3" x-show="!isEdit">
@@ -449,197 +434,7 @@
 
 
     <!-- MODAL HORARIOS -->
-    <div x-cloak x-data="ProfessionalScheduleModal()" x-ref="scheduleComponent" x-show="show"
-        class="fixed inset-0 flex items-center justify-center bg-black/50 z-50 overflow-y-auto p-4">
-
-        <div class="bg-white rounded-lg shadow-lg w-full max-w-lg max-h-[90vh] flex flex-col">
-
-            <!-- HEADER -->
-            <div class="px-6 py-4 border-b rounded-t-lg"
-                style="
-                                    background-color: {{ themeColor(100) }};
-                                    border-color: {{ themeColor(200) }};
-                                ">
-
-                <h2 class="text-lg font-bold">
-                    Horarios del usuario
-                </h2>
-
-                <p class="text-sm text-gray-600 mt-1" x-text="professional?.name"></p>
-                @if ($isHeadquarters && $branches->count() > 1)
-                    <label class="mt-3 block text-xs font-medium text-gray-600">Sede de los horarios</label>
-                    <select x-model="branchId" @change="changeBranch()" class="mt-1 w-full rounded-lg border-gray-300 text-sm">
-                        @foreach ($branches as $branch)
-                            <option value="{{ $branch->id }}">{{ $branch->name }}</option>
-                        @endforeach
-                    </select>
-                @else
-                    <p class="mt-2 text-xs font-medium text-gray-600">Sede: {{ $activeBranch?->name ?? 'Sin sede seleccionada' }}</p>
-                @endif
-
-            </div>
-
-            <!-- BODY -->
-            <div class="p-6 space-y-4 overflow-y-auto flex-1">
-
-                <!-- Día -->
-                <div>
-
-                    <label class="block text-sm font-medium mb-1">
-                        Día
-                    </label>
-
-                    <select x-model="form.day_of_week" class="w-full rounded-lg border-gray-300">
-
-                        <option value="">Seleccione</option>
-                        <option value="1">Lunes</option>
-                        <option value="2">Martes</option>
-                        <option value="3">Miércoles</option>
-                        <option value="4">Jueves</option>
-                        <option value="5">Viernes</option>
-                        <option value="6">Sábado</option>
-                        <option value="0">Domingo</option>
-
-                    </select>
-
-                </div>
-
-                <!-- Desde -->
-                <div>
-
-                    <label class="block text-sm font-medium mb-1">
-                        Desde
-                    </label>
-
-                    <input type="time" x-model="form.start_time" class="w-full rounded-lg border-gray-300">
-
-                </div>
-
-                <!-- Hasta -->
-                <div>
-
-                    <label class="block text-sm font-medium mb-1">
-                        Hasta
-                    </label>
-
-                    <input type="time" x-model="form.end_time" class="w-full rounded-lg border-gray-300">
-
-                </div>
-
-                <div>
-
-                    <button @click="save()" style="background-color: {{ themeColor(600) }}"
-                        class="text-white px-4 py-2 rounded">
-
-                        Agregar horario
-
-                    </button>
-
-                </div>
-
-                <hr>
-
-                <!-- Aquí después mostraremos los horarios -->
-                <hr>
-
-                <!-- Loader -->
-                <div x-show="loading" class="flex justify-center py-6">
-                    <i class="fa-solid fa-spinner fa-spin text-2xl text-gray-500"></i>
-                </div>
-
-                <!-- Horarios -->
-                <div x-show="!loading">
-
-                    <!-- SIN HORARIOS -->
-                    <template x-if="!loading && schedules.length === 0">
-
-                        <div class="bg-gray-50 border border-gray-200 rounded-lg p-5 text-center">
-
-                            <i class="fa-regular fa-calendar-xmark text-gray-400 text-2xl mb-2"></i>
-
-                            <p class="text-sm text-gray-500">
-                                No hay horarios registrados.
-                            </p>
-
-                        </div>
-
-                    </template>
-
-                    <template x-for="group in scheduleGroups()" :key="group.branch">
-                        <section class="mb-4 last:mb-0">
-                            <h4 class="mb-2 rounded-md bg-gray-100 px-3 py-2 text-sm font-semibold text-gray-700" x-text="group.branch"></h4>
-                            <template x-for="schedule in group.items" :key="schedule.id">
-                        <div class="flex items-center justify-between border rounded-lg p-3 mb-2">
-
-                            <!-- ICONO + INFORMACIÓN -->
-                            <div class="flex items-center gap-3">
-
-                                <!-- ICONO -->
-                                <div class="w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center"
-                                    style="background-color: {{ themeColor(100) }}">
-                                    <i class="fa-regular fa-calendar-days" style="color: {{ themeColor(600) }}"></i>
-                                </div>
-
-                                <!-- DÍA Y HORARIO -->
-                                <div>
-
-                                    <p class="font-medium text-gray-800" x-text="days[schedule.day_of_week]"></p>
-                                    <p class="text-xs text-gray-500" x-text="schedule.branch_name"></p>
-
-                                    <p class="text-sm text-gray-500">
-
-                                        <span x-text="schedule.start_time.substring(0, 5)"></span>
-
-                                        <span class="mx-1">-</span>
-
-                                        <span x-text="schedule.end_time.substring(0, 5)"></span>
-
-                                    </p>
-
-                                    <p x-show="schedule.future_appointments_count > 0"
-                                        class="mt-1 text-xs text-amber-700">
-                                        Tiene <span x-text="schedule.future_appointments_count"></span>
-                                        cita(s) futura(s).
-                                    </p>
-
-                                </div>
-
-                            </div>
-
-                            <!-- BOTÓN ELIMINAR -->
-                            <div class="flex items-center gap-3">
-                                <button x-show="canManageSchedule(schedule)" class="text-red-500 hover:text-red-700 transition" @click="remove(schedule)" title="Eliminar horario">
-                                    <i class="fa-solid fa-trash"></i>
-                                </button>
-                                <span x-show="!canManageSchedule(schedule)" class="text-xs text-gray-400">Solo consulta</span>
-                            </div>
-
-                        </div>
-                            </template>
-                        </section>
-                    </template>
-
-                </div>
-
-            </div>
-
-            <!-- FOOTER -->
-            <div class="px-6 py-4 border-t flex justify-end">
-
-                <button @click="close()" class="bg-gray-600 text-white px-4 py-2 rounded">
-
-                    Cerrar
-
-                </button>
-
-            </div>
-
-        </div>
-
-    </div>
-
-
-
+    @include('customer.user.partials.schedule-modal')
     <!-- MODAL VER PROFESIONAL -->
 
     <div x-cloak x-data="ProfessionalViewModal()" x-ref="viewProfessionalComponent" x-show="open"
@@ -677,10 +472,10 @@
                     <!-- RUT -->
                     <div>
                         <label class="block text-sm font-medium text-gray-500">
-                            Rut
+                            Identificación
                         </label>
 
-                        <p class="mt-1 text-gray-900" x-text="professional?.rut || '-'"></p>
+                        <p class="mt-1 text-gray-900" x-text="professional?.identification_display || professional?.rut || '-'"></p>
                     </div>
 
                     <!-- Teléfono -->
@@ -689,7 +484,7 @@
                             Celular
                         </label>
 
-                        <p class="mt-1 text-gray-900" x-text="professional?.phone || '-'"></p>
+                        <p data-phone-display class="mt-1 text-gray-900" x-text="professional?.phone || '-'"></p>
                     </div>
 
                     <!-- Correo -->
@@ -1818,6 +1613,7 @@
                 openModal(data) {
 
                     this.professional = data;
+                    VitaIdentification.load(`/users/${data.id}/identification`,this.professional).catch(error=>Swal.fire({icon:'error',text:error.message}));
 
                     this.schedules = [];
                     this.activeBranchId = Number(data?.branches_data?.[0]?.id || 0);
@@ -1921,6 +1717,7 @@
                     specialty_branch_id: String(defaultSpecialtyBranchId || ''),
                     status: '1',
                     rut: '',
+                    ...VitaIdentification.defaults(),
                     phone: ''
                 },
 
@@ -1943,6 +1740,7 @@
                 create() {
 
                     this.isEdit = false;
+                    this.identificationLoadFailed = false;
 
                     this.form = {
                         id: null,
@@ -1955,6 +1753,7 @@
                         specialty_branch_id: String(defaultSpecialtyBranchId || ''),
                         status: '1',
                         rut: '',
+                    ...VitaIdentification.defaults(),
                         phone: ''
                     };
                     selectedSpecialties = [];
@@ -1970,7 +1769,7 @@
 
                 edit(data) {
 
-                    console.log('Profesional recibido:', data);
+                    this.identificationLoadFailed = false;
 
                     this.isEdit = true;
 
@@ -1995,6 +1794,7 @@
                         id: Number(data.id),
                         name: data.name ?? '',
                         email: data.email ?? '',
+                        ...VitaIdentification.defaults(),
                         rut: data.rut ?? '',
                         phone: data.phone ?? '',
                         password: '',
@@ -2006,6 +1806,8 @@
                     };
 
                     this.errors = {};
+
+                    VitaIdentification.load(`/users/${data.id}/identification`,this.form).catch(error => {this.identificationLoadFailed=true; Swal.fire({icon:'error',text:error.message});});
 
                     // Guardar especialidades seleccionadas
                     selectedSpecialties = specialties.map(s => String(s.id));
@@ -2072,6 +1874,7 @@
                         specialty_branch_id: String(defaultSpecialtyBranchId || ''),
                         status: '1',
                         rut: '',
+                    ...VitaIdentification.defaults(),
                         phone: ''
                     };
 
@@ -2084,8 +1887,10 @@
                 },
 
                 submit() {
+                    if(this.identificationLoadFailed || VitaIdentification.isLoading(this.form))return;
 
                     const payload = { ...this.form };
+                    delete payload.rut;
                     if (this.isEdit) {
                         delete payload.role_ids;
                         delete payload.branch_ids;
@@ -2172,269 +1977,7 @@
         });
 
 
-        function ProfessionalScheduleModal() {
-
-            return {
-
-                show: false,
-                loading: false,
-                professional: null,
-                branchId: @json((int) ($activeBranchId ?? 0)),
-                isHeadquarters: @json($isHeadquarters),
-
-                schedules: [],
-                scheduleGroups() {
-                    const groups = new Map();
-                    this.schedules.forEach(schedule => {
-                        const branch = schedule.branch_name || 'Sede sin nombre';
-                        if (!groups.has(branch)) groups.set(branch, []);
-                        groups.get(branch).push(schedule);
-                    });
-                    return Array.from(groups, ([branch, items]) => ({ branch, items }));
-                },
-
-                days: {
-                    0: 'Domingo',
-                    1: 'Lunes',
-                    2: 'Martes',
-                    3: 'Miércoles',
-                    4: 'Jueves',
-                    5: 'Viernes',
-                    6: 'Sábado'
-                },
-                form: {
-                    day_of_week: '',
-                    start_time: '',
-                    end_time: ''
-                },
-
-                open(data) {
-                    this.professional = data;
-                    this.branchId = @json((int) ($activeBranchId ?? 0));
-                    this.show = true;
-
-                    this.loadSchedules();
-                },
-
-                close() {
-                    this.show = false;
-                    this.professional = null;
-
-                    this.schedules = [];
-
-                    this.form = {
-                        day_of_week: '',
-                        start_time: '',
-                        end_time: ''
-                    };
-                },
-
-                changeBranch() {
-                    this.form = { day_of_week: '', start_time: '', end_time: '' };
-                    this.loadSchedules();
-                },
-
-                canManageSchedule(schedule) {
-                    return this.isHeadquarters || Number(schedule.clinic_branch_id) === Number(this.branchId);
-                },
-
-                save() {
-                    fetch(`/professional/${this.professional.id}/schedule`, {
-                            method: 'POST',
-
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Accept': 'application/json',
-                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                            },
-
-                            body: JSON.stringify({ ...this.form, clinic_branch_id: Number(this.branchId) })
-
-                        })
-                        .then(async res => {
-
-                            const data = await res.json();
-
-                            if (!res.ok) {
-
-                                let message = 'Ocurrió un error al guardar el horario';
-
-
-                                if (data.message) {
-
-                                    message = data.message;
-
-                                }
-
-
-                                if (data.errors) {
-
-                                    message = Object.values(data.errors)
-                                        .flat()
-                                        .join('<br>');
-
-                                }
-
-
-                                Swal.fire({
-                                    icon: 'error',
-                                    title: 'Error',
-                                    html: message,
-                                    confirmButtonText: 'Aceptar'
-                                });
-
-                                return;
-                            }
-
-                            Swal.fire({
-                                toast: true,
-                                position: 'top-end',
-                                icon: 'success',
-                                title: 'Horario agregado',
-                                showConfirmButton: false,
-                                timer: 1500
-                            });
-
-                            // Limpiar formulario
-                            this.form = {
-                                day_of_week: '',
-                                start_time: '',
-                                end_time: ''
-                            };
-                            // Recargar horarios
-                            this.loadSchedules();
-
-                        });
-
-                },
-
-                loadSchedules() {
-
-                    this.loading = true;
-
-                    fetch(`/professional/${this.professional.id}/schedule?all_branches=1`)
-                        .then(res => res.json())
-                        .then(data => {
-                            this.schedules = data;
-                        })
-                        .finally(() => {
-                            this.loading = false;
-                        });
-
-                },
-
-
-  showAffectedAppointments(schedule) {
-    window.VitaNavigation.navigate(`/customer/schedules/${schedule.id}/affected-appointments`);
-},
-
-                remove(schedule) {
-
-                    // Tiene citas futuras según lo informado por getSchedule()
-   if (schedule.future_appointments_count > 0) {
-
-    const count = schedule.future_appointments_count;
-
-    Swal.fire({
-        icon: 'warning',
-        title: 'Horario con citas agendadas',
-        html: `
-            <p class="mb-3">
-                Este horario tiene
-                <strong>${count}</strong>
-                ${count === 1 ? 'cita agendada' : 'citas agendadas'}.
-            </p>
-
-            <p class="text-sm text-gray-600 mb-4">
-                Antes de eliminar este horario debes gestionar
-                las citas afectadas.
-            </p>
-        `,
-
-        showDenyButton: true,
-        showCancelButton: true,
-        showConfirmButton: false,
-
-        denyButtonText: 'Gestionar citas afectadas',
-        cancelButtonText: 'Cerrar',
-
-        denyButtonColor: '{{ themeColor(600) }}',
-        cancelButtonColor: '#374151',
-
-    }).then(result => {
-
-        if (result.isDenied) {
-            this.showAffectedAppointments(schedule);
-        }
-
-    });
-
-    return;
-}
-
-                    // No tiene citas futuras
-                    Swal.fire({
-                        icon: 'warning',
-                        title: '¿Eliminar horario?',
-                        text: 'Este horario no tiene citas agendadas. ¿Deseas eliminarlo?',
-                        showCancelButton: true,
-                        confirmButtonColor: '#dc2626',
-                        cancelButtonColor: '#6b7280',
-                        confirmButtonText: 'Sí, eliminar',
-                        cancelButtonText: 'Cancelar'
-                    }).then(result => {
-
-                        if (!result.isConfirmed) {
-                            return;
-                        }
-
-                        fetch(`/professional/schedule/${schedule.id}?clinic_branch_id=${encodeURIComponent(schedule.clinic_branch_id)}`, {
-                                method: 'DELETE',
-                                headers: {
-                                    'Accept': 'application/json',
-                                    'X-CSRF-TOKEN': document.querySelector(
-                                        'meta[name="csrf-token"]'
-                                    ).content
-                                }
-                            })
-                            .then(async res => {
-
-                                const data = await res.json();
-
-                                // Backend detectó que aparecieron citas
-                                if (!res.ok) {
-                                    throw new Error(
-                                        data.message || 'No se pudo eliminar el horario.'
-                                    );
-                                }
-
-                                Swal.fire({
-                                    toast: true,
-                                    position: 'top-end',
-                                    icon: 'success',
-                                    title: 'Horario eliminado',
-                                    showConfirmButton: false,
-                                    timer: 1500
-                                });
-
-                                // Volver a cargar los horarios
-                                this.loadSchedules();
-
-                            })
-                            .catch(error => {
-
-                                Swal.fire({
-                                    icon: 'warning',
-                                    title: 'No se puede eliminar',
-                                    text: error.message
-                                });
-
-                            });
-                    });
-                }
-            }
-        }
-
+        @include('customer.user.partials.schedule-script')
         const specialtySelect = document.getElementById('specialtySelect');
         const specialtyList = document.getElementById('specialtyList');
 

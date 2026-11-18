@@ -46,6 +46,7 @@ class User extends Authenticatable
      * @var array<string, string>
      */
     protected $casts = [
+        'is_customer_administrator' => 'boolean',
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
     ];
@@ -53,6 +54,17 @@ class User extends Authenticatable
     public function customer()
     {
         return $this->belongsTo(Customer::class);
+    }
+
+    public function getEmailForPasswordReset()
+    {
+        // The token repository must distinguish the same email across clinics.
+        return hash('sha256', ($this->customer_id ?? 'global') . ':' . $this->email);
+    }
+
+    public function sendPasswordResetNotification($token)
+    {
+        $this->notify(new \App\Notifications\ResetLoginPassword($token));
     }
 
     public function roles()

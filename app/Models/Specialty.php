@@ -14,6 +14,8 @@ class Specialty extends Model
         'customer_id',
         'name',
         'status',
+        'catalog_id',
+        'public_visible',
     ];
 
     public function customer()

@@ -187,42 +187,30 @@ class EncounterController extends Controller
 
     public function finish(Request $request, $customer, $id, $encounterId)
     {
-        $encounter = $this->activeEncounter($id, $encounterId);
         $validated = $request->validate([
-            'clinical_assessment' => ['required', 'string', 'max:20000'],
-            'treatment_plan' => ['nullable', 'string', 'max:20000'],
-        ], [
-            'clinical_assessment.required' => 'Registra la evaluación clínica antes de finalizar.',
+            'operation_id' => ['required', 'uuid'], 'acceptance' => ['required', 'accepted'],
+            'password' => ['required', 'string', 'max:1024'],
         ]);
-
-        $before = [
-            'evaluación clínica' => $encounter->clinical_assessment,
-            'plan de tratamiento' => $encounter->treatment_plan,
-            'estado' => 'En curso',
-        ];
-        $encounter->update([
-            'clinical_assessment' => trim($validated['clinical_assessment']),
-            'treatment_plan' => isset($validated['treatment_plan']) ? trim($validated['treatment_plan']) : null,
-            'status' => 2,
-            'ended_at' => now(),
-        ]);
-        $encounter->appointment?->update(['status' => 3]);
-        PatientAuditLogger::record($encounter->patient, 'finished', 'Atención médica', $before, [
-            'evaluación clínica' => $encounter->clinical_assessment,
-            'plan de tratamiento' => $encounter->treatment_plan,
-            'estado' => 'Finalizada',
-        ]);
-
+        app(\App\Services\Signatures\EncounterSigningService::class)->sign($request->user(), (int) $id, (int) $encounterId,
+            $validated['operation_id'], $validated['password'], $request->boolean('acceptance'));
+        $encounter = Encounter::where('customer_id', app('customer')->id)->findOrFail($encounterId);
         if ($encounter->appointment) {
-            app(ClinicAppointmentMessenger::class)->send($encounter->appointment, 'attended');
+            DB::afterCommit(function () use ($encounter) {
+                try { app(ClinicAppointmentMessenger::class)->send($encounter->appointment, 'attended'); }
+                catch (\Throwable $exception) { report($exception); }
+            });
         }
-
+        if ($request->expectsJson()) {
+            $request->session()->flash('success', 'La atención quedó finalizada y firmada.');
+            return response()->json(['redirect' => route('patients.medical-record.show', ['customer' => $customer, 'id' => $id, 'record_tab' => 'history', 'history_encounter_id' => $encounterId])]);
+        }
         return redirect()->route('patients.medical-record.show', ['customer' => $customer, 'id' => $encounter->patient_id])
-            ->with('success', 'La atención quedó finalizada y guardada en el historial clínico.');
+            ->with('success', 'La atención quedó finalizada y firmada.');
     }
 
     public function cancel(Request $request, $customer, $id, $encounterId)
     {
+        return DB::transaction(function () use ($request, $customer, $id, $encounterId) {
         $encounter = $this->activeEncounter($id, $encounterId);
         $validated = $request->validate([
             'cancellation_reason' => ['required', 'string', 'max:2000'],
@@ -241,16 +229,16 @@ class EncounterController extends Controller
             'estado' => 'Cancelada',
         ]);
 
-        if ($encounter->appointment) {
-            app(ClinicAppointmentMessenger::class)->send($encounter->appointment, 'cancelled');
-        }
+        if ($encounter->appointment) DB::afterCommit(fn () => app(ClinicAppointmentMessenger::class)->send($encounter->appointment, 'cancelled'));
 
         return redirect()->route('patients.medical-record.show', ['customer' => $customer, 'id' => $encounter->patient_id])
             ->with('success', 'La atención fue cancelada.');
+        });
     }
 
     public function addObservation(Request $request, $customer, $id, $encounterId)
     {
+        return DB::transaction(function () use ($request, $customer, $id, $encounterId) {
         $customerId = (int) app('customer')->id;
         $doctor = $this->authenticatedDoctor($customerId);
         $patient = Patient::query()->where('customer_id', $customerId)->findOrFail($id);
@@ -258,8 +246,10 @@ class EncounterController extends Controller
             ->where('customer_id', $customerId)
             ->where('patient_id', $patient->id)
             ->where('status', 2)
+            ->lockForUpdate()
             ->with('appointment')
             ->findOrFail($encounterId);
+        abort_if($encounter->signatures()->exists(), 409, 'Esta atención está firmada. Las notas posteriores requieren una adenda firmada, aún no disponible.');
 
         $responsibleProfessionalId = $encounter->professional_id ?? $encounter->appointment?->professional_id;
         abort_unless((int) $responsibleProfessionalId === (int) $doctor->id, 403, 'Solo el profesional responsable puede agregar observaciones a esta atención.');
@@ -293,6 +283,7 @@ class EncounterController extends Controller
 
         return redirect()->route('patients.medical-record.show', ['customer' => $customer, 'id' => $patient->id])
             ->with('success', 'La observación se agregó al historial de la atención.');
+        });
     }
 
     private function activeEncounter($patientId, $encounterId): Encounter
@@ -304,6 +295,7 @@ class EncounterController extends Controller
         $encounter = Encounter::where('customer_id', $customerId)
             ->where('patient_id', $patientId)
             ->where('status', 1)
+            ->lockForUpdate()
             ->where(function ($query) use ($doctor) {
                 $query->where('professional_id', $doctor->id)
                     ->orWhere(function ($legacyQuery) use ($doctor) {

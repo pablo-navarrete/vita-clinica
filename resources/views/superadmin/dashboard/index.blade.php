@@ -3,7 +3,7 @@
         <div class="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
             <div>
                 <h2 class="text-xl font-semibold leading-tight text-gray-800">Panel de Vita Clínica</h2>
-                <p class="mt-1 text-sm text-gray-500">Resumen de clínicas registradas en la plataforma</p>
+                <p class="mt-1 text-sm text-gray-500">Resumen de clientes registrados en la plataforma</p>
             </div>
 
             <div class="flex flex-wrap items-center gap-3">
@@ -37,11 +37,11 @@
         </div>
     </x-slot>
 
-    <div class="py-8">
-        <div class="mx-auto max-w-7xl space-y-6 px-4 sm:px-6 lg:px-8">
+    <div class="p-6">
+        <div class="mx-auto max-w-7xl space-y-6 sm:px-6 lg:px-8">
             <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
                 <article class="rounded-lg bg-white p-5 shadow-sm ring-1 ring-gray-200">
-                    <p class="text-sm font-medium text-gray-500">Total de clínicas</p>
+                    <p class="text-sm font-medium text-gray-500">Total de clientes</p>
                     <p id="total-clinics" class="mt-2 text-3xl font-bold text-gray-900">—</p>
                 </article>
                 <article class="rounded-lg bg-white p-5 shadow-sm ring-1 ring-gray-200">
@@ -49,23 +49,23 @@
                     <p id="new-clinics-month" class="mt-2 text-3xl font-bold text-indigo-600">—</p>
                 </article>
                 <article class="rounded-lg bg-white p-5 shadow-sm ring-1 ring-gray-200">
-                    <p class="text-sm font-medium text-gray-500">Clínicas activas</p>
+                    <p class="text-sm font-medium text-gray-500">Clientes activos</p>
                     <p id="active-clinics" class="mt-2 text-3xl font-bold text-emerald-600">—</p>
                 </article>
                 <article class="rounded-lg bg-white p-5 shadow-sm ring-1 ring-gray-200">
-                    <p class="text-sm font-medium text-gray-500">Clínicas inactivas</p>
+                    <p class="text-sm font-medium text-gray-500">Clientes inactivos</p>
                     <p id="inactive-clinics" class="mt-2 text-3xl font-bold text-rose-600">—</p>
                 </article>
             </div>
 
             <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
                 <section class="rounded-lg bg-white p-5 shadow-sm ring-1 ring-gray-200 lg:col-span-2">
-                    <h3 id="clinics-monthly-title" class="mb-4 text-lg font-semibold text-gray-800">Clínicas nuevas por mes</h3>
+                    <h3 id="clinics-monthly-title" class="mb-4 text-lg font-semibold text-gray-800">Clientes nuevos por mes</h3>
                     <div class="relative h-80"><canvas id="clinics-monthly-chart"></canvas></div>
                 </section>
 
                 <section class="rounded-lg bg-white p-5 shadow-sm ring-1 ring-gray-200">
-                    <h3 class="mb-4 text-lg font-semibold text-gray-800">Estado de las clínicas</h3>
+                    <h3 class="mb-4 text-lg font-semibold text-gray-800">Estado de los clientes</h3>
                     <div class="relative h-80"><canvas id="clinics-status-chart"></canvas></div>
                 </section>
             </div>
@@ -73,7 +73,7 @@
     </div>
 
     @push('scripts')
-        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <script src="{{ asset('js/vendor/chart.umd.min.js').'?v='.filemtime(public_path('js/vendor/chart.umd.min.js')) }}"></script>
         <script>
             const yearSelect = document.getElementById('dashboard-year');
             const monthSelect = document.getElementById('dashboard-month');
@@ -151,8 +151,8 @@ Chart.register(percentageLabels);
                     ? Array.from({ length: data.periods.length }, (_, index) => index + 1)
                     : monthLabels;
                 const chartTitle = monthSelect.value
-                    ? `Clínicas nuevas por día — ${monthLabels[Number(monthSelect.value) - 1]} ${yearSelect.value}`
-                    : `Clínicas nuevas por mes — ${yearSelect.value}`;
+                    ? `Clientes nuevos por día — ${monthLabels[Number(monthSelect.value) - 1]} ${yearSelect.value}`
+                    : `Clientes nuevos por mes — ${yearSelect.value}`;
                 document.getElementById('clinics-monthly-title').textContent = chartTitle;
 
                 if (monthlyChart) monthlyChart.destroy();

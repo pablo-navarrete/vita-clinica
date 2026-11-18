@@ -9,6 +9,7 @@ class WebsiteNavigationButton extends Model
 {
     protected $fillable = [
         'customer_id',
+        'brand_display',
         'enabled',
         'public_booking_enabled',
         'label',

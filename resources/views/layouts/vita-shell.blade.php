@@ -31,6 +31,7 @@
         #vita-shell-notice { position:fixed; z-index:110; top:16px; left:50%; transform:translateX(-50%); max-width:calc(100vw - 32px); padding:12px 18px; background:#1f2937; color:white; border-radius:12px; box-shadow:0 4px 16px #0003; font-size:14px; }
         #vita-shell-notice[hidden] { display:none; }
     </style>
+@include('components.favicon')
 </head>
 <body>
     <iframe id="vita-module-frame" title="M&#243;dulos de Vita" allow="camera; microphone; autoplay; fullscreen" src="{{ request()->fullUrlWithQuery(['_vita_frame' => 1]) }}"></iframe>

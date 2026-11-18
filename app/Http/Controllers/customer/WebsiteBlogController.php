@@ -203,7 +203,7 @@ class WebsiteBlogController extends Controller
     private function publicViewData(): array
     {
         $customerId = (int) app('customer')->id;
-        $menus = Menu::where('customer_id', $customerId)->where('status', true)
+        $menus = Menu::with('websitePage')->where('customer_id', $customerId)->where('status', true)
             ->orderByRaw('CASE WHEN position < 1 THEN 1 ELSE 0 END')->orderBy('position')->orderBy('id')->get();
         $footer = WebsiteFooter::where('customer_id', $customerId)->first();
         $socials = WebsiteSocialSetting::where('customer_id', $customerId)->first();

@@ -521,7 +521,7 @@
         <div class="flex max-h-[calc(100vh-2rem)] w-full max-w-2xl flex-col rounded-xl bg-white shadow-xl">
             <div class="rounded-t-lg border-b px-6 py-4" style="background-color: {{ themeColor(100) }}">
                 <h2 class="text-lg font-bold">Nueva atención médica</h2>
-                <p class="mt-1 text-sm text-gray-600">Paciente: {{ $patient->name }} · RUT: {{ $patient->rut }}</p>
+                <p class="mt-1 text-sm text-gray-600">Paciente: {{ $patient->name }} · Identificación: {{ app(\App\Services\Identification\PatientIdentification::class)->clinicalNumber($patient) }}</p>
             </div>
 
             <form action="{{ route('patients.encounters.store', ['customer' => request()->route('customer'), 'id' => $patient->id]) }}" method="POST" class="flex min-h-0 flex-1 flex-col">
@@ -630,6 +630,11 @@
     </style>
 @endpush
 @push('scripts')
+    @once('encounter-signing-script')
+        <script src="{{ asset('js/encounter-signing.js') }}?v={{ filemtime(public_path('js/encounter-signing.js')) }}"></script>
+    @endonce
+    <script src="{{ asset('js/encounter-addendum.js') }}?v={{ filemtime(public_path('js/encounter-addendum.js')) }}"></script>
+    <script src="{{ asset('js/encounter-addendum-modal.js') }}?v={{ filemtime(public_path('js/encounter-addendum-modal.js')) }}"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/js/select2.min.js"></script>
     <script>
         //ALERGIAS
@@ -1169,10 +1174,17 @@
             document.addEventListener('click', event => {
                 const link = event.target.closest('#encounter-history a');
                 if (!link || !link.href || link.origin !== location.origin) return;
+                if (new URL(link.href).pathname !== location.pathname) return;
+                if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey
+                    || (link.target && link.target !== '_self') || link.hasAttribute('download')) return;
                 event.preventDefault();
                 updateEncounterHistory(link.href);
             });
 
+            window.addEventListener('clinical-addendum-signed', event => {
+                updateEncounterHistory(event.detail.url);
+                window.showClinicalRecordToast('La adenda quedó guardada y firmada.', 'success');
+            });
             window.addEventListener('popstate', () => updateEncounterHistory(location.href, false));
         })();
     </script>

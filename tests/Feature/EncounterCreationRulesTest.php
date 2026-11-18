@@ -134,7 +134,8 @@ class EncounterCreationRulesTest extends TestCase
             $response = (new MedicalRecordController())->show($clinic->domain, $patient->id);
             $this->assertStringContainsString('encounter_id=', $response->getTargetUrl());
 
-            $patient->encounters()->update(['status' => 2, 'ended_at' => now()]);
+            // Close setup encounters by cancellation; new finalizations now require FES.
+            $patient->encounters()->update(['status' => 3, 'ended_at' => now()]);
             $this->bindRequest($clinic, $doctor, 'GET', ['history_encounter_id' => $first->id]);
             $selectedHistoryData = (new MedicalRecordController())->show($clinic->domain, $patient->id)->getData();
             $this->assertSame(1, $selectedHistoryData['encounters']->total());

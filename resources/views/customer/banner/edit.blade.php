@@ -41,7 +41,7 @@
                 </div>
                 <div>
                     <label for="button_destination" class="mb-1 block text-sm font-medium text-gray-700">¿A dónde llevará el botón?</label>
-                    <select id="button_destination" name="button_destination" class="w-full rounded-md border-gray-300 shadow-sm">
+                    <select id="button_destination" name="button_destination" class="vita-banner-select w-full rounded-md border-gray-300 shadow-sm">
                         <option value="" @selected($selectedDestination === '')>Sin botón</option>
                         <optgroup label="Páginas publicadas">
                             <option value="/" @selected($selectedDestination === '/')>Inicio</option>
@@ -84,9 +84,12 @@
                     <input id="image_alt" name="image_alt" value="{{ old('image_alt', $banner->image_alt) }}" maxlength="160" class="w-full rounded-md border-gray-300 shadow-sm">
                     @error('image_alt') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
                 </div>
+                @include('components.banner-alignment-fields', ['alignmentFieldClass' => 'md:col-span-2'])
+                @include('components.banner-content-field', ['imageOnly' => old('image_only', $banner->image_only ?? false)])
+                @include('components.banner-overlay-field', ['darkOverlay' => old('dark_overlay', $banner->dark_overlay ?? true)])
                 <div>
                     <label for="status" class="mb-1 block text-sm font-medium text-gray-700">Estado</label>
-                    <select id="status" name="status" class="w-full rounded-md border-gray-300 shadow-sm">
+                    <select id="status" name="status" class="vita-banner-select w-full rounded-md border-gray-300 shadow-sm">
                         <option value="1" @selected((string) old('status', (int) $banner->status) === '1')>Activo</option>
                         <option value="0" @selected((string) old('status', (int) $banner->status) === '0')>Inactivo</option>
                     </select>

@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Str;
 
 class Menu extends Model
 {
@@ -21,16 +20,6 @@ class Menu extends Model
         'status' => 'boolean',
         'position' => 'integer',
     ];
-
-    public function setNameAttribute(string $value): void
-    {
-        $this->attributes['name'] = Str::upper($value);
-    }
-
-    public function getNameAttribute(string $value): string
-    {
-        return Str::upper($value);
-    }
 
     public function websitePage(): BelongsTo
     {

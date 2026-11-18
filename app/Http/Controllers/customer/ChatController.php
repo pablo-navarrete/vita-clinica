@@ -47,7 +47,7 @@ class ChatController extends Controller
         $conversations = ChatConversation::query()
             ->where('customer_id', $customerId)
             ->when(!$isSuperAdmin, fn ($query) => $query->whereHas('participants', fn ($participants) => $participants->where('users.id', $user->id)->whereNull('chat_participants.hidden_at')))
-            ->with(['patient:id,name,rut', 'clinicBranch:id,name', 'participants:id,name', 'latestMessage.user:id,name'])
+            ->with(['patient:id,customer_id,clinic_branch_id,name,rut', 'clinicBranch:id,name', 'participants:id,name', 'latestMessage.user:id,name'])
             ->orderByDesc('updated_at')->take(30)->get();
 
         $data = $conversations->map(function (ChatConversation $conversation) use ($user, $isSuperAdmin) {
@@ -62,7 +62,7 @@ class ChatController extends Controller
                 'type' => $conversation->type,
                 'title' => $conversation->title ?: ($conversation->patient ? 'Paciente: ' . $conversation->patient->name : ($otherNames ?: 'Conversación')),
                 'patient' => $conversation->patient?->name,
-                'patient_rut' => $conversation->patient?->rut,
+                'patient_rut' => $conversation->patient?->identification_label,
                 'patient_url' => $conversation->patient ? route('patients.medical-record.show', [
                     'customer' => request()->route('customer'), 'id' => $conversation->patient_id,
                 ]) : null,
@@ -71,7 +71,7 @@ class ChatController extends Controller
                 'latest_user' => $latest?->user?->name,
                 'latest_at' => $latest?->created_at?->timezone(config('app.timezone'))->format('d/m H:i'),
                 'unread' => $unread,
-                'can_send' => $isSuperAdmin || $conversation->participants->firstWhere('id', $user->id)?->pivot?->left_at === null,
+                'can_send' => !$isSuperAdmin && $this->hasChatPermission($user, (int) $conversation->customer_id, 'chat.send') && $conversation->participants->firstWhere('id', $user->id)?->pivot?->left_at === null,
                 'can_delete' => true,
             ];
         });
@@ -97,10 +97,10 @@ class ChatController extends Controller
         $conversations = $conversationQuery
             ->where(function ($query) use ($term) {
                 $query->where('title', 'like', '%' . $term . '%')
-                    ->orWhereHas('patient', fn ($patient) => $patient->where('name', 'like', '%' . $term . '%')->orWhere('rut', 'like', '%' . $term . '%'))
+                    ->orWhereHas('patient', fn ($patient) => app(\App\Services\Identification\PatientIdentification::class)->filter($patient, $term))
                     ->orWhereHas('participants', fn ($participants) => $participants->where('users.name', 'like', '%' . $term . '%')->orWhere('users.email', 'like', '%' . $term . '%'));
             })
-            ->with(['patient:id,name', 'clinicBranch:id,name', 'participants:id,name,email', 'participants.branches:id,name', 'latestMessage.user:id,name'])
+            ->with(['patient:id,customer_id,clinic_branch_id,name', 'clinicBranch:id,name', 'participants:id,name,email', 'participants.branches:id,name', 'latestMessage.user:id,name'])
             ->orderByDesc('updated_at')
             ->limit(50)
             ->get();
@@ -151,7 +151,7 @@ class ChatController extends Controller
             ->when(!$isSuperAdmin, fn ($query) => $query->whereHas('participants', fn ($participants) => $participants->where('users.id', $user->id)->whereNull('chat_participants.hidden_at')));
         $this->scopeConversationsByBranch($conversationQuery, $branchScope, $activeBranchId, (int) $user->id);
         $conversations = $conversationQuery
-            ->with(['patient:id,name,rut', 'clinicBranch:id,name', 'participants:id,name,email', 'participants.branches:id,name', 'latestMessage.user:id,name'])
+            ->with(['patient:id,customer_id,clinic_branch_id,name,rut', 'clinicBranch:id,name', 'participants:id,name,email', 'participants.branches:id,name', 'latestMessage.user:id,name'])
             ->orderByDesc('updated_at')->paginate(30)->withQueryString();
         $conversations->getCollection()->each(fn (ChatConversation $conversation) => $conversation->setRelation('latestMessage', $this->latestVisibleMessage($conversation, $user->id)));
 
@@ -165,7 +165,11 @@ class ChatController extends Controller
 
         if ($active) {
             if (!$isSuperAdmin && $active->participants()->where('users.id', $user->id)->exists()) {
+                $lastRead = $active->participants->firstWhere('id', $user->id)?->pivot?->last_read_at;
+                $hadUnread = $this->visibleMessages($active, $user->id)->where('user_id', '!=', $user->id)
+                    ->when($lastRead, fn ($query) => $query->where('created_at', '>', $lastRead))->exists();
                 $active->participants()->updateExistingPivot($user->id, ['last_read_at' => now()]);
+                if ($hadUnread) \App\Support\UserRealtime::notify($customerId, (int) $user->id, 'chat', (int) $active->id);
             }
             $initialBatch = $this->visibleMessages($active, $user->id)->with(['user:id,name', 'replyTo.user:id,name', 'forwardedFrom.user:id,name', 'reactions:id,message_id,user_id,emoji'])->latest('id')->take(51)->get();
             $hasMoreOlder = $initialBatch->count() > 50;
@@ -237,6 +241,7 @@ class ChatController extends Controller
             $conversation->title ?: ($patient ? 'Paciente: ' . $patient->name : 'Conversación'),
             'Creó una conversación en el chat interno.', [], ChatConversation::class, $conversation->id);
 
+        \App\Support\UserRealtime::chat($customerId, (int) $conversation->id);
         return response()->json(['redirect' => route('customers.chat.index', ['customer' => request()->route('customer'), 'conversation' => $conversation->id])], 201);
     }
 
@@ -273,7 +278,11 @@ class ChatController extends Controller
             $messages = $batch->take(50)->reverse()->values();
         }
         if (!$this->isTenantSuperAdmin($user) && $chat->participants()->where('users.id', $user->id)->exists()) {
+            $lastRead = $chat->participants->firstWhere('id', $user->id)?->pivot?->last_read_at;
+            $hadUnread = $this->visibleMessages($chat, $user->id)->where('user_id', '!=', $user->id)
+                ->when($lastRead, fn ($query) => $query->where('created_at', '>', $lastRead))->exists();
             $chat->participants()->updateExistingPivot($user->id, ['last_read_at' => now()]);
+            if ($hadUnread) \App\Support\UserRealtime::notify($customerId, (int) $user->id, 'chat', (int) $chat->id);
         }
 
         $otherNames = $chat->participants->where('id', '!=', $user->id)->pluck('name')->take(3)->implode(', ');
@@ -295,14 +304,14 @@ class ChatController extends Controller
                 'left_at' => $participant->pivot?->left_at,
                 'is_admin' => (int) $participant->id === (int) $chat->created_by,
             ])->values(),
-            'can_manage' => $this->isTenantSuperAdmin($user)
-                || ($this->hasChatPermission($user, $customerId, 'chat.manage')
+            'can_manage' => !$this->isTenantSuperAdmin($user)
+                && ($this->hasChatPermission($user, $customerId, 'chat.manage')
                     && (int) $chat->created_by === (int) $user->id
                     && $chat->participants->firstWhere('id', $user->id)?->pivot?->left_at === null),
-            'can_send' => $this->isTenantSuperAdmin($user)
-                || ($this->hasChatPermission($user, $customerId, 'chat.send')
+            'can_send' => !$this->isTenantSuperAdmin($user)
+                && ($this->hasChatPermission($user, $customerId, 'chat.send')
                     && $chat->participants->firstWhere('id', $user->id)?->pivot?->left_at === null),
-            'can_delete' => $this->isTenantSuperAdmin($user) || $chat->participants->contains('id', $user->id),
+            'can_delete' => !$this->isTenantSuperAdmin($user) && $chat->participants->contains('id', $user->id),
             'has_more_older' => $hasMoreOlder,
             'has_more_newer' => $hasMoreNewer,
             'add_url' => route('customers.chat.participants.add', ['customer' => $customer, 'conversation' => $chat->id]),
@@ -546,6 +555,8 @@ class ChatController extends Controller
             }
         });
 
+        \App\Support\UserRealtime::notify($customerId, (int) $user->id, 'chat', (int) $chat->id);
+        \App\Support\UserRealtime::chat($customerId, (int) $chat->id);
         return response()->json([
             'message' => $shouldLeave ? 'Saliste del grupo. Puedes consultar el historial, pero ya no interactuar.' : 'Chat eliminado de tu lista.',
             'redirect' => $shouldLeave && !$shouldHide
@@ -576,6 +587,7 @@ class ChatController extends Controller
             }
         } else {
             $chatMessage->userDeletions()->firstOrCreate(['user_id' => $user->id]);
+            \App\Support\UserRealtime::notify($customerId, (int) $user->id, 'chat', (int) $chat->id);
         }
 
         return response()->json(['message' => $data['scope'] === 'everyone' ? 'Mensaje eliminado para todos.' : 'Mensaje eliminado de tu vista.', 'scope' => $data['scope'], 'message_id' => (int) $chatMessage->id]);
@@ -644,6 +656,7 @@ class ChatController extends Controller
         ClinicActivityLogger::recordManual($customerId, 'Chat interno', 'updated', 'integrantes', $names,
             'Agregó integrantes a un grupo.', [], ChatConversation::class, $chat->id);
 
+        \App\Support\UserRealtime::chat($customerId, (int) $chat->id);
         return response()->json(['message' => $participants->count() === 1 ? 'Integrante agregado al grupo.' : 'Integrantes agregados al grupo.']);
     }
 
@@ -679,6 +692,8 @@ class ChatController extends Controller
         ClinicActivityLogger::recordManual($customerId, 'Chat interno', 'updated', 'integrante', $removedUser?->name ?? 'Integrante',
             $isLeaving ? 'Salió de un grupo.' : 'Quitó un integrante de un grupo.', [], ChatConversation::class, $chat->id);
 
+        \App\Support\UserRealtime::notify($customerId, $participant, 'chat', (int) $chat->id);
+        \App\Support\UserRealtime::chat($customerId, (int) $chat->id);
         return response()->json([
             'message' => $isLeaving ? 'Saliste del grupo. Puedes consultar el historial, pero ya no interactuar.' : 'Integrante eliminado del grupo.',
             'redirect' => $isLeaving ? route('customers.chat.index', ['customer' => $customer, 'conversation' => $chat->id]) : null,
@@ -693,8 +708,9 @@ class ChatController extends Controller
         if (mb_strlen($term) < 2) return response()->json(['data' => []]);
 
         $patients = Patient::query()->where('customer_id', $customerId)
-            ->where(fn ($query) => $query->where('name', 'like', '%' . $term . '%')->orWhere('rut', 'like', '%' . $term . '%'))
-            ->orderBy('name')->limit(10)->get(['id', 'name', 'rut']);
+            ->where(fn ($query) => app(\App\Services\Identification\PatientIdentification::class)->filterRequest($query, $request, $term))
+            ->orderBy('name')->limit(10)->get(['id', 'customer_id', 'clinic_branch_id', 'name', 'rut'])
+            ->each(fn ($patient) => app(\App\Services\Identification\PatientIdentification::class)->decorate($patient));
 
         return response()->json(['data' => $patients]);
     }
@@ -711,7 +727,7 @@ class ChatController extends Controller
 
     private function hasChatPermission(User $user, int $customerId, string $permission): bool
     {
-        if ($this->isTenantSuperAdmin($user)) return true;
+        if ($this->isTenantSuperAdmin($user)) return $permission === 'chat.view';
 
         $roles = $user->roles()->where('roles.customer_id', $customerId)->get(['roles.id', 'roles.permissions_configured']);
         if ($roles->isEmpty() || $roles->every(fn ($role) => !(bool) $role->permissions_configured)) return true;
@@ -803,7 +819,7 @@ class ChatController extends Controller
 
     private function assertChatWriteAccess(User $user): void
     {
-        // Superadministrador global: permite operaciones administrativas del chat.
+        abort_if($this->isTenantSuperAdmin($user), 403, 'El superadministrador tiene acceso de solo lectura al chat.');
     }
 
     private function conversationForUser(int $id, int $customerId, int $userId): ChatConversation
@@ -811,7 +827,7 @@ class ChatController extends Controller
         $user = User::query()->findOrFail($userId);
         return ChatConversation::query()->where('customer_id', $customerId)
             ->when(!$this->isTenantSuperAdmin($user), fn ($query) => $query->whereHas('participants', fn ($participants) => $participants->where('users.id', $userId)->whereNull('chat_participants.hidden_at')))
-            ->with(['patient:id,name,rut', 'clinicBranch:id,name', 'participants:id,name,email', 'participants.branches:id,name'])->findOrFail($id);
+            ->with(['patient:id,customer_id,clinic_branch_id,name,rut', 'clinicBranch:id,name', 'participants:id,name,email', 'participants.branches:id,name'])->findOrFail($id);
     }
 
     private function visibleMessages(ChatConversation $chat, int $userId)

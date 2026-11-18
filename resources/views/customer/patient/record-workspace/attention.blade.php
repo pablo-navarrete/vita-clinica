@@ -124,7 +124,7 @@
                             @include('customer.patient.record-workspace.attention-documents')
                             @if ($canManageCurrentEncounter)
                             <div class="border-t px-5 py-5">
-                                <form action="{{ route('patients.encounters.finish', ['customer' => request()->route('customer'), 'id' => $patient->id, 'encounter' => $currentEncounter->id]) }}" method="POST" class="space-y-4">
+                                <form data-signing-draft data-preview-url="{{ route('patients.encounters.signature-preview', ['customer' => request()->route('customer'), 'id' => $patient->id, 'encounter' => $currentEncounter->id]) }}" action="{{ route('patients.encounters.finish', ['customer' => request()->route('customer'), 'id' => $patient->id, 'encounter' => $currentEncounter->id]) }}" method="POST" class="space-y-4">
                                     @csrf
                                     @method('PATCH')
                                     <h4 class="font-semibold text-gray-800">Cerrar atención</h4>
@@ -138,9 +138,10 @@
                                         <textarea id="encounter-treatment-plan" name="treatment_plan" rows="3" maxlength="20000" class="w-full rounded-lg border-gray-300" placeholder="Indicaciones, tratamiento o seguimiento">{{ old('treatment_plan', $currentEncounter->treatment_plan) }}</textarea>
                                     </div>
                                     <div class="flex flex-wrap items-end justify-between gap-4">
-                                        <button type="submit" style="background-color: {{ themeColor(600) }}" class="rounded px-4 py-2 font-semibold text-white hover:brightness-90">Finalizar atención</button>
+                                        <button data-signing-open type="button" style="background-color: {{ themeColor(600) }}" class="rounded px-4 py-2 font-semibold text-white hover:brightness-90 disabled:opacity-50">Firmar y finalizar atención</button>
                                     </div>
                                 </form>
+                                @include('customer.patient.record-workspace.signature-modal')
                                 <form action="{{ route('patients.encounters.cancel', ['customer' => request()->route('customer'), 'id' => $patient->id, 'encounter' => $currentEncounter->id]) }}" method="POST" class="mt-4 flex flex-wrap items-end gap-3 border-t pt-4">
                                     @csrf
                                     @method('PATCH')

@@ -24,11 +24,7 @@ class MedicalRecordFhirDocument
 
         $patientRef = $register(array_filter([
             'resourceType' => 'Patient',
-            'identifier' => [[
-                'use' => 'official',
-                'system' => 'https://vita-clinica.cl/fhir/NamingSystem/rut',
-                'value' => $patient->rut,
-            ]],
+            'identifier' => app(\App\Services\Identification\DocumentIdentityPresenter::class)->fhirIdentifiers(app(\App\Services\Identification\PatientIdentification::class)->snapshot($patient, auth()->user(), false)),
             'active' => (bool) $patient->status,
             'name' => [['text' => $patient->name]],
             'telecom' => array_values(array_filter([
@@ -130,12 +126,29 @@ class MedicalRecordFhirDocument
 
         $locations = [];
         $practitioners = [];
+        // Historical identities are distinct even when the account ID is the same.
+        $signedPractitioner = function (array $identity) use (&$practitioners, $register) {
+            $historicalIdentity = array_intersect_key($identity, array_flip(['id', 'name', 'document', 'rut']));
+            $key = 'signed:'.hash('sha256', app(\App\Services\Signatures\CanonicalContentSerializer::class)->serialize($historicalIdentity));
+            if (! isset($practitioners[$key])) {
+                $identifier = app(\App\Services\Signatures\SignerIdentitySnapshot::class)->fhirIdentifier($identity);
+                $practitioners[$key] = $register(array_filter([
+                    'resourceType' => 'Practitioner', 'name' => [['text' => $identity['name']]],
+                    'identifier' => $identifier ? [$identifier] : null,
+                ], static fn ($value) => $value !== null));
+            }
+
+            return $practitioners[$key];
+        };
+
         $encounterRefs = [];
         $clinicalImpressionRefs = [];
         $encounterNarrative = [];
         foreach ($patient->encounters as $encounter) {
             $professionalRef = null;
-            if ($encounter->professional) {
+            if ($encounter->signature) {
+                $professionalRef = $signedPractitioner($encounter->signature->identity);
+            } elseif ($encounter->professional) {
                 $professionalId = (int) $encounter->professional->id;
                 if (!isset($practitioners[$professionalId])) {
                     $practitioners[$professionalId] = $register(array_filter([
@@ -187,6 +200,7 @@ class MedicalRecordFhirDocument
             $encounterRefs[] = $encounterRef;
 
             $notes = $encounter->treatment_plan ? [['text' => $encounter->treatment_plan]] : [];
+            if ($encounter->signature) $notes[] = ['text' => 'Atención individual firmada con FES VITA por ' . $encounter->signature->identity['name'] . ' el ' . $encounter->signature->signed_at->toIso8601String() . '. El documento agregado no está firmado en su totalidad.'];
             foreach ($encounter->observations as $observation) {
                 $notes[] = array_filter([
                     'authorString' => $observation->author?->name ?? 'Usuario eliminado',
@@ -227,16 +241,43 @@ class MedicalRecordFhirDocument
         $addSection('Atenciones clínicas', '46240-8', 'History of encounters', $encounterRefs, $encounterNarrative);
         $addSection('Evaluaciones clínicas y planes', '51848-0', 'Evaluation note', $clinicalImpressionRefs);
 
+        $signedDocumentRefs = [];
+        foreach ($patient->encounters as $encounter) {
+            if (!$encounter->signature) continue;
+            $references = [];
+            $documents = collect([['signature' => $encounter->signature, 'snapshot' => null]])
+                ->concat(app(\App\Services\Signatures\EncounterAddendumReader::class)->read($encounter));
+            foreach ($documents as $entry) {
+                $signature = $entry['signature']; $version = $signature->documentVersion; $snapshot = $entry['snapshot'];
+                $description = $snapshot ? 'Adenda: ' . \App\Services\Signatures\EncounterAddendumSnapshotBuilder::TYPES[$snapshot['addendum_type']]
+                    : 'Atención original firmada';
+                $description .= ' #' . $encounter->id . ' · Documento #' . $version->id . ' · FES VITA · SHA-256 ' . $signature->content_hash;
+                if ($snapshot && $snapshot['correction']) $description .= ' · Rectifica documento #' . $snapshot['correction']['document_id'];
+                $resource = [
+                    'resourceType' => 'DocumentReference', 'status' => 'current', 'docStatus' => 'final',
+                    'identifier' => [['system' => 'https://vita-clinica.cl/fhir/NamingSystem/encounter-document-version', 'value' => (string) $version->id]],
+                    'subject' => ['reference' => $patientRef], 'date' => $signature->signed_at->toIso8601String(),
+                    'author' => [['reference' => $signedPractitioner($signature->identity), 'display' => $signature->identity['name']]], 'description' => $description,
+                    'content' => [['attachment' => ['contentType' => 'application/json', 'data' => base64_encode($version->payload), 'title' => $description]]],
+                ];
+                if ($snapshot) {
+                    $resource['relatesTo'] = [['code' => 'appends', 'target' => ['reference' => $references[$version->parent_version_id]]]];
+                    if ($snapshot['correction'] && $version->rectifies_version_id !== $version->parent_version_id) {
+                        $resource['relatesTo'][] = ['code' => 'appends', 'target' => ['reference' => $references[$version->rectifies_version_id]]];
+                    }
+                }
+                $references[$version->id] = $register($resource);
+                $signedDocumentRefs[] = $references[$version->id];
+            }
+        }
+        $addSection('Documentos originales y adendas firmadas', '34117-2', 'History and physical note', $signedDocumentRefs,
+            ['Cada documento corresponde a una firma individual. El conjunto de la ficha no tiene una firma electrónica global.']);
+
         $addSection('Documentos registrados por sede', '34117-2', 'History and physical note', [],
             $patient->documents->map(fn ($document) => $document->original_name
                 . ' — Sede: ' . ($document->clinicBranch?->name ?? 'Sin sede registrada')
                 . ' — ' . ($document->created_at?->timezone('America/Santiago')->format('d/m/Y H:i') ?? 'Fecha no registrada')
                 . ' — ' . ($document->uploader?->name ?? 'Usuario eliminado'))->all());
-        $addSection('Movimientos de la ficha por sede', '34117-2', 'History and physical note', [],
-            $patient->auditLogs->map(fn ($log) => $log->section . ' — ' . $log->action
-                . ' — Sede: ' . ($log->clinicBranch?->name ?? 'Sin sede registrada')
-                . ' — ' . ($log->created_at?->timezone('America/Santiago')->format('d/m/Y H:i') ?? 'Fecha no registrada')
-                . ' — ' . ($log->user?->name ?? 'Usuario eliminado'))->all());
 
         if ($patient->insurance) {
             $payerRef = $register([

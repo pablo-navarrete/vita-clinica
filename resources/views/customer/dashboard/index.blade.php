@@ -7,7 +7,7 @@
 @endsection
 
 @section('content')
-    <div class="py-12">
+    <div class="pb-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
 
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
@@ -19,7 +19,7 @@
 
                         <div>
                             <h2 class="text-xl font-semibold text-gray-800">
-                                {{ $isDoctor ? 'Panel del profesional' : 'Dashboard' }}
+                                {{ $isDoctor ? 'Panel del profesional' : 'Panel' }}
                             </h2>
 
                             <p id="dashboard-statistics-description" class="text-sm text-gray-500 mt-1">

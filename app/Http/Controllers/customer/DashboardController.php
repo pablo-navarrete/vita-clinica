@@ -99,7 +99,7 @@ class DashboardController extends Controller
                                 ->withoutGlobalScope('active_clinic_branch')->where('customer_id', $customerId)->where('professional_id', $user->id));
                         });
                 }))
-            ->with(['patient:id,name,rut', 'professional:id,name', 'specialty:id,name',
+            ->with(['patient:id,customer_id,clinic_branch_id,name,rut', 'professional:id,name', 'specialty:id,name',
                 'appointment' => fn ($query) => $query->withoutGlobalScope('active_clinic_branch')
                     ->where('customer_id', $customerId)->with(['professional:id,name', 'specialty:id,name'])])
             ->orderBy('started_at')->orderBy('id')->get()->groupBy('clinic_branch_id');
@@ -261,7 +261,7 @@ class DashboardController extends Controller
                 ($doctor || $professionalId !== null) ? '<=' : '=',
                 ($doctor || $professionalId !== null) ? 3 : 1
             )
-            ->with(['professional:id,name', 'patient:id,name,rut', 'specialty:id,name'])
+            ->with(['professional:id,name', 'patient:id,customer_id,clinic_branch_id,name,rut', 'specialty:id,name'])
             ->orderBy('appointments.start_at')
             ->orderBy('appointments.id')
             ->limit(3)
@@ -275,7 +275,7 @@ class DashboardController extends Controller
                     'patient_id' => (int) $appointment->patient_id,
                     'professional' => $appointment->professional?->name ?? 'Profesional no asignado',
                     'patient' => $appointment->patient?->name ?? 'Paciente no disponible',
-                    'patient_rut' => $appointment->patient?->rut,
+                    'patient_rut' => $appointment->patient?->identification_label,
                     'specialty' => $appointment->specialty?->name ?? 'Sin especialidad',
                     'date' => $startsAt->format('d/m/Y'),
                     'time' => $startsAt->format('H:i'),
@@ -459,18 +459,26 @@ $appointmentsBySpecialty = DB::table('specialties')
         }
     })
     ->where('specialties.customer_id', $customerId)
-    ->where('specialties.status', true)
     ->select(
         'specialties.id',
+        'specialties.catalog_id',
         'specialties.name as specialty'
     )
     ->selectRaw('COUNT(appointments.id) as total')
     ->groupBy(
         'specialties.id',
+        'specialties.catalog_id',
         'specialties.name'
     )
     ->orderBy('specialties.name')
-    ->get();
+    ->get()
+    ->groupBy(fn ($row) => $row->catalog_id ? 'catalog:'.$row->catalog_id : 'legacy:'.$row->id)
+    ->map(function ($rows) {
+        $first = $rows->first();
+        $first->specialty = app(\App\Services\SpecialtyCatalog::class)->name($first->catalog_id) ?? $first->specialty;
+        $first->total = $rows->sum('total');
+        return $first;
+    })->values();
 
 $patientsQuery = $professionalId
     ? DB::table('appointments')

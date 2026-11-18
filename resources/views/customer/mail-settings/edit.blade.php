@@ -6,9 +6,7 @@
 
 @section('content')
     <div class="mx-auto max-w-7xl space-y-6 sm:px-6 lg:px-8">
-        @if (session('success'))
-            <div class="rounded-md bg-green-100 px-4 py-3 text-green-800" role="status">{{ session('success') }}</div>
-        @endif
+        
 
         <section class="rounded-xl border border-blue-100 bg-blue-50 p-5 text-sm text-blue-900">
             <p class="font-semibold">Configura cómo enviar las notificaciones a pacientes</p>
@@ -27,7 +25,7 @@
                 <p class="mt-2 text-xs text-gray-500">Es independiente del correo de la pagina publica. Vita envia las invitaciones desde la cuenta central y las respuestas del paciente llegan a esta direccion. Esta configuracion no abre ni lee la bandeja de entrada.</p>
 
                 <label for="reply-whatsapp" class="mb-1 mt-5 block text-sm font-medium text-gray-700">WhatsApp de contacto de la clinica</label>
-                <input id="reply-whatsapp" name="reply_whatsapp" type="tel" maxlength="40" value="{{ old('reply_whatsapp', $whatsappNumber) }}" class="w-full rounded-md border-gray-300 shadow-sm" placeholder="56912345678">
+                <input id="reply-whatsapp" name="reply_whatsapp" type="tel" maxlength="40" value="{{ old('reply_whatsapp', $whatsappNumber) }}" class="w-full rounded-md border-gray-300 shadow-sm" placeholder="56987654321">
                 @error('reply_whatsapp')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
                 <p class="mt-2 text-xs text-gray-500">Incluye el codigo de pais. Se agregara al mensaje para que el paciente pueda contactar a la clinica.</p>
 

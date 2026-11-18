@@ -5,12 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $blogSetting->title ?: 'Blog' }} | {{ app('customer')->name }}</title>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.bunny.net/css?family=figtree:400,500,600,700&display=swap" rel="stylesheet">
     <link href="{{ asset('css/style.css') }}" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
     @include('customer.web.theme-colors')
     <style>
-        body{font-family:Poppins,sans-serif;background:#f8fafc;color:#1f2937}.blog-hero{padding:4rem 1rem;text-align:center;background:linear-gradient(135deg,{{ themeColor(800) }},{{ themeColor(600) }});color:#fff}.blog-hero h1{font-size:clamp(2rem,5vw,3.25rem);font-weight:700;margin:0}.blog-hero p{margin:.75rem 0 0;color:#eef2ff}.blog-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:1.25rem;padding:3rem 0}.blog-card{overflow:hidden;background:#fff;border:1px solid #e5e7eb;border-radius:1rem;box-shadow:0 8px 24px #0f172a0a}.blog-card img{width:100%;height:210px;object-fit:cover}.blog-card__placeholder{height:210px;display:grid;place-items:center;background:{{ themeColor(50) }};color:{{ themeColor(600) }};font-size:2.5rem}.blog-card__body{padding:1.35rem}.blog-card time{font-size:.8rem;color:#64748b}.blog-card h2{margin:.55rem 0;font-size:1.2rem;font-weight:600}.blog-card h2 a{color:#172033;text-decoration:none}.blog-card p{color:#64748b;line-height:1.7}.blog-read{display:inline-flex;align-items:center;gap:.5rem;margin-top:.5rem;color:{{ themeColor(700) }};font-weight:600;text-decoration:none}.blog-empty{padding:4rem 1rem;text-align:center;color:#64748b}
+        body{font-family:Figtree,sans-serif;background:#f8fafc;color:#1f2937}.blog-hero{padding:4rem 1rem;text-align:center;background:linear-gradient(135deg,{{ themeColor(800) }},{{ themeColor(600) }});color:#fff}.blog-hero h1{font-size:clamp(2rem,5vw,3.25rem);font-weight:700;margin:0}.blog-hero p{margin:.75rem 0 0;color:#eef2ff}.blog-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:1.25rem;padding:3rem 0}.blog-card{overflow:hidden;background:#fff;border:1px solid #e5e7eb;border-radius:1rem;box-shadow:0 8px 24px #0f172a0a}.blog-card img{width:100%;height:210px;object-fit:cover}.blog-card__placeholder{height:210px;display:grid;place-items:center;background:{{ themeColor(50) }};color:{{ themeColor(600) }};font-size:2.5rem}.blog-card__body{padding:1.35rem}.blog-card time{font-size:.8rem;color:#64748b}.blog-card h2{margin:.55rem 0;font-size:1.2rem;font-weight:600}.blog-card h2 a{color:#172033;text-decoration:none}.blog-card p{color:#64748b;line-height:1.7}.blog-read{display:inline-flex;align-items:center;gap:.5rem;margin-top:.5rem;color:{{ themeColor(700) }};font-weight:600;text-decoration:none}.blog-empty{padding:4rem 1rem;text-align:center;color:#64748b}
     </style>
     <style>
         body { margin: 0; overflow-x: hidden; }
@@ -35,6 +35,8 @@
         .blog-pagination nav { display:flex; justify-content:center; }
         @media(max-width:480px) { .blog-search button span { display:none; } .blog-search button,.blog-search__clear { padding:.7rem .85rem; } }
     </style>
+@include('components.phone-assets')
+@include('components.favicon')
 </head>
 <body>
     @include('customer.web.menu')

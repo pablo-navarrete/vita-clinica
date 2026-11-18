@@ -97,7 +97,7 @@
                                     <tr>
                                         <td class="px-3 py-3"></td>
                                         <td data-order="{{ $encounter->id }}" class="px-3 py-3 font-semibold">#{{ $encounter->id }} <span class="ml-1 rounded-full bg-green-100 px-2 py-1 text-xs text-green-800">En curso</span></td>
-                                        <td class="px-3 py-3">{{ $encounter->patient?->name ?? 'Paciente no disponible' }}<span class="block text-xs text-gray-500">{{ $encounter->patient?->rut }}</span></td>
+                                        <td class="px-3 py-3">{{ $encounter->patient?->name ?? 'Paciente no disponible' }}<span class="block text-xs text-gray-500">{{ $encounter->patient?->identification_label }}</span></td>
                                         <td class="px-3 py-3">{{ $encounter->professional?->name ?? $encounter->appointment?->professional?->name ?? 'Sin profesional registrado' }}</td>
                                         <td class="px-3 py-3">{{ $encounter->specialty?->name ?? $encounter->appointment?->specialty?->name ?? 'Sin especialidad registrada' }}</td>
                                         <td class="px-3 py-3">{{ $encounter->modality === 'telemedicine' ? 'Telemedicina' : 'Presencial' }}</td>

@@ -1,0 +1,19 @@
+{
+  "date": "2026-11-06",
+  "isolated_database": "vita_identification_test_mi_salud_20261106_181517_cbb0d5",
+  "tests": 352,
+  "assertions": 4328,
+  "failures": 0,
+  "skipped": 2,
+  "seconds": 51.702,
+  "memory_mb": 90,
+  "habitual_database_unchanged": true,
+  "env_unchanged": true,
+  "portal_focused_tests": 17,
+  "portal_focused_assertions": 187,
+  "chrome_layout_cases": 16,
+  "chrome_token_fragment_and_private_post_passed": true,
+  "real_smtp_delivery_tested": false,
+  "portal_parallel_token_consumption_tested": false,
+  "habitual_database_synthetic_portal_accounts_created": 0
+}

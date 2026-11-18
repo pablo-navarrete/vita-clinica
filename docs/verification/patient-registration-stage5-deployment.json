@@ -1,0 +1,22 @@
+{
+    "database": "vita_clinica",
+    "mysql": "8.0.30",
+    "collation": "utf8mb4_0900_ai_ci",
+    "target": "2026_11_06_000300_create_patient_registration_attempts",
+    "preflight_passed": true,
+    "backup_directory": "C:\/laragon\/backups\/vita-patient-registration-stage5\/20261106_173359_0ca1c6",
+    "backup_sha256": "60e6db01d751bba3e4708293620627bc7484bdaea37bb77cddf6df4ad6b2d1f4",
+    "restored_and_verified": true,
+    "restore_database": "vita_identification_restore_stage5_20261106_173359_115ed1",
+    "migration_applied": true,
+    "existing_tables_and_data_unchanged": true,
+    "schema_matches_restored_validation": true,
+    "new_enforced_checks": 4,
+    "restrict_foreign_keys": 4,
+    "new_triggers": [
+        "vita_registration_delete",
+        "vita_registration_insert",
+        "vita_registration_update"
+    ],
+    "env_unchanged": true
+}

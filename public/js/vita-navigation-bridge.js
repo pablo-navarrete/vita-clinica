@@ -128,7 +128,7 @@
         document.addEventListener('submit',event => {
             if (event.defaultPrevented || event.target.getAttribute('target') && event.target.getAttribute('target') !== '_self') return;
             if (new URL(event.target.getAttribute('action') || '',location.href).pathname === '/logout') return;
-            if (!window.parent.VitaModules.submit(event.target,event.submitter)) event.preventDefault();
+            if (!window.parent.VitaModules.submit(event.target,event.submitter,event)) event.preventDefault();
         });
     }
     document.addEventListener('submit',event => {

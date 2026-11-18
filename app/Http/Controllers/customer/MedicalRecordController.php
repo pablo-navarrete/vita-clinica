@@ -81,24 +81,28 @@ class MedicalRecordController extends Controller
 
     private function patientForExport(int $customerId, int $patientId): Patient
     {
-        return Patient::query()
+        $patient = Patient::query()
             ->where('customer_id', $customerId)
             ->with([
                 'insurance',
                 'clinicBranch',
                 'documents.clinicBranch',
                 'documents.uploader',
-                'auditLogs' => fn ($query) => $query->where('customer_id', $customerId)->with(['clinicBranch', 'user']),
                 'medicalRecord.allergies',
                 'medicalRecord.chronicDiseases',
                 'medicalRecord.regularMedications',
                 'medicalRecord.previousSurgeries',
                 'encounters' => fn ($query) => $query->where('customer_id', $customerId)->with([
-                    'professional:id,name,email,status', 'specialty:id,name', 'clinicBranch', 'observations.author', 'observations.clinicBranch',
+                    'professional:id,name,email,status', 'specialty:id,name', 'clinicBranch', 'observations.author', 'observations.clinicBranch', 'signature.documentVersion', 'addendumSignatures.documentVersion',
                     'appointment' => fn ($appointment) => $appointment->withoutGlobalScope('active_clinic_branch')->where('customer_id', $customerId)->with('clinicBranch'),
                 ]),
             ])
             ->findOrFail($patientId);
+        foreach ($patient->encounters as $encounter) {
+            app(\App\Services\Signatures\SignedEncounterProjection::class)->apply($encounter, true);
+            app(\App\Services\Signatures\EncounterAddendumReader::class)->read($encounter, true);
+        }
+        return $patient;
     }
   
 
@@ -180,7 +184,7 @@ class MedicalRecordController extends Controller
         }
 
         $encounters = $historyQuery
-            ->with('professional', 'specialty', 'clinicBranch', 'openedBy', 'createdBy', 'appointment.professional', 'appointment.specialty', 'telemedicineSession', 'observations.author', 'observations.clinicBranch')
+            ->with('professional', 'specialty', 'clinicBranch', 'openedBy', 'createdBy', 'appointment.professional', 'appointment.specialty', 'telemedicineSession', 'observations.author', 'observations.clinicBranch', 'signature.documentVersion', 'addendumSignatures.documentVersion')
             ->orderByDesc('started_at')
             ->paginate(10)
             ->withQueryString();

@@ -39,7 +39,7 @@ class WebController extends Controller
             ->orderBy('position')
             ->orderBy('id')
             ->get();
-        $publicSpecialties = Specialty::query()->where('customer_id', $customerId)->where('status', true)->orderBy('name')->get();
+        $publicSpecialties = app(\App\Services\SpecialtyCatalog::class)->offered($customerId);
         $websiteFooter = WebsiteFooter::where('customer_id', $customerId)->first();
         $websiteSocialSettings = WebsiteSocialSetting::where('customer_id', $customerId)->first();
         $websiteTopbar = WebsiteTopbar::firstOrNew(
@@ -87,7 +87,7 @@ class WebController extends Controller
     private function publicMenus(int $customerId)
     {
         return Menu::query()
-            ->where('customer_id', $customerId)
+            ->with('websitePage')->where('customer_id', $customerId)
             ->where('status', true)
             ->orderByRaw('CASE WHEN position < 1 THEN 1 ELSE 0 END')
             ->orderBy('position')

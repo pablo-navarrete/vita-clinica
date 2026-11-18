@@ -6,10 +6,7 @@
 
 @section('content')
     <div class="mx-auto max-w-7xl space-y-6 sm:px-6 lg:px-8">
-        @if (session('success'))
-            <div class="rounded-md bg-green-100 px-4 py-3 text-green-800">{{ session('success') }}</div>
-        @endif
-        <form method="POST" action="{{ route('customers.website-topbar.update', ['customer' => request()->route('customer')]) }}" class="space-y-6">
+        <form method="POST" action="{{ route('customers.website-topbar.update', ['customer' => request()->route('customer')]) }}" class="grid gap-6">
             @csrf
             @method('PUT')
             <section class="rounded-lg bg-white p-6 shadow-sm">

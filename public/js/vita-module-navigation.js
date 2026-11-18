@@ -5,11 +5,28 @@
     let sequence = 0;
     let modalLayout = null;
     const loading = document.getElementById('vita-module-loading');
+    let loadingTimeout = null;
+    const hideLoading = () => {
+        clearTimeout(loadingTimeout); loadingTimeout = null;
+        loading.hidden = true; slot.removeAttribute('aria-busy');
+    };
+    const discardPending = frame => {
+        if (pending !== frame) return;
+        frame.vitaRestoreForm?.();
+        pending = null; frame.remove(); hideLoading();
+    };
     const showLoading = (error = null) => {
+        clearTimeout(loadingTimeout); loadingTimeout = null;
         loading.dataset.error = String(Boolean(error));
         const label = document.getElementById('vita-module-loading-label');
-        if (label) label.textContent = error || 'Cargando...';
+        if (label) label.textContent = error || '';
         loading.hidden = false;
+        if (!error) loadingTimeout = setTimeout(() => {
+            if (pending) discardPending(pending);
+            current.style.visibility = '';
+            slot.removeAttribute('aria-busy');
+            showLoading('La carga tardó demasiado. Si estabas guardando, revisa si el cambio se completó antes de intentarlo de nuevo.');
+        }, 30000);
     };
     const internalUrl = value => {
         const url = new URL(value,location.href);
@@ -41,7 +58,7 @@
                 frame.contentWindow.location.replace(contentUrl(url.href).href);
                 return false;
             }
-            if (frame === current) { frame.style.visibility = ''; loading.hidden = !pending; }
+            if (frame === current) { frame.style.visibility = ''; if (!pending) hideLoading(); }
             return true;
         } catch (_) { return true; }
     };
@@ -50,12 +67,13 @@
         catch (_) { return true; }
     };
     const prepare = push => {
-        if (pending) pending.remove();
+        if (pending) discardPending(pending);
         const frame = document.createElement('iframe');
         frame.name = `vita-content-${++sequence}`; frame.title = 'Contenido del módulo';
         frame.style.cssText = 'border:0;position:absolute;inset:0;width:100%;height:100%;visibility:hidden;pointer-events:none;';
         pending = frame; showLoading(); slot.setAttribute('aria-busy','true');
         const activate = () => {
+            if (frame !== current && pending !== frame) return;
             if (!ensureContentLayout(frame)) return;
             if (current === frame) { sync(false); return; }
             if (pending !== frame) return;
@@ -66,31 +84,35 @@
                 if (!doc?.body || doc.body.dataset.vitaContent !== 'true') {
                     const url = new URL(frame.contentWindow.location.href);
                     if (url.pathname === '/login') { window.top.location.assign(url.href); return; }
-                    showLoading('No se pudo abrir este módulo. Intenta nuevamente.');
-                    frame.remove(); pending = null; slot.removeAttribute('aria-busy'); return;
+                    discardPending(frame);
+                    showLoading('No se pudo abrir este módulo. Intenta nuevamente.'); return;
                 }
                 // Swap only the central document once it has finished loading.
                 window.VitaModules.setModal(false);
                 current.removeAttribute('id');
                 const previous = current; current = frame; pending = null;
                 current.id = 'vita-content-current'; current.style.cssText = 'border:0;width:100%;height:100%;display:block;';
-                previous.remove(); loading.hidden = true; slot.removeAttribute('aria-busy');
+                previous.remove(); hideLoading();
                 sync(push);
                 current.contentWindow.dispatchEvent(new Event('vita:content-visible'));
                 window.VitaNavigation?.requestState();
             } catch (_) {
-                frame.remove(); pending = null; showLoading('No se pudo abrir el contenido.'); slot.removeAttribute('aria-busy');
+                discardPending(frame); showLoading('No se pudo abrir el contenido.');
             }
         };
         frame.vitaActivate = activate;
         frame.addEventListener('load', activate);
+        frame.addEventListener('error', () => {
+            if (pending !== frame) return;
+            discardPending(frame); showLoading('No se pudo cargar el módulo. Puedes volver al contenido e intentarlo nuevamente.');
+        });
         slot.append(frame);
         return frame;
     };
     window.VitaModules = {
         contentReady(source) {
             if (pending?.contentWindow === source) pending.vitaActivate();
-            else if (current.contentWindow === source) sync(false);
+            else if (current.contentWindow === source) { ensureContentLayout(current); sync(false); }
         },
         isContentWindow(source) { return source === current.contentWindow || source === pending?.contentWindow; },
         isCurrentWindow(source) { return source === current.contentWindow; },
@@ -130,15 +152,27 @@
             prepare(push).src = url.href;
             return true;
         },
-        submit(form,submitter) {
+        submit(form,submitter,event) {
             if (!canLeave()) return false;
             const action = contentUrl(new URL(form.getAttribute('action') || '', form.ownerDocument.baseURI || location.href).href);
+            if (!action) return false;
             const frame = prepare(true);
-            if (!action) { frame.remove(); return false; }
+            const originalAction = form.getAttribute('action');
+            const originalTarget = form.getAttribute('target');
+            frame.vitaRestoreForm = () => {
+                if (form.getAttribute('target') !== frame.name) return;
+                if (originalTarget === null) form.removeAttribute('target'); else form.setAttribute('target', originalTarget);
+                if (originalAction === null) form.removeAttribute('action'); else form.setAttribute('action', originalAction);
+            };
             form.setAttribute('action', action.href); form.setAttribute('target', frame.name);
             let marker = form.querySelector('input[name="_vita_content"]');
             if (!marker) { marker = form.ownerDocument.createElement('input'); marker.type = 'hidden'; marker.name = '_vita_content'; form.append(marker); }
             marker.value = '1';
+            // Later bubbling listeners may handle this submission with AJAX instead.
+            if (event) queueMicrotask(() => {
+                if (!event.defaultPrevented) return;
+                discardPending(frame);
+            });
             return true;
         },
         sync,

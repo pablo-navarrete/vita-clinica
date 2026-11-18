@@ -1,0 +1,31 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const vm = require('node:vm');
+const control = extra => ({ listeners: {}, addEventListener(type, fn) { this.listeners[type] = fn; }, ...extra });
+const type = control({ value: 'observation' });
+const group = control();
+const target = control({ selectedOptions: [{ dataset: { kind: 'original' } }] });
+const field = control({ options: ['chief_complaint', 'clinical_assessment', 'treatment_plan', 'content'].map(value => ({ value })),
+    get selectedOptions() { return this.options.filter(option => option.value === this.value); }, value: 'chief_complaint' });
+const reason = control();
+const form = control({ dataset: {}, querySelector: selector => ({ '[name="type"]': type, '[data-rectification-fields]': group,
+    '[name="rectifies_version_id"]': target, '[name="target_field"]': field, '[name="reason"]': reason })[selector] });
+const originalGuard = () => true;
+const window = { addEventListener() {}, removeEventListener() {}, vitaHasUnsavedChanges: originalGuard };
+vm.runInNewContext(fs.readFileSync('public/js/encounter-addendum.js', 'utf8'), { document: { querySelector: () => form }, window });
+assert.equal(group.hidden, true);
+assert.equal(reason.disabled, true);
+assert.equal(window.vitaHasUnsavedChanges(), true);
+type.value = 'rectification'; type.listeners.change();
+assert.equal(group.hidden, false);
+assert.equal(reason.required, true);
+assert.equal(field.options[3].disabled, true);
+target.selectedOptions = [{ dataset: { kind: 'addendum' } }]; target.listeners.change();
+assert.equal(field.value, 'content');
+assert.equal(field.options[0].disabled, true);
+type.value = 'complement'; type.listeners.change();
+assert.equal(group.hidden, true);
+assert.equal(reason.required, false);
+form.listeners.input(); assert.equal(window.vitaHasUnsavedChanges(), true);
+form.addendumControl.dispose(); assert.equal(window.vitaHasUnsavedChanges, originalGuard);
+console.log('PASS rectification fields follow the document type and unsaved changes are tracked');

@@ -30,6 +30,8 @@
     @stack('styles')
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <link rel="stylesheet" href="{{ asset('css/vita-sidebar.css').'?v='.filemtime(public_path('css/vita-sidebar.css')) }}">
+    <link rel="stylesheet" href="{{ asset('css/vita-workspace-layout.css').'?v='.filemtime(public_path('css/vita-workspace-layout.css')) }}">
 
     <style>
         #vita-module-loading { position:absolute; inset:0; z-index:70; display:grid; place-items:center; background:transparent; }
@@ -48,7 +50,7 @@
 
         html, body { height: 100%; overflow: hidden; }
 
-        :root { --date-field-accent: {{ themeColor(600) }}; }
+        :root { --date-field-accent: {{ themeColor(600) }}; --vita-field-focus: {{ themeColor(500) }}; --vita-field-ring: {{ themeColor(100) }}; }
         .flatpickr-calendar {
             border: 1px solid #e2e8f0 !important;
             border-radius: 16px !important;
@@ -207,19 +209,20 @@
             color: #6b7280;
         }
     </style>
+    <link rel="stylesheet" href="{{ asset('css/vita-workspace-theme.css').'?v='.filemtime(public_path('css/vita-workspace-theme.css')) }}">
+@include('components.phone-assets')
+<link rel="stylesheet" href="{{ asset('css/clinic-field-focus.css').'?v='.filemtime(public_path('css/clinic-field-focus.css')) }}">
+@include('components.favicon')
 </head>
 
-<body data-vita-content="{{ $vitaContentOnly ? 'true' : 'false' }}" class="h-screen overflow-hidden font-sans antialiased">
+<body data-vita-content="{{ $vitaContentOnly ? 'true' : 'false' }}" class="vita-clinic-admin h-screen overflow-hidden font-sans antialiased">
   
 
-<div x-data="{ open: false }" class="flex h-screen min-h-0 overflow-hidden" style="background-color: {{ themeColor(50) }}">
+@component('layouts.clinic-workspace', ['clinicNavigation' => true, 'scrollContent' => false])
     @unless($vitaContentOnly)
-        @include('layouts.sidebar-customer')
+        @slot('sidebar') @include('layouts.sidebar-customer') @endslot
+        @slot('navigation') @include('layouts.navigation-customer') @endslot
     @endunless
-    <div class="flex h-screen min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-        @unless($vitaContentOnly)
-            <div class="sticky top-0 z-30 shrink-0">@include('layouts.navigation-customer')</div>
-        @endunless
         @if($vitaContentOnly)
             <div class="min-h-0 flex-1 flex flex-col overflow-y-auto">
             {{-- HEADER OPCIONAL --}}
@@ -244,14 +247,13 @@
                 <div id="vita-module-loading" hidden role="status" aria-live="polite">
                     <div class="vita-module-preloader">
                         <span class="vita-module-spinner" aria-hidden="true"></span>
-                        <span id="vita-module-loading-label">Cargando...</span>
+                        <span id="vita-module-loading-label"></span>
                         <button id="vita-module-loading-dismiss" type="button" onclick="this.closest('#vita-module-loading').hidden = true">Volver al contenido</button>
                     </div>
                 </div>
             </div>
         @endif
-    </div>
-</div>
+@endcomponent
 
 <!-- JQUERY -->
 <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
@@ -272,7 +274,7 @@
 
 <!--CHART.JS-->
 @if($vitaContentOnly && request()->is('dashboard*'))
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{{ asset('js/vendor/chart.umd.min.js').'?v='.filemtime(public_path('js/vendor/chart.umd.min.js')) }}"></script>
 @endif
 <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13"></script>
 <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/es.js"></script>
@@ -340,24 +342,18 @@
         timerProgressBar: true
     });
 
-    @if(session('success'))
-        Toast.fire({
-            icon: 'success',
-            title: @json(session('success'))
-        });
-    @endif
 
-    @if(session('error'))
-        Toast.fire({
-            icon: 'error',
-            title: @json(session('error'))
-        });
-    @endif
+
+
 </script>
+@include('components.flash-toasts')
 
 @unless($vitaContentOnly)
 <script src="{{ asset('js/vita-module-navigation.js') }}?v={{ filemtime(public_path('js/vita-module-navigation.js')) }}"></script>
 @endunless
 <script src="{{ asset('js/vita-navigation-bridge.js') }}?v={{ filemtime(public_path('js/vita-navigation-bridge.js')) }}"></script>
+@unless($vitaContentOnly)
+<script src="{{ asset('js/vita-user-realtime.js') }}?v={{ filemtime(public_path('js/vita-user-realtime.js')) }}"></script>
+@endunless
 </body>
 </html>

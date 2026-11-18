@@ -27,6 +27,7 @@
         @media(max-height:300px) { .embedded-video-stage { height: clamp(72px, calc(100dvh - 115px), 105px); } main > section { margin-top: 4px !important; } }
     </style>
     @stack('styles')
+@include('components.favicon')
 </head>
 <body>@yield('content')@stack('scripts')</body>
 </html>

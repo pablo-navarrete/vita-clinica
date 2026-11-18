@@ -44,10 +44,11 @@ class MyEncounterController extends Controller
             $query = Appointment::withoutGlobalScope('active_clinic_branch')->where('appointments.customer_id', $customerId)
                 ->whereIn('appointments.clinic_branch_id', $branchIds)->when(!$isSuperAdmin, fn ($query) => $query->where('professional_id', $user->id))
                 ->whereIn('status', [0, 1])->whereDoesntHave('encounter')
-                ->with(['patient:id,name,rut', 'specialty:id,name', 'clinicBranch:id,name']);
+                ->with(['patient:id,customer_id,clinic_branch_id,name,rut', 'specialty:id,name', 'clinicBranch:id,name']);
 
             return DataTables::eloquent($query)
                 ->addColumn('is_scheduled', fn () => true)
+                ->editColumn('patient', fn ($row) => $row->patient ? app(\App\Services\Identification\PatientIdentification::class)->decorate($row->patient)->toArray() : null)
                 ->addColumn('status_label', fn ($appointment) => (int) $appointment->status === 1 ? 'Confirmada' : 'Agendada')
                 ->addColumn('modality_label', fn ($appointment) => $appointment->modality === 'telemedicine' ? 'Telemedicina' : 'Presencial')
                 ->addColumn('started_display', fn ($appointment) => $appointment->start_at?->timezone('America/Santiago')->format('d/m/Y H:i') ?? 'Sin fecha')
@@ -67,11 +68,12 @@ class MyEncounterController extends Controller
                         ->withoutGlobalScope('active_clinic_branch')->where('customer_id', $customerId)->where('professional_id', $user->id));
                 });
             }))
-            ->with(['patient:id,name,rut', 'specialty:id,name', 'clinicBranch:id,name']);
+            ->with(['patient:id,customer_id,clinic_branch_id,name,rut', 'specialty:id,name', 'clinicBranch:id,name', 'signature']);
 
         return DataTables::eloquent($query)
-            ->addColumn('status_label', fn ($encounter) => match ((int) $encounter->status) {
-                1 => 'En curso', 2 => 'Finalizada', 3 => 'Cancelada', default => 'Sin estado',
+            ->editColumn('patient', fn ($row) => $row->patient ? app(\App\Services\Identification\PatientIdentification::class)->decorate($row->patient)->toArray() : null)
+                ->addColumn('status_label', fn ($encounter) => match ((int) $encounter->status) {
+                1 => 'En curso', 2 => $encounter->signature ? 'Finalizada · FES VITA · ' . $encounter->signature->identity['name'] . ' · ' . $encounter->signature->signed_at->timezone('America/Santiago')->format('d/m/Y H:i') : 'Finalizada · Sin firma histórica', 3 => 'Cancelada', default => 'Sin estado',
             })
             ->addColumn('modality_label', fn ($encounter) => $encounter->modality === 'telemedicine' ? 'Telemedicina' : 'Presencial')
             ->addColumn('started_display', fn ($encounter) => $encounter->started_at?->timezone('America/Santiago')->format('d/m/Y H:i') ?? 'Sin fecha')

@@ -9,8 +9,8 @@ use App\Models\User;
 use App\Support\ClinicBranchContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Yajra\DataTables\Facades\DataTables;
 
@@ -59,19 +59,20 @@ class RolePermissionController extends Controller
                 $selectedRoleIds = $user->branchRoles->pluck('id')->map(fn ($id) => (int) $id)->all();
                 $roleOptions = $roles->map(function (Role $role) use ($selectedRoleIds) {
                     $checked = in_array((int) $role->id, $selectedRoleIds, true) ? ' checked' : '';
+
                     return '<label class="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs text-gray-700">'
-                        . '<input type="checkbox" name="role_ids[]" value="' . $role->id . '"' . $checked . ' class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">'
-                        . '<span>' . e($role->name) . '</span></label>';
+                        .'<input type="checkbox" name="role_ids[]" value="'.$role->id.'"'.$checked.' class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">'
+                        .'<span>'.e($role->name).'</span></label>';
                 })->implode('');
                 $action = route('customers.roles-permissions.users.update', [
                     'customer' => request()->route('customer'), 'userId' => $user->id,
                 ]);
 
-                return '<form method="POST" action="' . e($action) . '" class="flex min-w-[18rem] flex-col items-start gap-2">'
-                    . csrf_field() . method_field('PATCH')
-                    . '<input type="hidden" name="branch_id" value="' . (int) $branchId . '">'
-                    . '<div class="flex flex-wrap gap-1.5">' . $roleOptions . '</div>'
-                    . '<button class="rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white hover:bg-indigo-700">Guardar</button></form>';
+                return '<form method="POST" action="'.e($action).'" class="flex min-w-[18rem] flex-col items-start gap-2">'
+                    .csrf_field().method_field('PATCH')
+                    .'<input type="hidden" name="branch_id" value="'.(int) $branchId.'">'
+                    .'<div class="flex flex-wrap gap-1.5">'.$roleOptions.'</div>'
+                    .'<button class="rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white hover:bg-indigo-700">Guardar</button></form>';
             })
             ->rawColumns(['role_control'])
             ->make(true);
@@ -101,7 +102,7 @@ class RolePermissionController extends Controller
         $role->permissions()->sync($data['permissions'] ?? []);
         $role->forceFill(['permissions_configured' => true])->save();
 
-        return back()->with('success', 'Permisos actualizados para ' . $role->name . '.');
+        return back()->with('success', 'Permisos actualizados para '.$role->name.'.');
     }
 
     public function destroy(int $roleId): RedirectResponse
@@ -145,31 +146,35 @@ class RolePermissionController extends Controller
         if ($adminRoleId && in_array((int) $adminRoleId, array_map('intval', $data['role_ids']), true)) {
             abort_unless($isSuperAdmin || $actor->hasClinicRole('Administrador', $customerId, (int) $branchId), 403, 'Solo el Administrador general puede asignar ese rol.');
         }
-        $roleIds = array_values(array_unique(array_map('intval', $data['role_ids'])));
-        $assignsGeneralAdmin = $adminRoleId && in_array((int) $adminRoleId, $roleIds, true);
-        $targetBranchIds = $assignsGeneralAdmin
-            ? $user->branches()->where('clinic_branches.status', true)->pluck('clinic_branches.id')->map(fn ($id) => (int) $id)->all()
-            : [(int) $branchId];
-        foreach ($targetBranchIds as $targetBranchId) {
-            $branchRoleIds = $targetBranchId === (int) $branchId || !$assignsGeneralAdmin
-                ? $roleIds
-                : array_values(array_unique(array_merge(
-                    $user->clinicRolesForBranch($customerId, $targetBranchId)->pluck('roles.id')->map(fn ($id) => (int) $id)->all(),
-                    [(int) $adminRoleId]
-                )));
-            DB::table('clinic_branch_user_role')->where('customer_id', $customerId)
-                ->where('clinic_branch_id', $targetBranchId)->where('user_id', $user->id)->delete();
-            $now = now();
-            DB::table('clinic_branch_user_role')->insert(array_map(fn ($roleId) => [
-                'customer_id' => $customerId,
-                'clinic_branch_id' => $targetBranchId,
-                'user_id' => $user->id,
-                'role_id' => $roleId,
-                'created_at' => $now,
-                'updated_at' => $now,
-            ], $branchRoleIds));
-        }
-        $user->syncClinicRoleMirror($customerId);
+        DB::transaction(function () use ($data, $customerId, $user, $branchId, $adminRoleId) {
+            DB::table('customers')->where('id', $customerId)->lockForUpdate()->first();
+            $roleIds = array_values(array_unique(array_map('intval', $data['role_ids'])));
+            $assignsGeneralAdmin = $adminRoleId && in_array((int) $adminRoleId, $roleIds, true);
+            $targetBranchIds = $assignsGeneralAdmin
+                ? $user->branches()->where('clinic_branches.status', true)->pluck('clinic_branches.id')->map(fn ($id) => (int) $id)->all()
+                : [(int) $branchId];
+            foreach ($targetBranchIds as $targetBranchId) {
+                $branchRoleIds = $targetBranchId === (int) $branchId || ! $assignsGeneralAdmin
+                    ? $roleIds
+                    : array_values(array_unique(array_merge(
+                        $user->clinicRolesForBranch($customerId, $targetBranchId)->pluck('roles.id')->map(fn ($id) => (int) $id)->all(),
+                        [(int) $adminRoleId]
+                    )));
+                DB::table('clinic_branch_user_role')->where('customer_id', $customerId)
+                    ->where('clinic_branch_id', $targetBranchId)->where('user_id', $user->id)->delete();
+                $now = now();
+                DB::table('clinic_branch_user_role')->insert(array_map(fn ($roleId) => [
+                    'customer_id' => $customerId,
+                    'clinic_branch_id' => $targetBranchId,
+                    'user_id' => $user->id,
+                    'role_id' => $roleId,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ], $branchRoleIds));
+            }
+            $user->syncClinicRoleMirror($customerId);
+
+        });
 
         return back()->with('success', 'Rol del usuario actualizado.');
     }
@@ -242,9 +247,10 @@ class RolePermissionController extends Controller
     private function defaultPermissions(string $role): array
     {
         $all = Permission::query()->pluck('slug')->all();
+
         return match ($role) {
             'Administrador' => $all,
-            'Administrador de sede' => array_values(array_filter($all, fn ($slug) => !in_array($slug, [
+            'Administrador de sede' => array_values(array_filter($all, fn ($slug) => ! in_array($slug, [
                 'roles.manage', 'website.manage', 'clinic_configuration.manage', 'branches.admin_all', 'branches.operate_all',
             ], true))),
             'Doctor' => ['dashboard.view', 'patients.view', 'appointments.view', 'appointments.create', 'appointments.update', 'medical_records.view', 'medical_records.manage', 'schedules.manage', 'chat.view', 'chat.send', 'notifications.view'],

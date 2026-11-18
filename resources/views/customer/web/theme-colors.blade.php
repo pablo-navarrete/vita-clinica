@@ -6,14 +6,25 @@
         --clinic-primary-light: {{ themeColor(50) }};
         --clinic-primary-lighter: {{ themeColor(100) }};
         --primary: {{ themeColor(600) }};
+        --font-family-sans-serif: 'Figtree', sans-serif;
     }
+
+    body { font-family: 'Figtree', sans-serif !important; font-weight: 400; line-height: 1.7; }
+    h1, h2, h3, h4, h5, h6,
+    .h1, .h2, .h3, .h4, .h5, .h6,
+    .navbar, .btn, input, select, textarea, button { font-family: 'Figtree', sans-serif; }
+    h1, h2, .h1, .h2 { letter-spacing: -.04em; line-height: 1.15; }
+    h3, h4, .h3, .h4 { letter-spacing: -.02em; }
+    .navbar-light .navbar-nav .nav-link { font-size: 16px; font-weight: 500; letter-spacing: 0; text-transform: none !important; }
+    .public-clinic-name { font-family: 'Figtree', sans-serif; font-size: 24px; font-weight: 700; letter-spacing: .16em; line-height: 1.2; text-transform: uppercase; }
+    .public-clinic-logo { width: auto; height: 44px; max-width: 120px; object-fit: contain; }
+    #clinic-banner-carousel .carousel-caption h1 { letter-spacing: -.05em; font-weight: 600; text-transform: none !important; }
 
     html, body { max-width: 100%; overflow-x: clip; }
 
     @media (max-width: 991.98px) {
         .public-clinic-brand { min-width: 0; max-width: calc(100% - 3.75rem); gap: .5rem !important; white-space: normal; }
-        .public-clinic-logo { width: auto !important; max-width: 3.5rem; max-height: 3.5rem !important; }
-        .public-clinic-name { min-width: 0; overflow-wrap: anywhere; font-size: clamp(1.05rem, 4.8vw, 1.65rem); line-height: 1.15; }
+        .public-clinic-name { min-width: 0; overflow-wrap: anywhere; font-size: clamp(1.05rem, 4.8vw, 1.3125rem); line-height: 1.2; }
         .public-clinic-brand + .navbar-toggler { flex: 0 0 auto; margin-left: auto; }
         .navbar-light .navbar-collapse .navbar-nav { align-items: stretch; }
         .navbar-light .navbar-collapse .navbar-nav .nav-link { padding: .65rem .5rem; }
@@ -22,6 +33,10 @@
         .public-admin-bar > .d-flex { gap: .2rem .4rem !important; }
         .public-admin-bar .public-admin-link { max-width: 100%; white-space: normal; line-height: 1.25; }
         .public-admin-bar form { display: inline-flex !important; }
+    }
+
+    @media (max-width: 640px) {
+        .public-clinic-logo { height: 32px; max-width: 85px; }
     }
 
     @media (max-width: 575.98px) {

@@ -1,0 +1,33 @@
+{
+    "database": "vita_clinica",
+    "manual_controller_smoke_check": true,
+    "synthetic_patients": [
+        {
+            "patient_id": 58,
+            "document_country": "CL",
+            "controller_status": 200,
+            "identifier_recorded": true,
+            "encrypted_round_trip": true,
+            "hmac_lookup": true,
+            "medical_record_created": true,
+            "audit_records": 2
+        },
+        {
+            "patient_id": 59,
+            "document_country": "AR",
+            "controller_status": 200,
+            "identifier_recorded": true,
+            "encrypted_round_trip": true,
+            "hmac_lookup": true,
+            "medical_record_created": true,
+            "audit_records": 2
+        }
+    ],
+    "all_preexisting_rows_unchanged": true,
+    "channels": {
+        "internal": true,
+        "viti": false,
+        "public_booking": false
+    },
+    "registration_enabled": true
+}

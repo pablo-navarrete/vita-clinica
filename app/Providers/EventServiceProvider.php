@@ -25,7 +25,19 @@ class EventServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        Event::listen(\Illuminate\Notifications\Events\NotificationSent::class, function ($event) {
+            if ($event->channel !== 'database') return;
+            $data = $event->response?->data ?? [];
+            if (!empty($data['customer_id'])) {
+                \App\Support\UserRealtime::notify((int) $data['customer_id'], (int) $event->notifiable->getKey(), 'system');
+            }
+        });
+        foreach ([\App\Events\ChatMessageSent::class, \App\Events\ChatMessageDeleted::class, \App\Events\ChatMessageReactionChanged::class] as $class) {
+            Event::listen($class, function ($event) {
+                $conversationId = $event instanceof \App\Events\ChatMessageSent ? (int) $event->message->conversation_id : $event->conversationId;
+                \App\Support\UserRealtime::chat($event->customerId, $conversationId);
+            });
+        }
     }
 
     /**

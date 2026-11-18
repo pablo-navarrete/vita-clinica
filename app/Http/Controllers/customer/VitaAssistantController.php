@@ -214,7 +214,7 @@ class VitaAssistantController extends Controller
             && $this->hasAnyTerm($message, ['cita', 'citas', 'atencion', 'control', 'ultima', 'ultimo', 'proxima', 'proximo']);
         $asksAppointmentQuestion = $this->hasAnyTerm($message, ['cita', 'citas', 'atencion', 'control']);
         if ($asksSensitivePatientInfo || $asksPatientAppointment || $asksAppointmentQuestion) {
-            $patient = $this->findMentionedPatient($message, $customerId, $isDoctor ? (int) $user->id : null, $branchId);
+            $patient = $this->findMentionedPatient($validated['message'], $customerId, $isDoctor ? (int) $user->id : null, $branchId);
             if ($patient) {
                 return response()->json($this->patientSummary($patient, $message, $customerId, $isDoctor ? (int) $user->id : null, $customer, $branchId));
             }
@@ -369,14 +369,16 @@ class VitaAssistantController extends Controller
                     }));
             }))
             ->with('insurance:id,name,customer_id')
-            ->get(['id', 'customer_id', 'name', 'rut', 'insurance_id']);
+            ->get(['id', 'customer_id', 'name', 'insurance_id']);
 
-        return $patients->first(function (Patient $patient) use ($message) {
+        if ($document = app(\App\Services\Patients\PatientDocumentMention::class)->parse($message)) {
+            $resolved = app(\App\Services\Patients\PatientRegistrationService::class)->lookup(request()->user(), $document);
+            return $resolved ? $patients->firstWhere('id', $resolved->id) : null;
+        }
+        $folded = Str::ascii(mb_strtolower($message, 'UTF-8'));
+        return $patients->first(function (Patient $patient) use ($folded) {
             $name = Str::ascii(mb_strtolower(trim($patient->name), 'UTF-8'));
-            $rut = Str::ascii(mb_strtolower(preg_replace('/[^0-9k]/i', '', (string) $patient->rut), 'UTF-8'));
-            $messageRut = Str::ascii(mb_strtolower(preg_replace('/[^0-9k]/i', '', $message), 'UTF-8'));
-            return (strlen($name) >= 5 && str_contains($message, $name))
-                || (strlen($rut) >= 6 && str_contains($messageRut, $rut));
+            return strlen($name) >= 5 && str_contains($folded, $name);
         });
     }
 

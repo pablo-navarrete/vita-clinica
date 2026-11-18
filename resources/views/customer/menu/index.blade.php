@@ -6,9 +6,27 @@
 
 @section('content')
     <div class="mx-auto max-w-7xl space-y-6 sm:px-6 lg:px-8">
-        @if (session('error'))
-            <div class="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-amber-800">{{ session('error') }}</div>
-        @endif
+        
+        
+        <section class="rounded-lg bg-white p-6 shadow-sm">
+            <h3 class="mb-1 text-lg font-semibold text-gray-800">Logo y nombre en el menú público</h3>
+            <p class="mb-5 text-sm text-gray-500">Elige cómo se presenta la clínica en el encabezado de su sitio web.</p>
+            <form method="POST" action="{{ route('customers.menus.brand.update', ['customer' => request()->route('customer')]) }}" class="flex flex-wrap items-end gap-4">
+                @csrf @method('PUT')
+                <div class="w-full sm:max-w-md">
+                    <label for="menu-brand-display" class="mb-1 block text-sm font-medium text-gray-700">Mostrar en el menú</label>
+                    <select id="menu-brand-display" name="brand_display" class="w-full rounded-md border-gray-300 shadow-sm">
+                        <option value="both" @selected(old('brand_display', $navigationButton->brand_display ?? 'both') === 'both')>Logo y nombre</option>
+                        <option value="logo" @selected(old('brand_display', $navigationButton->brand_display ?? 'both') === 'logo')>Solo logo</option>
+                        <option value="title" @selected(old('brand_display', $navigationButton->brand_display ?? 'both') === 'title')>Solo nombre</option>
+                    </select>
+                    @error('brand_display')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+                </div>
+                <button type="submit" class="rounded-md px-4 py-2 font-semibold text-white hover:brightness-90" style="background-color: {{ themeColor(600) }}">Guardar presentación</button>
+            </form>
+            <p class="mt-3 text-xs text-gray-500">El logo se configura en Logo, ubicación Header. Si eliges solo logo y no hay uno activo, se mostrará el nombre de la clínica.</p>
+        </section>
+
         <section class="rounded-lg bg-white p-6 shadow-sm">
             <h3 class="mb-1 text-lg font-semibold text-gray-800">Crear página en blanco</h3>
             <p class="mb-5 text-sm text-gray-500">La página se agregará al menú público y luego podrás construirla con secciones, textos e imágenes.</p>
@@ -49,7 +67,7 @@
                 <div class="md:col-span-4"><label for="navigation-button-label" class="mb-1 block text-sm font-medium text-gray-700">Texto del boton</label><input id="navigation-button-label" name="label" required maxlength="60" value="{{ old('label', $navigationButton->label) }}" class="w-full rounded-md border-gray-300 shadow-sm" placeholder="Ej. Contactar">@error('label') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror</div>
                 <div class="md:col-span-5"><label for="navigation-button-destination" class="mb-1 block text-sm font-medium text-gray-700">Al hacer clic, abrir</label><select id="navigation-button-destination" name="destination" class="w-full rounded-md border-gray-300 shadow-sm"><option value="contact" @selected(old('destination', $navigationButton->destination) === 'contact')>Seccion de contacto</option><option value="whatsapp" @selected(old('destination', $navigationButton->destination) === 'whatsapp')>WhatsApp</option><option value="page" @selected(old('destination', $navigationButton->destination) === 'page')>Una pagina del sitio</option><option value="booking" @selected(old('destination', $navigationButton->destination) === 'booking')>Agendar cita (abrir modal)</option><option value="custom" @selected(old('destination', $navigationButton->destination) === 'custom')>Enlace personalizado</option></select>@error('destination') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror</div>
                 <div id="navigation-button-page-field" class="md:col-span-6"><label for="navigation-button-menu" class="mb-1 block text-sm font-medium text-gray-700">Pagina publica</label><select id="navigation-button-menu" name="menu_id" class="w-full rounded-md border-gray-300 shadow-sm"><option value="">Selecciona una pagina</option>@foreach ($menus->where('status', true) as $publicMenu)<option value="{{ $publicMenu->id }}" @selected((string) old('menu_id', $navigationButton->menu_id) === (string) $publicMenu->id)>{{ $publicMenu->name }}</option>@endforeach</select>@error('menu_id') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror</div>
-                <div id="navigation-button-whatsapp-field" class="md:col-span-6"><label for="navigation-button-whatsapp" class="mb-1 block text-sm font-medium text-gray-700">WhatsApp con codigo de pais</label><input id="navigation-button-whatsapp" name="whatsapp_phone" type="tel" maxlength="40" value="{{ old('whatsapp_phone', $navigationButton->whatsapp_phone) }}" class="w-full rounded-md border-gray-300 shadow-sm" placeholder="56912345678">@error('whatsapp_phone') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror</div>
+                <div id="navigation-button-whatsapp-field" class="md:col-span-6"><label for="navigation-button-whatsapp" class="mb-1 block text-sm font-medium text-gray-700">WhatsApp con codigo de pais</label><input id="navigation-button-whatsapp" name="whatsapp_phone" type="tel" maxlength="40" value="{{ old('whatsapp_phone', $navigationButton->whatsapp_phone) }}" class="w-full rounded-md border-gray-300 shadow-sm" placeholder="56987654321">@error('whatsapp_phone') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror</div>
                 <div id="navigation-button-custom-field" class="md:col-span-12"><label for="navigation-button-url" class="mb-1 block text-sm font-medium text-gray-700">Enlace personalizado</label><input id="navigation-button-url" name="custom_url" maxlength="500" value="{{ old('custom_url', $navigationButton->custom_url) }}" class="w-full rounded-md border-gray-300 shadow-sm" placeholder="https://... , /reservas o mailto:correo@clinica.cl">@error('custom_url') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror</div>
                 <div class="md:col-span-12"><button type="submit" class="rounded-md px-4 py-2 font-semibold text-white hover:brightness-90" style="background-color: {{ themeColor(600) }}"><i class="fa-solid fa-floppy-disk mr-1"></i> Guardar boton</button></div>
             </form>

@@ -3,13 +3,11 @@
 namespace App\Support;
 
 use App\Http\Controllers\customer\AppointmentController;
-use App\Http\Controllers\customer\PatientController;
 use App\Models\Patient;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
@@ -25,7 +23,13 @@ class VitiBookingConversation
         $key = "viti-booking:{$request->user()->id}:{$customerId}:{$branchId}";
         return Cache::lock($key . ':lock', 30)->block(5, function () use ($request, $customerId, $branchId, $text, $message, $key) {
             $encrypted = Cache::get($key);
-            $state = $encrypted ? json_decode(Crypt::decryptString($encrypted), true) : [];
+            $binding = ['purpose'=>'viti-booking-draft','actor'=>$request->user()->id,'customer'=>$customerId,'branch'=>$branchId];
+            $crypto = null; $state = [];
+            if ($encrypted) {
+                $crypto = new \App\Services\Identification\Storage\IdentifierCrypto(config('identification'));
+                try { $state = $crypto->decrypt($encrypted, $binding); }
+                catch (\RuntimeException) { Cache::forget($key); }
+            }
             if (preg_match('/^(cancelar|cancela|salir|empezar de nuevo|reiniciar)( el agendamiento)?[.!]*$/', $message)) {
                 Cache::forget($key);
                 return ['reply' => 'Cancelé el agendamiento pendiente. No guardaré una cita sin tu confirmación.'];
@@ -50,8 +54,11 @@ class VitiBookingConversation
                 $reply = implode("\n", array_merge(...array_values($exception->errors())));
             }
             if (!empty($state['done'])) Cache::forget($key);
-            else Cache::put($key, Crypt::encryptString(json_encode($state, JSON_THROW_ON_ERROR)), now()->addMinutes(20));
-            return ['reply' => $reply, 'actions' => !empty($state['done']) ? [[
+            else {
+                $crypto ??= new \App\Services\Identification\Storage\IdentifierCrypto(config('identification'));
+                Cache::put($key, $crypto->encrypt($state, $binding), now()->addMinutes(20));
+            }
+            return ['reply' => $reply, 'input_type' => ($state['stage'] ?? '') === 'patient_phone' ? 'tel' : 'text', 'actions' => !empty($state['done']) ? [[
                 'label' => 'Ver agenda', 'url' => route('customers.appointments.index', ['customer' => $request->route('customer')]),
             ]] : []];
         });
@@ -64,7 +71,7 @@ class VitiBookingConversation
         if ($stage === 'create_patient') {
             if (!$yes) return 'Este paciente no está registrado en esta clínica. ¿Quieres agregarlo? Responde sí o escribe cancelar.';
             $this->permission($request, $clinic, $branch, 'patients.create');
-            $s['new_patient'] = ['rut' => $s['rut']];
+            $s['new_patient'] = ($s['document'] ?? ['rut' => $s['rut']]) + ['registration_operation' => (string) \Illuminate\Support\Str::uuid()];
             $s['stage'] = 'patient_name';
             return 'Indica el nombre completo del paciente.';
         }
@@ -88,17 +95,17 @@ class VitiBookingConversation
         }
         if (preg_match('/\b([01]?\d|2[0-3])[:.]([0-5]\d)\b/', $message, $match)) $s['time'] = sprintf('%02d:%02d', $match[1], $match[2]);
         elseif (preg_match('/\ba las? ([01]?\d|2[0-3])\b/', $message, $match)) $s['time'] = sprintf('%02d:00', $match[1]);
-        if (preg_match('/\b(?:\d{1,2}\.\d{3}\.\d{3}|\d{7,8})-?[\dkK]\b/', $text, $match)) {
-            $normalized = $this->normalizeRut($match[0]);
-            if (($s['rut'] ?? null) !== $normalized) unset($s['patient_id']);
-            $s['rut'] = $normalized;
+        if ($document = app(\App\Services\Patients\PatientDocumentMention::class)->parse($text)) {
+            if (($s['document'] ?? null) !== $document) unset($s['patient_id']);
+            $s['document'] = $document;
+            $s['rut'] = $document['display'];
         }
         if (!empty($s['rut']) && empty($s['patient_id'])) {
             $this->permission($request, $clinic, $branch, 'patients.view');
-            $patient = $this->patientByRut($clinic, $s['rut']);
+            $patient = app(\App\Services\Patients\PatientRegistrationService::class)->lookup($request->user(), $s['document'] ?? ['rut' => $s['rut']]);
             if (!$patient) {
                 $s['stage'] = 'create_patient';
-                return "No existe un paciente con RUT {$s['rut']} en esta clínica. ¿Quieres agregarlo? Responde sí o cancelar.";
+                return "No existe un paciente con ese documento en esta clínica. ¿Quieres agregarlo? Responde sí o cancelar.";
             }
             $s['patient_id'] = $patient->id;
         }
@@ -183,7 +190,7 @@ class VitiBookingConversation
                 . "\nIndica la hora o el número. Para reservar, dime también el RUT del paciente.";
         }
         $s['mode'] = 'booking';
-        if (empty($s['patient_id'])) { $s['stage'] = 'rut'; return '¿Cuál es el RUT del paciente? Puedes escribirlo con puntos y guion.'; }
+        if (empty($s['patient_id'])) { $s['stage'] = 'rut'; return '¿Cuál es el RUT del paciente? Puedes escribir un RUT, o por ejemplo: pasaporte AR 000ABC12.'; }
         $specialties = $professional->specialtiesForBranch($clinic, $branch)->where('specialties.status', 1)->orderBy('specialties.name')->get();
         if ($stage === 'specialty' && ctype_digit($message) && $specialties->get((int) $message - 1)) $s['specialty_id'] = $specialties->get((int) $message - 1)->id;
         if ($specialties->count() === 1) $s['specialty_id'] = $specialties->first()->id;
@@ -209,7 +216,7 @@ class VitiBookingConversation
     private function slotChoice(string $message): ?int
     {
         // Remove the patient's RUT before interpreting an option number.
-        $choice = preg_replace('/\b(?:\d{1,2}\.\d{3}\.\d{3}|\d{7,8})-?[\dkK]\b/', '', $message);
+        $choice = app(\App\Services\Patients\PatientDocumentMention::class)->strip($message);
         if (preg_match('/^\s*(?:(?:opcion|numero|la|el)\s+)?([1-9]\d*)\s*(?:(?:con\s+)?(?:el\s+)?rut\s*:?)?\s*$/', $choice, $match)) {
             return (int) $match[1];
         }
@@ -252,14 +259,11 @@ class VitiBookingConversation
         $fields = ['name' => 'Nombre completo', 'birth_date' => 'Fecha de nacimiento (DD/MM/AAAA)', 'gender' => 'Sexo (Masculino o Femenino)', 'phone' => 'Teléfono', 'email' => 'Correo electrónico', 'address' => 'Dirección'];
         if ($s['stage'] === 'patient_confirm') {
             if (!$yes) return 'Responde confirmar paciente para registrarlo con los datos mostrados, o cancelar.';
-            $existing = $this->patientByRut($clinic, $s['rut']);
+            $existing = app(\App\Services\Patients\PatientRegistrationService::class)->lookup($request->user(), $s['document'] ?? ['rut' => $s['rut']]);
             if ($existing) $s['patient_id'] = $existing->id;
             else {
-                $child = $this->operationRequest($request, $s['new_patient']);
-                $response = DB::transaction(fn () => app(PatientController::class)->store($child));
-                $data = $response->getData(true);
-                if ($response->getStatusCode() >= 400) return implode("\n", array_merge(...array_values($data['errors'] ?? [['No pude registrar al paciente.']])));
-                $s['patient_id'] = $data['data']['id'];
+                $patient = app(\App\Services\Patients\PatientRegistrationService::class)->register($request->user(), $s['new_patient'], 'viti', $s['new_patient']['registration_operation']);
+                $s['patient_id'] = $patient->id;
             }
             unset($s['new_patient']); $s['stage'] = 'resume';
             return 'Paciente registrado. ' . $this->advance($request, $s, '', '', $clinic, $branch);
@@ -280,12 +284,12 @@ class VitiBookingConversation
         };
         $validation = Validator::make([$field => $value], [$field => $rules]);
         if ($validation->fails()) return 'Revisa el dato. ' . $fields[$field] . ': ' . $validation->errors()->first();
-        $s['new_patient'][$field] = $value;
+        $s['new_patient'][$field] = $validation->validated()[$field];
         foreach ($fields as $next => $label) {
             if (!isset($s['new_patient'][$next])) { $s['stage'] = 'patient_' . $next; return $label . ' del paciente:'; }
         }
         $s['stage'] = 'patient_confirm';
-        return "Revisa el registro del paciente:\nRUT: {$s['rut']}\n" . collect($fields)->map(fn ($label, $key) => $label . ': ' . $s['new_patient'][$key])->implode("\n") . "\nResponde confirmar paciente para guardarlo, o cancelar. La cita todavía no se creará.";
+        return "Revisa el registro del paciente:\nDocumento: {$s['rut']}\n" . collect($fields)->map(fn ($label, $key) => $label . ': ' . $s['new_patient'][$key])->implode("\n") . "\nResponde confirmar paciente para guardarlo, o cancelar. La cita todavía no se creará.";
     }
 
     private function displayDate(string $date): string
@@ -300,7 +304,8 @@ class VitiBookingConversation
         $professional = User::where('customer_id', $clinic)->findOrFail($s['professional_id']);
         $branchName = \App\Models\ClinicBranch::where('customer_id', $clinic)->findOrFail($branch)->name;
         $specialty = \App\Models\Specialty::where('customer_id', $clinic)->findOrFail($s['specialty_id'])->name;
-        return "Paciente: {$patient->name} · RUT {$patient->rut}\nProfesional: {$professional->name}\nEspecialidad: {$specialty}\nSede: {$branchName}\nFecha: {$this->displayDate($s['date'])} · {$s['time']} (30 minutos)\nModalidad: " . ($s['modality'] === 'telemedicine' ? 'Telemedicina' : 'Presencial') . "\nMotivo: " . ($s['reason'] ?: 'Sin motivo indicado');
+        $identification = app(\App\Services\Identification\PatientIdentification::class)->masked($patient);
+        return "Paciente: {$patient->name} · Documento {$identification}\nProfesional: {$professional->name}\nEspecialidad: {$specialty}\nSede: {$branchName}\nFecha: {$this->displayDate($s['date'])} · {$s['time']} (30 minutos)\nModalidad: " . ($s['modality'] === 'telemedicine' ? 'Telemedicina' : 'Presencial') . "\nMotivo: " . ($s['reason'] ?: 'Sin motivo indicado');
     }
 
     private function permission(Request $request, int $clinic, int $branch, string $permission): void
@@ -315,17 +320,6 @@ class VitiBookingConversation
         $child->headers->set('Accept', 'application/json');
         $child->setJson(new \Symfony\Component\HttpFoundation\InputBag($data));
         return $child;
-    }
-
-    private function normalizeRut(string $rut): string
-    {
-        $rut = strtoupper(preg_replace('/[^0-9kK]/', '', $rut));
-        return substr($rut, 0, -1) . '-' . substr($rut, -1);
-    }
-
-    private function patientByRut(int $clinic, string $rut): ?Patient
-    {
-        return Patient::where('customer_id', $clinic)->whereRaw("UPPER(REPLACE(REPLACE(rut, '.', ''), '-', '')) = ?", [str_replace('-', '', $rut)])->first();
     }
 
     public function dateFromText(string $message): ?string

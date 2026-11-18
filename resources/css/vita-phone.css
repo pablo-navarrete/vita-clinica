@@ -1,0 +1,17 @@
+.vita-phone-control{display:block;width:100%;--iti-border-color:#cbd5e1;--iti-hover-color:#eff6ff;--iti-dropdown-bg:#fff;--iti-text-color:#172b40;--iti-dialcode-color:#52677d}
+.vita-phone-control input[type=tel]{width:100%;direction:ltr;text-align:left}
+.vita-phone-control .iti__selected-country{border-radius:8px 0 0 8px;min-height:100%;color:#172b40}
+.iti--detached-country-selector{z-index:10000!important;color:#172b40;font:14px/1.5 Figtree,system-ui,sans-serif}
+.iti__country-selector{border-radius:12px;box-shadow:0 12px 32px #172b4026;overflow:hidden;background:#fff}
+.iti__country-list{max-height:260px;text-align:left}
+.iti__country{white-space:normal;min-height:40px}
+.iti .iti__search-input{width:100%;padding:12px 34px;border:0;border-radius:0;color:#172b40;background:#fff;font:inherit}
+.iti .iti__search-input:focus{outline:2px solid #93c5fd;outline-offset:-2px;box-shadow:none}
+.vita-phone-control .iti__selected-country:focus-visible{outline:2px solid #2563eb;outline-offset:2px}
+.vita-phone-status{display:block;margin-top:5px;font:12px/1.5 Figtree,system-ui,sans-serif;color:#52677d;overflow-wrap:anywhere}
+.vita-phone-status-error{color:#b91c1c}
+.vita-phone-display-flag{display:inline-block!important;vertical-align:middle;margin-right:7px;flex-shrink:0}
+.vita-assistant__composer [hidden]{display:none!important}
+.vita-assistant__composer input[type=tel]{min-height:42px;border:1px solid #dbe2ed;border-radius:12px;font:inherit;padding-top:10px;padding-bottom:10px}
+.vita-phone-control input[aria-invalid=true]{border-color:#dc2626}
+@media(max-width:600px){.iti--detached-country-selector{max-width:calc(100vw - 24px)}}

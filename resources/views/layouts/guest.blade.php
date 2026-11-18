@@ -382,6 +382,8 @@
         .auth-brand-note { margin-top: 20px; }
         @endif
     </style>
+@include('components.phone-assets')
+@include('components.favicon')
 </head>
 
 <body>

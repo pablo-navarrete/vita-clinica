@@ -31,10 +31,9 @@ class VitiAppointmentCancellation
                 $state = [];
                 Cache::forget("viti-booking:{$request->user()->id}:{$clinic}:{$branch}");
             }
-            if (preg_match('/\b(?:\d{1,2}\.\d{3}\.\d{3}|\d{7,8})-?[\dkK]\b/', $message, $rut)) {
-                $normalized = strtoupper(preg_replace('/[^0-9kK]/', '', $rut[0]));
-                $patient = Patient::where('customer_id', $clinic)->whereRaw("UPPER(REPLACE(REPLACE(rut, '.', ''), '-', '')) = ?", [$normalized])->first();
-                if (!$patient) return ['reply' => 'No existe un paciente con ese RUT en esta clínica.'];
+            if ($document = app(\App\Services\Patients\PatientDocumentMention::class)->parse($request->string('message')->toString())) {
+                $patient = app(\App\Services\Patients\PatientRegistrationService::class)->lookup($request->user(), $document);
+                if (!$patient) return ['reply' => 'No se pudo resolver el paciente con ese documento.'];
                 $state['patient_id'] = $patient->id;
             }
             if (isset($state['patient_id'])) $query->where('patient_id', $state['patient_id']);

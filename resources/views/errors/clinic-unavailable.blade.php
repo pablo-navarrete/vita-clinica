@@ -41,6 +41,7 @@
         p { margin: 0; color: #6b7280; line-height: 1.6; }
         .clinic { margin-top: 10px; color: #374151; font-weight: 600; }
     </style>
+@include('components.favicon')
 </head>
 <body>
     <main>

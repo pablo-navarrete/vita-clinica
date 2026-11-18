@@ -13,9 +13,15 @@ class Handler extends ExceptionHandler
      * @var array<int, string>
      */
     protected $dontFlash = [
+        'identification_number',
+        'document_number', 'registration_token', 'security_token', 'authorization_code',
+        'identification_legacy',
+        'admin_identification_number',
         'current_password',
         'password',
         'password_confirmation',
+        'admin_password',
+        'admin_password_confirmation',
     ];
 
     /**

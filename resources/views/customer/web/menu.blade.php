@@ -148,7 +148,7 @@
             @if ($websiteTopbar?->enabled ?? true)
             <div class="col-lg-6 text-left mb-2 mb-lg-0">
                 <div class="d-inline-flex flex-wrap align-items-center website-topbar-contact">
-                    @if ($websiteTopbar?->phone)<small><i class="fa fa-phone-alt mr-2"></i>{{ $websiteTopbar->phone }}</small>@endif
+                    @if ($websiteTopbar?->phone)<small><i class="fa fa-phone-alt mr-2"></i><span data-phone-display>{{ $websiteTopbar->phone }}</span></small>@endif
                     @if ($websiteTopbar?->phone && $websiteTopbar?->email)<small class="website-topbar-divider">|</small>@endif
                     @if ($websiteTopbar?->email)<small><i class="fa fa-envelope mr-2"></i>{{ $websiteTopbar->email }}</small>@endif
                 </div>
@@ -186,19 +186,26 @@
     <!-- Navbar Start -->
     <div class="container-fluid p-0">
         <nav class="navbar navbar-expand-lg bg-white navbar-light py-3 py-lg-0 px-lg-5">
-           <a href="{{ $publicPreview ? url('/') . '?public_view=1' : url('/') }}"
+           @php
+               $headerBrandDisplay = $websiteNavigationButton?->brand_display ?? 'both';
+               $headerLogo = app('logos_by_location')['header'] ?? null;
+               $headerClinicName = app()->bound('customer') ? app('customer')->name : config('app.name');
+           @endphp
+           <a href="{{ $publicPreview ? url('/') . '?public_view=1' : url('/') }}" aria-label="{{ $headerClinicName }}"
    class="navbar-brand ml-lg-3 public-clinic-brand"
    style="display:flex; align-items:center; gap:10px;">
 
-    @if(isset(app('logos_by_location')['header']))
-        <img class="public-clinic-logo" src="{{ asset('storage/' . app('logos_by_location')['header']->url) }}"
-             style="height:80px; width:auto; object-fit:contain;">
+    @if(in_array($headerBrandDisplay, ['logo', 'both'], true) && $headerLogo)
+        <img class="public-clinic-logo" src="{{ asset('storage/' . $headerLogo->url) }}" alt="Logo de {{ $headerClinicName }}"
+             >
     @endif
 
+    @if(in_array($headerBrandDisplay, ['title', 'both'], true) || !$headerLogo)
     <h1 class="m-0 public-clinic-name"
         style="color: {{ themeColor(800) }} !important; margin:0;">
-        {{ app()->bound('customer') ? app('customer')->name : config('app.name') }}
+        {{ $headerClinicName }}
     </h1>
+    @endif
 
 </a>
             @if ($publicMenus->isNotEmpty())
@@ -217,7 +224,7 @@
                                 @php $menuHref = url($menuHref) . (str_contains($menuHref, '?') ? '&' : '?') . 'public_view=1'; @endphp
                             @endif
                             <a href="{{ $menuHref }}" class="nav-item nav-link {{ $isActiveMenu ? 'active' : '' }}"
-                                @if($isActiveMenu) aria-current="page" @endif>{{ $menu->name }}</a>
+                                @if($isActiveMenu) aria-current="page" @endif>{{ $menu->websitePage?->title ?: $menu->name }}</a>
                         @endforeach
                     @else
                     <a href="{{ url('/') }}" class="nav-item nav-link active" style="color: {{ themeColor(600) }} !important;">

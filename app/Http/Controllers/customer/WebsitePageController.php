@@ -415,7 +415,7 @@ class WebsitePageController extends Controller
     private function publicMenus(int $customerId)
     {
         return \App\Models\Menu::query()
-            ->where('customer_id', $customerId)
+            ->with('websitePage')->where('customer_id', $customerId)
             ->where('status', true)
             ->orderByRaw('CASE WHEN position < 1 THEN 1 ELSE 0 END')
             ->orderBy('position')

@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Agendar una cita | {{ app('customer')->name }}</title>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.bunny.net/css?family=figtree:400,500,600,700&display=swap" rel="stylesheet">
     <link href="{{ asset('css/style.css') }}" rel="stylesheet">
     @include('customer.web.theme-colors')
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
@@ -13,7 +13,7 @@
     <link href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css" rel="stylesheet">
     <style>
         :root { --date-field-accent: {{ themeColor(600) }}; }
-        .flatpickr-calendar { width: 326px !important; border: 1px solid #e2e8f0 !important; border-radius: 16px !important; box-shadow: 0 18px 45px rgba(15, 23, 42, .18) !important; padding: 10px 12px !important; font-family: Poppins, sans-serif !important; overflow: visible; }
+        .flatpickr-calendar { width: 326px !important; border: 1px solid #e2e8f0 !important; border-radius: 16px !important; box-shadow: 0 18px 45px rgba(15, 23, 42, .18) !important; padding: 10px 12px !important; font-family: Figtree, sans-serif !important; overflow: visible; }
         .flatpickr-months { padding: 4px 4px 8px; }
         .flatpickr-current-month { font-size: 1rem !important; font-weight: 700; }
         .flatpickr-current-month .flatpickr-monthDropdown-months, .flatpickr-current-month input.cur-year { font-weight: 700 !important; }
@@ -29,7 +29,7 @@
         .flatpickr-day.vita-holiday:not(.selected):hover { background: #ffe4e6 !important; }
         .flatpickr-prev-month:hover svg, .flatpickr-next-month:hover svg { fill: var(--date-field-accent) !important; }
         .date-picker-visible { min-height: 46px; width: 100%; cursor: pointer; }
-        body { background: #f8fafc; font-family: Poppins, sans-serif; }
+        body { background: #f8fafc; font-family: Figtree, sans-serif; }
         .booking-card { max-width: 900px; margin: 3rem auto; border: 0; border-radius: 1rem; box-shadow: 0 12px 40px #0f172a14; }
         .booking-modal-view { background: #f8fafc; }
         .booking-modal-view main.container { max-width: none; padding: .85rem 1rem 1rem; }
@@ -67,10 +67,12 @@
         .booking-card input[type="date"] { min-height: 46px; border-color: #cbd5e1; border-radius: .5rem; accent-color: {{ themeColor(600) }}; color-scheme: light; transition: border-color .18s ease, box-shadow .18s ease; }
         .booking-card input[type="date"]:focus { border-color: {{ themeColor(600) }}; outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, {{ themeColor(600) }} 18%, transparent); }
         .booking-card input[type="date"]::-webkit-calendar-picker-indicator { padding: .3rem; border-radius: .4rem; cursor: pointer; }
-        .booking-submit { border: 0; border-radius: .5rem; padding: .8rem 1.3rem; color: #fff !important; background: {{ themeColor(600) }}; font-weight: 600; transition: background-color .2s ease, box-shadow .2s ease, transform .2s ease; }
+        .booking-submit { border: 0; border-radius: .5rem; padding: .8rem 1.3rem; color: #fff !important; background: {{ themeColor(600) }}; font-weight: 600; white-space: nowrap; flex-shrink: 0; transition: background-color .2s ease, box-shadow .2s ease, transform .2s ease; }
         .booking-submit:hover, .booking-submit:focus-visible { color: #fff !important; background: {{ themeColor(800) }}; box-shadow: 0 8px 20px rgba(0,0,0,.2); transform: translateY(-2px); }
         @media(max-width: 575.98px) { .booking-card { margin: 1rem .5rem; } .booking-card .card-body { padding: 1.25rem !important; } }
     </style>
+@include('components.phone-assets')
+@include('components.favicon')
 </head>
 <body class="{{ $bookingModal ? 'booking-modal-view' : '' }}">
     @if (!$bookingModal)
@@ -92,18 +94,40 @@
                     <div class="alert alert-success" role="status"><i class="fa-solid fa-circle-check mr-2"></i>{{ session('booking_success') }}</div>
                 @endif
 
+                @if(session('booking_notice'))<div class="alert alert-info" role="status">{{ session('booking_notice') }}</div>@endif
+                @if($errors->any())<div class="alert alert-danger" role="alert">{{ $errors->first() }}</div>@endif
+                @if(!empty($portalPersonal))
+                    <div class="alert alert-info" role="status">Estás reservando con Mi Salud. Usaremos tus datos disponibles; completa solamente los campos que faltan y revisa la atención antes de confirmar.</div>
+                    <a href="{{ route('customer.public-booking.portal.cancel',['customer'=>app('customer')->domain,'intent'=>session('portal_booking_grant')]) }}" class="btn btn-outline-secondary mb-3">Continuar sin Mi Salud</a>
+                @endif
                 <form method="POST" action="{{ route('customer.public-booking.store', array_filter(['customer' => request()->route('customer'), 'modal' => $bookingModal ? 1 : null])) }}" id="public-booking-form"
-                    data-rut-check-url="{{ route('customer.public-booking.check-rut', ['customer' => request()->route('customer')]) }}"
                     data-professionals-url="{{ route('customer.public-booking.professionals', ['customer' => request()->route('customer')]) }}"
                     data-availability-url="{{ route('customer.public-booking.availability', ['customer' => request()->route('customer')]) }}"
                     data-weekly-availability-url="{{ route('customer.public-booking.weekly-availability', ['customer' => request()->route('customer')]) }}">
                     @csrf
+                    @if(empty($portalPersonal) && config('patient_registration.channels.public_booking'))
+                    <div class="mb-4"><button type="submit" formnovalidate formtarget="_top" formaction="{{ route('customer.public-booking.portal.start',['customer'=>app('customer')->domain]) }}" class="btn btn-outline-primary">Continuar con Mi Salud</button><p class="text-muted small mt-2">Conservaremos la atención seleccionada. También puedes reservar sin una cuenta.</p></div>
+                    @endif
                     <div class="row">
-                        <div class="col-12 form-group">
-                            <label for="booking-rut">RUT</label>
-                            <input id="booking-rut" class="form-control" name="rut" maxlength="20" value="{{ old('rut') }}" required placeholder="12.345.678-9">
-                            <small id="booking-rut-feedback" class="d-block mt-1" aria-live="polite"></small>
-                            @error('rut') <small class="text-danger">{{ $message }}</small> @enderror
+                        <input type="hidden" name="registration_operation" value="{{ old('registration_operation', (string) \Illuminate\Support\Str::uuid()) }}">
+                        <div class="col-md-6 form-group"><label for="booking-document-country">País emisor del documento</label>
+                            <select id="booking-document-country" name="identification_country" class="custom-select" required>
+                            @foreach(app(\App\Services\Identification\CountryCatalog::class)->all() as $code => $countryName)
+                                <option value="{{ $code }}" @selected(old('identification_country','CL')===$code)>{{ $countryName }}</option>
+                            @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-6 form-group"><label for="booking-document-type">Tipo de documento</label>
+                            <select id="booking-document-type" name="identification_type" class="custom-select" required>
+                            @foreach(app(\App\Services\Identification\DocumentTypeRegistry::class)->available(old('identification_country','CL')) as $definition)
+                                <option value="{{ $definition->type->value }}" @selected(old('identification_type','national_id')===$definition->type->value)>{{ $definition->label }}</option>
+                            @endforeach
+                            </select>
+                        </div>
+                        <div class="col-12 form-group"><label for="booking-rut">Número de identificación</label>
+                            <input id="booking-rut" class="form-control" name="identification_number" value="{{ $portalPersonal['identification_number'] ?? '' }}" maxlength="128" required autocomplete="off" placeholder="RUT o documento completo">
+                            @error('identification_number') <small class="text-danger">{{ $message }}</small> @enderror
+                            <small class="d-block mt-1">Completa tus datos. No consultamos ni mostramos fichas por documento. Chile es el país de operación de la clínica.</small>
                         </div>
                         <div id="booking-patient-details" class="col-12">
                         <div class="row">
@@ -148,8 +172,8 @@
                             @error('phone') <small class="text-danger">{{ $message }}</small> @enderror
                         </div>
                         <div class="col-md-6 form-group">
-                            <label for="booking-email">Correo electrónico <span class="text-muted">(opcional)</span></label>
-                            <input id="booking-email" class="form-control" name="email" type="email" maxlength="255" value="{{ old('email') }}" autocomplete="email">
+                            <label for="booking-email">Correo electrónico para verificar la solicitud</label>
+                            <input id="booking-email" class="form-control" name="email" type="email" maxlength="255" value="{{ old('email') }}" required autocomplete="email">
                             @error('email') <small class="text-danger">{{ $message }}</small> @enderror
                         </div>
                         </div>
@@ -187,6 +211,7 @@
                             <select id="booking-time" class="custom-select" name="time" required disabled>
                                 <option value="">Selecciona profesional y fecha</option>
                             </select>
+                            <small id="booking-slot-notice" class="text-danger mt-2" role="alert" hidden>El horario seleccionado ya no está disponible. Elige otra hora; conservamos los demás datos.</small>
                             @error('time') <small class="text-danger">{{ $message }}</small> @enderror
                         </div>
                         <div class="col-12 form-group">
@@ -237,8 +262,8 @@
                         </div>
                     </div>
                     <div class="d-flex flex-column flex-sm-row align-items-sm-center justify-content-between mt-3" style="gap:.75rem">
-                        <small class="text-muted">La duración de cada cita es de 30 minutos. Las horas se muestran según disponibilidad real.</small>
-                        <button type="submit" class="booking-submit"><i class="fa-regular fa-calendar-check mr-2"></i>Agendar cita</button>
+                        <small class="text-muted">La duración de cada cita es de 30 minutos. Las horas se muestran según disponibilidad real. {{ empty($portalPersonal) ? 'Debes verificar tu correo antes de confirmar la reserva.' : 'Tu correo ya está verificado en Mi Salud.' }} La hora se comprueba nuevamente al confirmar.</small>
+                        <button type="submit" class="booking-submit"><i class="fa-regular fa-calendar-check mr-2"></i>{{ empty($portalPersonal) ? 'Solicitar cita' : 'Confirmar cita' }}</button>
                     </div>
                 </form>
             </div>
@@ -253,6 +278,11 @@
     <script src="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/js/select2.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/es.js"></script>
+    <script>
+        window.vitaPortalBookingFields = @json(array_keys($portalPersonal ?? []));
+        window.vitaBookingDocumentTypes = @json(collect(app(\App\Services\Identification\CountryCatalog::class)->all())->map(fn($name,$code)=>collect(app(\App\Services\Identification\DocumentTypeRegistry::class)->available($code))->map(fn($d)=>['value'=>$d->type->value,'label'=>$d->label])->values()));
+    </script>
+    <script src="{{ asset('js/portal-booking-form.js') }}"></script>
     <script>
         const vitaChileHolidays = (year) => {
             const dates = {
@@ -295,12 +325,9 @@
             const professional = document.getElementById('booking-professional');
             const date = document.getElementById('booking-date');
             const time = document.getElementById('booking-time');
-            const rut = document.getElementById('booking-rut');
             const modality = document.getElementById('booking-modality');
             const branchGroup = document.getElementById('booking-branch-group');
             const branch = document.getElementById('booking-branch');
-            const rutFeedback = document.getElementById('booking-rut-feedback');
-            const patientDetails = document.getElementById('booking-patient-details');
             const weeklyDays = document.getElementById('weekly-availability-days');
             const weeklyStatus = document.getElementById('weekly-availability-status');
             const weeklyPrevious = document.getElementById('weekly-availability-prev');
@@ -321,9 +348,6 @@
                 });
                 updateBranchVisibility();
             }
-            let rutCheckTimer;
-            let lastCheckedRut = '';
-            let autoFilledRut = '';
             let weeklyRequestId = 0;
             let weekAnchor = date.value || date.min;
 
@@ -442,71 +466,13 @@
 
             const hasSelect2 = Boolean(window.jQuery && jQuery.fn && jQuery.fn.select2);
             if (hasSelect2) {
-                $('#booking-specialty, #booking-professional').select2({
+                $('#booking-specialty, #booking-professional, #booking-document-country, #booking-document-type').select2({
                     width: '100%',
                     dropdownParent: $(document.body),
                     minimumResultsForSearch: 0,
                     language: { noResults: () => 'No se encontraron resultados', searching: () => 'Buscando...' },
                 });
             }
-
-            const applyPatientDetails = patient => {
-                const values = {
-                    'booking-name': patient.name || '',
-                    'booking-gender': patient.gender || '',
-                    'booking-birth-date': patient.birth_date || '',
-                };
-                Object.entries(values).forEach(([id, value]) => {
-                    const field = document.getElementById(id);
-                    if (!field) return;
-                    if (field._flatpickr) field._flatpickr.setDate(value || null, false);
-                    else field.value = value;
-                    if (hasSelect2 && field.tagName === 'SELECT') $(field).trigger('change.select2');
-                });
-            };
-            const setPatientDetailsVisible = (visible, existingPatient = false) => {
-                patientDetails.hidden = !visible;
-                patientDetails.querySelectorAll('input, select, textarea').forEach(field => { field.disabled = !visible; });
-                document.getElementById('booking-phone').required = visible && !existingPatient;
-            };
-
-            const checkRut = async () => {
-                const value = rut.value.trim();
-                const normalized = value.toUpperCase().replace(/[^0-9K]/g, '');
-                if (normalized.length < 7) {
-                    rutFeedback.textContent = '';
-                    rutFeedback.className = 'd-block mt-1';
-                    lastCheckedRut = '';
-                    setPatientDetailsVisible(true);
-                    return;
-                }
-                if (normalized === lastCheckedRut) return;
-
-                rutFeedback.textContent = 'Verificando RUT...';
-                rutFeedback.className = 'd-block mt-1 text-muted';
-                try {
-                    const response = await fetch(`${form.dataset.rutCheckUrl}?rut=${encodeURIComponent(value)}`, { headers: { 'Accept': 'application/json' } });
-                    if (!response.ok) throw new Error();
-                    const result = await response.json();
-                    if (rut.value.trim().toUpperCase().replace(/[^0-9K]/g, '') !== normalized) return;
-                    lastCheckedRut = normalized;
-                    if (!result.exists) {
-                        setPatientDetailsVisible(true);
-                        rutFeedback.textContent = 'No encontramos una ficha con este RUT. Completa tus datos para crearla al agendar.';
-                        rutFeedback.className = 'd-block mt-1 text-muted';
-                    } else if (result.patient) {
-                        applyPatientDetails(result.patient);
-                        setPatientDetailsVisible(true, true);
-                        autoFilledRut = normalized;
-                        rutFeedback.textContent = 'Encontramos tu ficha y completamos nombre, fecha de nacimiento y sexo.';
-                        rutFeedback.className = 'd-block mt-1 text-success';
-                    }
-                } catch (error) {
-                    setPatientDetailsVisible(true);
-                    rutFeedback.textContent = 'No se pudo verificar el RUT ahora. Se validara al agendar.';
-                    rutFeedback.className = 'd-block mt-1 text-muted';
-                }
-            };
 
             const setOptions = (select, placeholder, options) => {
                 select.innerHTML = '';
@@ -523,6 +489,7 @@
                 });
                 select.disabled = options.length === 0;
                 if (hasSelect2) $(select).trigger('change.select2');
+                form.dispatchEvent(new Event('booking-selection-updated'));
             };
 
             const loadProfessionals = async (restore = false) => {
@@ -570,6 +537,7 @@
                     const items = await response.json();
                     time.dataset.selected = restore ? (oldTime || '') : '';
                     setOptions(time, items.length ? 'Selecciona una hora' : 'No hay horas disponibles para esta fecha', items);
+                    document.getElementById('booking-slot-notice').hidden = !(restore && oldTime && !items.some(item => String(item.id ?? item.value) === String(oldTime)));
                 } catch (error) {
                     setOptions(time, 'No se pudieron consultar las horas', []);
                 }
@@ -585,6 +553,7 @@
             branch?.addEventListener('change', () => loadProfessionals(false));
             date.addEventListener('change', () => { loadAvailability(false); weekAnchor = date.value || date.min; loadWeeklyAvailability(); });
             time.addEventListener('change', highlightWeeklySelection);
+            time.addEventListener('change', () => { document.getElementById('booking-slot-notice').hidden = true; });
             weeklyPrevious.addEventListener('click', () => {
                 const previous = parseLocalDate(weekAnchor); previous.setDate(previous.getDate() - 7);
                 weekAnchor = formatLocalDate(`${previous.getFullYear()}-${String(previous.getMonth() + 1).padStart(2, '0')}-${String(previous.getDate()).padStart(2, '0')}`);
@@ -596,23 +565,6 @@
                 weekAnchor = formatLocalDate(`${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}-${String(next.getDate()).padStart(2, '0')}`);
                 loadWeeklyAvailability();
             });
-            rut.addEventListener('input', () => {
-                clearTimeout(rutCheckTimer);
-                lastCheckedRut = '';
-                rutFeedback.textContent = '';
-                const normalized = rut.value.trim().toUpperCase().replace(/[^0-9K]/g, '');
-                if (autoFilledRut && normalized !== autoFilledRut) {
-                    ['booking-name', 'booking-gender', 'booking-birth-date', 'booking-address', 'booking-insurance', 'booking-phone', 'booking-email'].forEach(id => {
-                        const field = document.getElementById(id);
-                        if (field) field.value = '';
-                    });
-                    autoFilledRut = '';
-                }
-                setPatientDetailsVisible(true);
-                rutCheckTimer = setTimeout(checkRut, 500);
-            });
-            rut.addEventListener('blur', checkRut);
-            if (rut.value.trim()) checkRut();
             if (specialty.value) loadProfessionals(true);
         })();
     </script>

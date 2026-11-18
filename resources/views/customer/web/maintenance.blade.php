@@ -7,6 +7,7 @@
     <link href="{{ asset('css/style.css') }}" rel="stylesheet">
     @include('customer.web.theme-colors')
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+@include('components.favicon')
 </head>
 <body style="min-height:100vh; display:grid; place-items:center; margin:0; padding:24px; background:{{ themeColor(50) }}; font-family:Arial,sans-serif;">
     <main style="width:min(100%,680px); padding:56px 32px; border-radius:20px; background:#fff; text-align:center; box-shadow:0 18px 55px #00000012;">

@@ -36,6 +36,7 @@ return [
     */
 
     'guards' => [
+        'mi_salud' => ['driver' => 'session', 'provider' => 'portal_accounts'],
         'web' => [
             'driver' => 'session',
             'provider' => 'users',
@@ -60,6 +61,7 @@ return [
     */
 
     'providers' => [
+        'portal_accounts' => ['driver' => 'eloquent', 'model' => App\Models\PortalAccount::class],
         'users' => [
             'driver' => 'eloquent',
             'model' => App\Models\User::class,

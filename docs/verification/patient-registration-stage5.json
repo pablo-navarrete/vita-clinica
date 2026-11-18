@@ -1,0 +1,26 @@
+{
+  "date": "2026-11-06",
+  "isolated_database": "vita_identification_test_stage3_20261106_162544_dc85ab",
+  "tests": 334,
+  "assertions": 4130,
+  "failures": 0,
+  "skipped": 2,
+  "seconds": 48.582,
+  "memory_mb": 90,
+  "habitual_database_unchanged": true,
+  "env_unchanged": true,
+  "registration_enabled": false,
+  "pending_migration": "2026_11_06_000300_create_patient_registration_attempts.php",
+  "real_mysql_race_cases": 4,
+  "browser": {
+    "synthetic_token": true,
+    "fragment_cleared": true,
+    "no_verification_on_get": true,
+    "single_form_post": true,
+    "token_only_in_post_body": true,
+    "no_token_in_request_urls_or_headers": true,
+    "no_external_resources_or_analytics": true
+  },
+  "real_mail_delivery_tested": false,
+  "legacy_guard_removed": false
+}
